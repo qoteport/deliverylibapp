@@ -19,54 +19,64 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // User profiles & RBAC
+    // User profiles
     match /users/{userId} {
       allow read: if isValidId(userId);
-      allow create, update: if isValidId(userId);
+      allow create, update: if isValidId(userId) &&
+        incoming().role is string &&
+        incoming().role in ['customer', 'restaurant_owner', 'driver', 'super_admin'];
+      allow delete: if false;
     }
 
     // Monrovia Restaurants
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if isValidId(restaurantId) &&
-        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
-        incoming().neighborhood is string && incoming().neighborhood.size() <= 80;
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 120 &&
+        incoming().neighborhood is string;
       allow update: if isValidId(restaurantId) &&
-        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
-      allow delete: if true;
+        incoming().name is string && incoming().name.size() > 0;
+      allow delete: if isValidId(restaurantId);
 
-      // Menu Items (subcollection)
+      // Subcollection menu items
       match /menu_items/{menuItemId} {
         allow read: if true;
-        allow create, update: if isValidId(menuItemId);
-        allow delete: if true;
+        allow create, update: if isValidId(menuItemId) &&
+          incoming().name is string && incoming().price is number;
+        allow delete: if isValidId(menuItemId);
       }
     }
 
     // Top-level menu items
     match /menu/{menuItemId} {
-      allow read, write, delete: if true;
+      allow read: if true;
+      allow create, update: if isValidId(menuItemId) &&
+        incoming().name is string && incoming().price is number;
+      allow delete: if isValidId(menuItemId);
     }
 
-    // Drivers
+    // Drivers Fleet
     match /drivers/{driverId} {
-      allow read, write, delete: if true;
+      allow read: if true;
+      allow create, update: if isValidId(driverId) &&
+        incoming().name is string;
+      allow delete: if isValidId(driverId);
     }
 
     // Customer & Restaurant Orders
     match /orders/{orderId} {
       allow read: if isValidId(orderId);
-      allow create: if isValidId(orderId);
-      allow update, delete: if true;
+      allow create: if isValidId(orderId) &&
+        incoming().total is number &&
+        incoming().status in ['received', 'confirmed', 'preparing', 'ready', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
+      allow update: if isValidId(orderId) &&
+        incoming().status in ['received', 'confirmed', 'preparing', 'ready', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
+      allow delete: if false; // Orders cannot be deleted to preserve financial audit trail
     }
 
     // Connection test document
     match /test/{docId} {
-      allow read, write: if true;
+      allow read, write: if isValidId(docId);
     }
   }
 }

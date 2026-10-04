@@ -886,47 +886,42 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-gray-700">Kitchen Manager WhatsApp Number</label>
+                <label className="font-bold text-gray-700">Kitchen Manager WhatsApp Dispatch Number</label>
                 <input
                   type="text"
-                  value={twilioConfig.targetWhatsAppNumber}
+                  value={twilioConfig.targetWhatsAppNumber || ''}
                   onChange={(e) => setTwilioConfig({ ...twilioConfig, targetWhatsAppNumber: e.target.value })}
                   placeholder="+231 886 554 123"
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827]"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700">Twilio Account SID (Optional for automated API)</label>
-                <input
-                  type="text"
-                  value={twilioConfig.accountSid}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, accountSid: e.target.value })}
-                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={twilioConfig.enableWhatsApp}
+                    onChange={(e) => setTwilioConfig({ ...twilioConfig, enableWhatsApp: e.target.checked })}
+                    className="rounded text-[#FF4B26] focus:ring-[#FF4B26]"
+                  />
+                  <div>
+                    <span className="font-bold text-gray-900 block">WhatsApp Order Alerts</span>
+                    <span className="text-[10px] text-gray-500">Send WhatsApp slips on order placement</span>
+                  </div>
+                </label>
 
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700">Twilio Auth Token</label>
-                <input
-                  type="password"
-                  value={twilioConfig.authToken}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, authToken: e.target.value })}
-                  placeholder="••••••••••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700">Twilio WhatsApp Sandbox (From)</label>
-                <input
-                  type="text"
-                  value={twilioConfig.whatsappFromNumber}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, whatsappFromNumber: e.target.value })}
-                  placeholder="whatsapp:+14155238886"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
-                />
+                <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={twilioConfig.enableSms}
+                    onChange={(e) => setTwilioConfig({ ...twilioConfig, enableSms: e.target.checked })}
+                    className="rounded text-[#FF4B26] focus:ring-[#FF4B26]"
+                  />
+                  <div>
+                    <span className="font-bold text-gray-900 block">SMS Notifications</span>
+                    <span className="text-[10px] text-gray-500">Send SMS confirmation to customers</span>
+                  </div>
+                </label>
               </div>
 
               <div className="pt-2 flex flex-wrap gap-2 justify-between border-t border-gray-100">

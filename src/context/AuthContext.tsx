@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppUser, UserRole, Restaurant } from '../types';
+import { AppUser } from '../types';
 import { auth, db } from '../firebase/config';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -21,19 +21,6 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const useAuth = () => useContext(AuthContext);
-
-export const SUPER_ADMIN_CREDENTIALS = {
-  email: 'qoteport@gmail.com',
-  password: 'Admin#32)))',
-};
-
-export const DEMO_RESTAURANT_LOGINS: {
-  email: string;
-  password: string;
-  name: string;
-  restaurantId: string;
-  restaurantName: string;
-}[] = [];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(() => {
@@ -112,49 +99,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const email = emailInput.trim().toLowerCase();
     const pass = passInput.trim();
 
-    // 1. Check Super Admin credentials
-    if (email === SUPER_ADMIN_CREDENTIALS.email.toLowerCase() && pass === SUPER_ADMIN_CREDENTIALS.password) {
-      const adminUser: AppUser = {
-        uid: 'super-admin-qoteport',
-        email: 'qoteport@gmail.com',
-        name: 'Super User (qoteport)',
-        role: 'super_admin',
-      };
-      setUser(adminUser);
-
+    // 1. Try server-side secure admin verification if email is admin
+    if (email.includes('admin') || email === 'qoteport@gmail.com') {
       try {
-        await setDoc(doc(db, 'users', adminUser.uid), {
-          uid: adminUser.uid,
-          email: adminUser.email,
-          name: adminUser.name,
-          role: adminUser.role,
-        }, { merge: true });
-      } catch (e) {
-        console.warn('Firestore admin doc sync notice:', e);
+        const verifyRes = await fetch('/api/auth/verify-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pass }),
+        });
+
+        if (verifyRes.ok) {
+          const resData = await verifyRes.json();
+          if (resData.success && resData.user) {
+            setUser(resData.user);
+            try {
+              await setDoc(
+                doc(db, 'users', resData.user.uid),
+                {
+                  uid: resData.user.uid,
+                  email: resData.user.email,
+                  name: resData.user.name,
+                  role: resData.user.role,
+                  lastLogin: new Date().toISOString(),
+                },
+                { merge: true }
+              );
+            } catch {}
+            return { success: true };
+          }
+        }
+      } catch (err) {
+        console.warn('Backend admin auth attempt failed:', err);
       }
-
-      return { success: true };
     }
 
-    // 2. Check Demo Restaurant Owner logins
-    const foundDemo = DEMO_RESTAURANT_LOGINS.find(
-      (d) => d.email.toLowerCase() === email && d.password === pass
-    );
-
-    if (foundDemo) {
-      const restOwnerUser: AppUser = {
-        uid: `owner-${foundDemo.restaurantId}`,
-        email: foundDemo.email,
-        name: foundDemo.name,
-        role: 'restaurant_owner',
-        restaurantId: foundDemo.restaurantId,
-        restaurantName: foundDemo.restaurantName,
-      };
-      setUser(restOwnerUser);
-      return { success: true };
-    }
-
-    // 3. Restaurant owner login by selecting a restaurant
+    // 2. Restaurant owner login with restaurant selection
     if (restaurantId) {
       const restOwnerUser: AppUser = {
         uid: `owner-${restaurantId}`,
@@ -167,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     }
 
-    // 4. Try Firebase Auth
+    // 3. Try Firebase Auth
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       const customUser: AppUser = {
@@ -179,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(customUser);
       return { success: true };
     } catch {
-      // Fallback
+      // 4. Graceful customer credentials fallback
       if (pass.length >= 4) {
         const fallbackUser: AppUser = {
           uid: `user-${Date.now().toString().slice(-6)}`,

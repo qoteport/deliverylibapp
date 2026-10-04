@@ -6,6 +6,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { CustomDropdown } from './CustomDropdown';
 import { sendTwilioOrderNotification } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
+import { normalizeLiberianPhoneNumber, generateMomoUssdUri } from '../utils/phoneUtils';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -123,7 +124,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       deliveryAddress: diningMode === 'delivery' ? (fullAddress ? `${fullAddress}, ${chosenDeliveryArea}` : chosenDeliveryArea) : undefined,
       tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
       customerName: name.trim() || (currentUser?.name || 'Monrovia Customer'),
-      customerPhone: phone.trim() || (currentUser?.phone || '0886 000 000'),
+      customerPhone: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
       customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
       subtotal: cartTotals.subtotal,
       discount: cartTotals.discount,
@@ -135,7 +136,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       currency,
       estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       paymentMethod,
-      paymentNumber: phone.trim() || currentUser?.phone || '0886 000 000',
+      paymentNumber: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
     };
 
     // Save order to Firebase Firestore
@@ -498,6 +499,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       </span>
                     )}
                   </button>
+                </div>
+
+                {/* 3. Quick Mobile USSD Dialer Action */}
+                <div className="pt-1 flex items-center justify-between">
+                  <a
+                    href={generateMomoUssdUri(
+                      paymentMethod === 'orange-money' ? 'orange' : 'mtn',
+                      restaurantPhone,
+                      Math.round(cartTotals.total * USD_TO_LRD_RATE)
+                    )}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-xs rounded-xl transition shadow-xs active:scale-98"
+                  >
+                    <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Dial USSD Prompt ({paymentMethod === 'orange-money' ? '*144#' : '*156#'})</span>
+                  </a>
                 </div>
               </div>
             )}

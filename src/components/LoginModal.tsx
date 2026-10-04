@@ -779,9 +779,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                   autoFocus
                 />
-                <p className="text-[10px] text-gray-400">
-                  Kitchen managers &amp; riders: entering your attached phone automatically opens your portal.
-                </p>
               </div>
 
               <div className="space-y-1.5">

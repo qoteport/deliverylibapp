@@ -10,11 +10,13 @@ import { FavoritesDrawer } from './components/FavoritesDrawer';
 import { DiningModeModal } from './components/DiningModeModal';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { AdminPortal } from './components/AdminPortal';
-import { RestaurantPortal } from './components/RestaurantPortal';
-import { DriverPortal } from './components/DriverPortal';
-import { DriverJoinModal } from './components/DriverJoinModal';
-import { RestaurantOnboardingModal } from './components/RestaurantOnboardingModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const AdminPortal = React.lazy(() => import('./components/AdminPortal').then(m => ({ default: m.AdminPortal })));
+const RestaurantPortal = React.lazy(() => import('./components/RestaurantPortal').then(m => ({ default: m.RestaurantPortal })));
+const DriverPortal = React.lazy(() => import('./components/DriverPortal').then(m => ({ default: m.DriverPortal })));
+const DriverJoinModal = React.lazy(() => import('./components/DriverJoinModal').then(m => ({ default: m.DriverJoinModal })));
+const RestaurantOnboardingModal = React.lazy(() => import('./components/RestaurantOnboardingModal').then(m => ({ default: m.RestaurantOnboardingModal })));
 import { RestaurantBar } from './components/RestaurantBar';
 import { PopularHorizontalBar } from './components/PopularHorizontalBar';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -147,35 +149,6 @@ export default function App() {
     };
   }, []);
 
-  // Automatic clean-slate purge of all legacy/test documents from Firestore & localStorage
-  useEffect(() => {
-    const hasPurged = localStorage.getItem('aura_prod_full_wipe_2026');
-    if (!hasPurged) {
-      localStorage.setItem('aura_prod_full_wipe_2026', 'true');
-      localStorage.removeItem('aura_monrovia_restaurants');
-      localStorage.removeItem('aura_monrovia_menu');
-      localStorage.removeItem('aura_monrovia_drivers');
-      localStorage.removeItem('aura_favorites');
-      localStorage.removeItem('aura_cart');
-      localStorage.removeItem('aura_orders');
-      localStorage.removeItem('aura_active_tracking_order_id');
-      localStorage.removeItem('aura_demo_purged_v3');
-
-      // Drop all existing documents from all collections in Firestore
-      const purgeFirestore = async () => {
-        const collectionsToDrop = ['restaurants', 'menu', 'menu_items', 'drivers', 'orders'];
-        for (const colName of collectionsToDrop) {
-          try {
-            const snap = await getDocs(collection(db, colName));
-            const deletions = snap.docs.map((docSnap) => deleteDoc(docSnap.ref).catch(() => {}));
-            await Promise.all(deletions);
-          } catch {}
-        }
-      };
-
-      void purgeFirestore();
-    }
-  }, []);
 
   // 1. Realtime Firestore Sync: Restaurants
   useEffect(() => {
@@ -659,26 +632,37 @@ export default function App() {
     (m) => !m.restaurantId || verifiedRestaurantIds.has(m.restaurantId)
   );
 
+  const LoadingFallback = (
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
+      <div className="w-12 h-12 border-4 border-orange-500/30 border-t-[#FF4B26] rounded-full animate-spin mb-4" />
+      <p className="text-sm font-medium text-slate-400">Loading portal...</p>
+    </div>
+  );
+
   // ==========================================
   // DISTINCT UI 1: SUPER ADMIN PORTAL (/admin)
   // ==========================================
   if (currentRoute.name === 'admin') {
     return (
-      <AdminPortal
-        restaurants={restaurants}
-        orders={orders}
-        drivers={drivers}
-        onOpenOnboarding={() => setIsOnboardingOpen(true)}
-        onExitAdmin={() => navigateTo({ name: 'home' })}
-        onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
-        onToggleRestaurantStatus={handleToggleRestaurantStatus}
-        onDeleteRestaurant={handleDeleteRestaurant}
-        onUpdateOrderStatus={handleUpdateOrderStatus}
-        onUpdateDriver={handleUpdateDriver}
-        onPurgeDemoData={handlePurgeAllDemoData}
-        currency={currency}
-        onToggleCurrency={handleToggleCurrency}
-      />
+      <ErrorBoundary>
+        <React.Suspense fallback={LoadingFallback}>
+          <AdminPortal
+            restaurants={restaurants}
+            orders={orders}
+            drivers={drivers}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            onExitAdmin={() => navigateTo({ name: 'home' })}
+            onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
+            onToggleRestaurantStatus={handleToggleRestaurantStatus}
+            onDeleteRestaurant={handleDeleteRestaurant}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdateDriver={handleUpdateDriver}
+            onPurgeDemoData={handlePurgeAllDemoData}
+            currency={currency}
+            onToggleCurrency={handleToggleCurrency}
+          />
+        </React.Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -709,17 +693,21 @@ export default function App() {
     );
 
     return (
-      <RestaurantPortal
-        restaurant={currentRestaurant}
-        menuItems={restaurantDishes.length > 0 ? restaurantDishes : menuItems}
-        orders={orders}
-        onExitPortal={() => navigateTo({ name: 'home' })}
-        onUpdateOrderStatus={handleUpdateOrderStatus}
-        onAddMenuItem={handleAddMenuItem}
-        onToggleItemAvailability={handleToggleItemAvailability}
-        currency={currency}
-        onToggleCurrency={handleToggleCurrency}
-      />
+      <ErrorBoundary>
+        <React.Suspense fallback={LoadingFallback}>
+          <RestaurantPortal
+            restaurant={currentRestaurant}
+            menuItems={restaurantDishes.length > 0 ? restaurantDishes : menuItems}
+            orders={orders}
+            onExitPortal={() => navigateTo({ name: 'home' })}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onAddMenuItem={handleAddMenuItem}
+            onToggleItemAvailability={handleToggleItemAvailability}
+            currency={currency}
+            onToggleCurrency={handleToggleCurrency}
+          />
+        </React.Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -733,24 +721,29 @@ export default function App() {
       INITIAL_DRIVERS[0];
 
     return (
-      <DriverPortal
-        driver={currentDriver}
-        orders={orders}
-        onExitPortal={() => navigateTo({ name: 'home' })}
-        onUpdateOrderStatus={handleUpdateOrderStatus}
-        onUpdateDriver={handleUpdateDriver}
-        onDriverRejectOrder={handleDriverRejectOrder}
-        currency={currency}
-        onToggleCurrency={handleToggleCurrency}
-      />
+      <ErrorBoundary>
+        <React.Suspense fallback={LoadingFallback}>
+          <DriverPortal
+            driver={currentDriver}
+            orders={orders}
+            onExitPortal={() => navigateTo({ name: 'home' })}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdateDriver={handleUpdateDriver}
+            onDriverRejectOrder={handleDriverRejectOrder}
+            currency={currency}
+            onToggleCurrency={handleToggleCurrency}
+          />
+        </React.Suspense>
+      </ErrorBoundary>
     );
   }
 
   // =========================================================================
   // DISTINCT UI 4: MAIN CONSUMER FOOD ORDERING APP (/)
   // =========================================================================
-  return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans selection:bg-[#FF4B26]/20 selection:text-[#FF4B26]">
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans selection:bg-[#FF4B26]/20 selection:text-[#FF4B26]">
       
       {/* Toast Feedback */}
       {toastMessage && (
@@ -880,12 +873,16 @@ export default function App() {
       />
 
       {/* Driver Onboarding & Registration Modal */}
-      <DriverJoinModal
-        isOpen={isDriverJoinOpen}
-        onClose={() => setIsDriverJoinOpen(false)}
-        onDriverRegistered={handleDriverRegistered}
-        onOpenDriverPortal={(driverId) => navigateTo({ name: 'driver', driverId })}
-      />
+      {isDriverJoinOpen && (
+        <React.Suspense fallback={null}>
+          <DriverJoinModal
+            isOpen={isDriverJoinOpen}
+            onClose={() => setIsDriverJoinOpen(false)}
+            onDriverRegistered={handleDriverRegistered}
+            onOpenDriverPortal={(driverId) => navigateTo({ name: 'driver', driverId })}
+          />
+        </React.Suspense>
+      )}
 
       {/* Dish Customizer Modal with Multi-Image Gallery */}
       <DishModal
@@ -962,14 +959,19 @@ export default function App() {
       />
 
       {/* Full Restaurant Onboarding Modal */}
-      <RestaurantOnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-        onRestaurantCreated={handleRestaurantCreated}
-        onOpenKitchenPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
-        isSuperAdminMode={user?.role === 'super_admin'}
-      />
+      {isOnboardingOpen && (
+        <React.Suspense fallback={null}>
+          <RestaurantOnboardingModal
+            isOpen={isOnboardingOpen}
+            onClose={() => setIsOnboardingOpen(false)}
+            onRestaurantCreated={handleRestaurantCreated}
+            onOpenKitchenPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
+            isSuperAdminMode={user?.role === 'super_admin'}
+          />
+        </React.Suspense>
+      )}
 
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
