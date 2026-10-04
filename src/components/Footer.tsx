@@ -4,7 +4,7 @@ import { Utensils, Heart } from 'lucide-react';
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-white text-gray-500 py-10 pb-28 sm:pb-10 border-t border-gray-100 text-center text-xs">
-      <div className="max-w-6xl mx-auto px-4 space-y-3">
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 space-y-3">
         <div className="flex items-center justify-center gap-1.5">
           <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white">
             <Utensils className="w-3.5 h-3.5 stroke-[2.5]" />

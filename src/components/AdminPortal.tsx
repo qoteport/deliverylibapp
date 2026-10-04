@@ -181,7 +181,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       
       {/* Modern White Admin Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs h-16 flex items-center">
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
             <button
@@ -231,7 +231,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 lg:px-10 py-6 space-y-6">
         
         {/* KPI Scorecard Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

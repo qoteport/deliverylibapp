@@ -33,7 +33,7 @@ export const Hero: React.FC<HeroProps> = ({
   const quickSearchTags = ['Jollof Rice', 'Pepper Soup', 'Grilled Suya', 'Fried Fish', 'Kala', 'Pasta'];
 
   return (
-    <section className="pt-1 pb-1 px-3 sm:px-6 max-w-6xl mx-auto space-y-3">
+    <section className="pt-1 pb-1 px-4 sm:px-8 lg:px-10 max-w-5xl mx-auto space-y-3">
       
       {/* Search Bar & Dining Mode Switcher */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">

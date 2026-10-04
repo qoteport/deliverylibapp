@@ -32,7 +32,7 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
   };
 
   return (
-    <section className="pt-3 pb-2 px-3 sm:px-6 max-w-6xl mx-auto space-y-2.5">
+    <section className="pt-3 pb-2 px-4 sm:px-8 lg:px-10 max-w-5xl mx-auto space-y-2.5">
       
       {/* Title Header */}
       <div className="flex items-center justify-between">

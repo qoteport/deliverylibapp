@@ -47,7 +47,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
   };
 
   return (
-    <div className="px-3 sm:px-6 max-w-6xl mx-auto space-y-2.5 pt-1">
+    <div className="px-4 sm:px-8 lg:px-10 max-w-5xl mx-auto space-y-2.5 pt-1">
       
       {/* Neighborhood Pills Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">

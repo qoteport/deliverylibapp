@@ -39,22 +39,29 @@ service cloud.firestore {
         incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
       allow delete: if true;
 
-      // Menu Items
+      // Menu Items (subcollection)
       match /menu_items/{menuItemId} {
         allow read: if true;
-        allow create, update: if isValidId(menuItemId) &&
-          incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
+        allow create, update: if isValidId(menuItemId);
         allow delete: if true;
       }
+    }
+
+    // Top-level menu items
+    match /menu/{menuItemId} {
+      allow read, write, delete: if true;
+    }
+
+    // Drivers
+    match /drivers/{driverId} {
+      allow read, write, delete: if true;
     }
 
     // Customer & Restaurant Orders
     match /orders/{orderId} {
       allow read: if isValidId(orderId);
-      allow create: if isValidId(orderId) &&
-        incoming().customerName is string && incoming().customerName.size() > 0 && incoming().customerName.size() <= 100;
-      allow update: if isValidId(orderId);
-      allow delete: if false;
+      allow create: if isValidId(orderId);
+      allow update, delete: if true;
     }
 
     // Connection test document

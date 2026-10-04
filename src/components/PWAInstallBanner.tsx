@@ -43,41 +43,43 @@ export const PWAInstallBanner: React.FC = () => {
   return (
     <>
       {/* Top Floating PWA Install Alert Banner */}
-      <div className="bg-gradient-to-r from-[#111827] via-[#1E293B] to-[#111827] text-white border-b border-orange-500/30 px-3 sm:px-6 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs z-30 relative animate-in fade-in slide-in-from-top-1 duration-200">
-        <div className="flex items-center gap-2.5 min-w-0 max-w-2xl">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#FF4B26]/30">
-            <Smartphone className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-1.5 truncate">
-              <span>Install AURA Food App</span>
-              <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full bg-[#FF4B26]/30 text-[#FF7A00] text-[10px] font-bold">
-                1-Tap Monrovia Delivery
-              </span>
+      <div className="bg-gradient-to-r from-[#111827] via-[#1E293B] to-[#111827] text-white border-b border-orange-500/30 px-4 sm:px-8 lg:px-10 py-2.5 shadow-lg text-xs z-30 relative animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 max-w-2xl">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#FF4B26]/30">
+              <Smartphone className="w-4 h-4" />
             </div>
-            <div className="text-[11px] text-gray-300 truncate">
-              Install directly to your home screen for instant ordering, faster loading &amp; offline support
+            <div className="min-w-0">
+              <div className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-1.5 truncate">
+                <span>Install AURA Food App</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full bg-[#FF4B26]/30 text-[#FF7A00] text-[10px] font-bold">
+                  1-Tap Monrovia Delivery
+                </span>
+              </div>
+              <div className="text-[11px] text-gray-300 truncate">
+                Install directly to your home screen for instant ordering, faster loading &amp; offline support
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleInstallClick}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] hover:from-[#FF5A36] hover:to-[#FF8A10] text-white font-black text-xs rounded-xl shadow-md shadow-[#FF4B26]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Install App</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleInstallClick}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] hover:from-[#FF5A36] hover:to-[#FF8A10] text-white font-black text-xs rounded-xl shadow-md shadow-[#FF4B26]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Install App</span>
+            </button>
 
-          <button
-            onClick={handleDismiss}
-            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
-            title="Dismiss banner"
-            aria-label="Dismiss banner"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            <button
+              onClick={handleDismiss}
+              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+              title="Dismiss banner"
+              aria-label="Dismiss banner"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 

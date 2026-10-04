@@ -81,7 +81,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   };
 
   return (
-    <section id="menu" className="pt-2 pb-28 px-3 sm:px-6 max-w-6xl mx-auto">
+    <section id="menu" className="pt-2 pb-28 px-4 sm:px-8 lg:px-10 max-w-5xl mx-auto">
       
       {/* Category Horizontal Scrolling Bar */}
       <div className="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar scroll-smooth">

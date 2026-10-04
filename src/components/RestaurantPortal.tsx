@@ -306,7 +306,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       
       {/* Modern White Kitchen Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs h-16 flex items-center">
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
             <button
@@ -375,7 +375,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
 
       {/* Verification Warning Alert Banner if unverified */}
       {restaurant.isVerified === false && (
-        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-4">
+        <div className="max-w-5xl w-full mx-auto px-4 sm:px-8 lg:px-10 pt-4">
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
             <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
             <div>
@@ -391,7 +391,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 lg:px-10 py-6 space-y-6">
         
         {/* Navigation Tabs */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-2 overflow-x-auto gap-2">
