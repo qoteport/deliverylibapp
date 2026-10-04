@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Lock, Bike, ShoppingBag, UtensilsCrossed, Phone, DollarSign, ShieldCheck, User as UserIcon, Copy } from 'lucide-react';
+import { X, Check, Lock, Bike, ShoppingBag, UtensilsCrossed, Phone, DollarSign, ShieldCheck, User as UserIcon, Copy, MapPin, Navigation } from 'lucide-react';
 import { CartItem, DiningMode, Order, Currency, PaymentMethod, MONROVIA_NEIGHBORHOODS, USD_TO_LRD_RATE, AppUser, Restaurant } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { CustomDropdown } from './CustomDropdown';
 import { sendTwilioOrderNotification } from '../utils/twilio';
+import { LocationPickerModal } from './LocationPickerModal';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -43,15 +44,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [orderId, setOrderId] = useState(() => `AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
   const [name, setName] = useState(currentUser?.name || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [neighborhood, setNeighborhood] = useState(
-    currentUser?.location && MONROVIA_NEIGHBORHOODS.includes(currentUser.location)
-      ? currentUser.location
-      : MONROVIA_NEIGHBORHOODS[0]
+  const [destinationArea, setDestinationArea] = useState(
+    currentUser?.location || 'Sinkor'
   );
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [address, setAddress] = useState(currentUser?.address || '');
   const [tableNumber, setTableNumber] = useState('Table 4');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo-mtn');
-  const [momoNumber, setMomoNumber] = useState(currentUser?.phone || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -79,10 +79,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (currentUser.name) setName(currentUser.name);
       if (currentUser.phone) {
         setPhone(currentUser.phone);
-        setMomoNumber(currentUser.phone);
       }
-      if (currentUser.location && MONROVIA_NEIGHBORHOODS.includes(currentUser.location)) {
-        setNeighborhood(currentUser.location);
+      if (currentUser.location) {
+        setDestinationArea(currentUser.location);
       }
       if (currentUser.address) {
         setAddress(currentUser.address);
@@ -106,6 +105,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const prepMinutes = diningMode === 'pickup' ? 15 : diningMode === 'dine-in' ? 12 : 25;
     const eta = new Date(nowTimestamp + prepMinutes * 60000);
 
+    const chosenDeliveryArea = destinationArea.trim() || 'Monrovia';
+    let fullAddress = address.trim();
+    if (gpsCoords) {
+      fullAddress = fullAddress ? `${fullAddress} (GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)})` : `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
+    }
+
     const newOrder: Order = {
       id: orderId,
       createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -114,8 +119,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       status: 'received',
       items,
       diningMode,
-      deliveryArea: neighborhood,
-      deliveryAddress: diningMode === 'delivery' ? (address.trim() ? `${address.trim()}, ${neighborhood}` : neighborhood) : undefined,
+      deliveryArea: chosenDeliveryArea,
+      deliveryAddress: diningMode === 'delivery' ? (fullAddress ? `${fullAddress}, ${chosenDeliveryArea}` : chosenDeliveryArea) : undefined,
       tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
       customerName: name.trim() || (currentUser?.name || 'Monrovia Customer'),
       customerPhone: phone.trim() || (currentUser?.phone || '0886 000 000'),
@@ -130,7 +135,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       currency,
       estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       paymentMethod,
-      paymentNumber: momoNumber || phone,
+      paymentNumber: phone.trim() || currentUser?.phone || '0886 000 000',
     };
 
     // Save order to Firebase Firestore
@@ -265,19 +270,57 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {diningMode === 'delivery' && (
               <div className="space-y-2">
-                <CustomDropdown
-                  options={MONROVIA_NEIGHBORHOODS}
-                  value={neighborhood}
-                  onChange={(val) => setNeighborhood(val)}
-                  buttonClassName="bg-gray-50 border-gray-200"
-                />
+                {/* Single unified destination input with GPS icon button */}
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    required
+                    list="monrovia-areas-list"
+                    value={destinationArea}
+                    onChange={(e) => setDestinationArea(e.target.value)}
+                    placeholder="e.g. Sinkor, ELWA Junction, Oldest Congo Town, Duala Market, etc."
+                    className="w-full pl-9 pr-24 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  />
+                  <MapPin className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
+
+                  {/* Monrovia Preset Suggestions */}
+                  <datalist id="monrovia-areas-list">
+                    {MONROVIA_NEIGHBORHOODS.map((area) => (
+                      <option key={area} value={area} />
+                    ))}
+                  </datalist>
+
+                  {/* Map Pinpoint Button next to / inside the text input box */}
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationPickerOpen(true)}
+                    className="absolute right-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 active:scale-95 text-[#FF4B26] border border-orange-200/80 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    title="Open interactive Monrovia map to pinpoint exact delivery spot"
+                  >
+                    <MapPin className="w-3 h-3 text-[#FF4B26] stroke-[2.5]" />
+                    <span>Pick on Map</span>
+                  </button>
+                </div>
+
+                {gpsCoords && (
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
+                    <span>📍 Pinpoint: {gpsCoords.lat.toFixed(4)}° N, {gpsCoords.lng.toFixed(4)}° W</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationPickerOpen(true)}
+                      className="text-[#FF4B26] hover:underline font-bold"
+                    >
+                      Adjust on Map
+                    </button>
+                  </div>
+                )}
 
                 <input
                   type="text"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Street name, landmark, gate or house description"
+                  placeholder="Street name, landmark, gate color or house description"
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                 />
               </div>
@@ -456,21 +499,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     )}
                   </button>
                 </div>
-
-                {/* 3. Customer's Sending Phone */}
-                <div className="space-y-1 pt-0.5">
-                  <label className="text-[11px] font-extrabold text-gray-800 block">
-                    Your Sending Number (for kitchen payment verification):
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={momoNumber}
-                    onChange={(e) => setMomoNumber(e.target.value)}
-                    placeholder="Enter the number sending the MoMo"
-                    className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#FF4B26]"
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -504,16 +532,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {isSubmitting ? (
               <span>Transmitting Order to Kitchen...</span>
             ) : (
-              <>
+              <span className="flex items-center justify-center gap-2">
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>Place Order • {formatPrice(cartTotals.total)}</span>
-              </>
+              </span>
             )}
           </button>
 
         </form>
 
       </div>
+
+      {/* Interactive Monrovia Delivery Map Picker Modal */}
+      {isLocationPickerOpen && (
+        <LocationPickerModal
+          isOpen={isLocationPickerOpen}
+          onClose={() => setIsLocationPickerOpen(false)}
+          initialCoords={gpsCoords}
+          initialArea={destinationArea}
+          initialAddress={address}
+          onConfirmLocation={({ area, address: updatedAddress, coords }) => {
+            setDestinationArea(area);
+            if (updatedAddress) {
+              setAddress(updatedAddress);
+            }
+            setGpsCoords(coords);
+          }}
+        />
+      )}
     </div>
   );
 };

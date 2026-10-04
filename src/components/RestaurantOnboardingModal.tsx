@@ -530,10 +530,10 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                 {isSubmitting ? (
                   <span>Saving to Firebase Firestore...</span>
                 ) : (
-                  <>
+                  <span className="flex items-center justify-center gap-2">
                     <Check className="w-4 h-4 stroke-[3]" />
                     <span>{isSuperAdminMode ? 'Verify & Onboard Kitchen' : 'Submit Restaurant Registration'}</span>
-                  </>
+                  </span>
                 )}
               </button>
             </div>
