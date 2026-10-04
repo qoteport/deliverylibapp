@@ -15,10 +15,6 @@ service cloud.firestore {
       return request.resource.data;
     }
 
-    function existing() {
-      return resource.data;
-    }
-
     // User profiles
     match /users/{userId} {
       allow read: if isValidId(userId);
