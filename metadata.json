@@ -1,0 +1,6 @@
+{
+  "name": "AURA Artisanal Kitchen",
+  "description": "Monrovia, Liberia food ordering and delivery platform with Lonestar MTN MoMo, Orange Money, and restaurant onboarding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

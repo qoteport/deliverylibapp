@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user account with role-based permissions",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["super_admin", "restaurant_owner", "customer"] },
+        "restaurantId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Restaurant": {
+      "title": "Restaurant",
+      "description": "A food restaurant or kitchen in Monrovia, Liberia",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "neighborhood": { "type": "string", "maxLength": 80 },
+        "address": { "type": "string", "maxLength": 200 },
+        "cuisine": { "type": "string", "maxLength": 60 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "momoNumber": { "type": "string", "maxLength": 30 },
+        "rating": { "type": "number" },
+        "deliveryTimeMinutes": { "type": "number" },
+        "deliveryFeeUsd": { "type": "number" },
+        "minOrderUsd": { "type": "number" },
+        "isOpen": { "type": "boolean" },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "neighborhood", "cuisine", "phone"]
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A food dish or drink available at a restaurant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "restaurantId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "priceUsd": { "type": "number" },
+        "priceLrd": { "type": "number" },
+        "category": { "type": "string", "maxLength": 50 },
+        "isPopular": { "type": "boolean" },
+        "isAvailable": { "type": "boolean" },
+        "prepTimeMinutes": { "type": "number" }
+      },
+      "required": ["name", "priceUsd", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer food order with payment and status tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "restaurantId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "deliveryArea": { "type": "string", "maxLength": 100 },
+        "deliveryAddress": { "type": "string", "maxLength": 200 },
+        "diningMode": { "type": "string", "maxLength": 20 },
+        "paymentMethod": { "type": "string", "maxLength": 30 },
+        "paymentNumber": { "type": "string", "maxLength": 30 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "maxLength": 30 },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerName", "customerPhone", "total", "status", "paymentMethod"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and RBAC roles"
+    },
+    "/restaurants/{restaurantId}": {
+      "schema": "Restaurant",
+      "description": "Monrovia restaurants directory"
+    },
+    "/restaurants/{restaurantId}/menu_items/{menuItemId}": {
+      "schema": "MenuItem",
+      "description": "Menu items offered by a restaurant"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer food orders and status"
+    }
+  }
+}

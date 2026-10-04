@@ -1,0 +1,1143 @@
+import React, { useState, useEffect } from 'react';
+import { Store, Utensils, Clock, CheckCircle2, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save } from 'lucide-react';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase/config';
+import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { playOrderAlertSound } from '../utils/audioAlert';
+import { sendBrowserNotification } from '../utils/browserNotifications';
+import { getSavedTwilioConfig, saveTwilioConfig, sendTwilioOrderNotification, getWhatsAppDispatchUrl, TwilioConfig } from '../utils/twilio';
+
+interface RestaurantPortalProps {
+  restaurant: Restaurant;
+  menuItems: MenuItem[];
+  orders: Order[];
+  onExitPortal: () => void;
+  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onAddMenuItem: (item: MenuItem) => void;
+  onToggleItemAvailability: (itemId: string) => void;
+  currency: Currency;
+  onToggleCurrency: () => void;
+}
+
+const PRESET_FOOD_IMAGES = [
+  { label: 'Jollof & Chicken', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Grilled Suya / Beef', url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Fried Fish & Plantains', url: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Rich Pepper Soup', url: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Snacks & Kala', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80' },
+  { label: 'Wonjo & Fresh Juices', url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80' },
+];
+
+export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
+  restaurant,
+  menuItems,
+  orders,
+  onExitPortal,
+  onUpdateOrderStatus,
+  onAddMenuItem,
+  onToggleItemAvailability,
+  currency,
+  onToggleCurrency,
+}) => {
+  const { logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'profile' | 'notifications'>('orders');
+  const [isAddDishOpen, setIsAddDishOpen] = useState(false);
+  const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
+
+  // Audio & Twilio Config State
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [twilioConfig, setTwilioConfig] = useState<TwilioConfig>(getSavedTwilioConfig());
+  const [testAlertStatus, setTestAlertStatus] = useState<string | null>(null);
+
+  // Restaurant Profile Edit State
+  const [restName, setRestName] = useState(restaurant?.name || '');
+  const [restNeighborhood, setRestNeighborhood] = useState(restaurant?.neighborhood || 'Sinkor');
+  const [restAddress, setRestAddress] = useState(restaurant?.address || '');
+  const [restPhone, setRestPhone] = useState(restaurant?.phone || '');
+  const [restMomoNumber, setRestMomoNumber] = useState(restaurant?.momoNumber || restaurant?.phone || '');
+  const [restAllowedPhones, setRestAllowedPhones] = useState(
+    restaurant?.allowedPhoneNumbers?.join(', ') || restaurant?.phone || ''
+  );
+  const [restDeliveryFee, setRestDeliveryFee] = useState((restaurant?.deliveryFeeUsd ?? 2.0).toString());
+  const [restPrepTime, setRestPrepTime] = useState((restaurant?.deliveryTimeMinutes ?? 25).toString());
+  const [restIsOpen, setRestIsOpen] = useState(restaurant?.isOpen ?? true);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (restaurant) {
+      setRestName(restaurant.name || '');
+      setRestNeighborhood(restaurant.neighborhood || 'Sinkor');
+      setRestAddress(restaurant.address || '');
+      setRestPhone(restaurant.phone || '');
+      setRestMomoNumber(restaurant.momoNumber || restaurant.phone || '');
+      setRestAllowedPhones(restaurant.allowedPhoneNumbers?.join(', ') || restaurant.phone || '');
+      setRestDeliveryFee((restaurant.deliveryFeeUsd ?? 2.0).toString());
+      setRestPrepTime((restaurant.deliveryTimeMinutes ?? 25).toString());
+      setRestIsOpen(restaurant.isOpen ?? true);
+    }
+  }, [restaurant]);
+
+  // Dish Form State (Add / Edit)
+  const [dishName, setDishName] = useState('');
+  const [dishPrice, setDishPrice] = useState('8.00');
+  const [dishCategory, setDishCategory] = useState<MenuItem['category']>('liberian-favorites');
+  const [dishDescription, setDishDescription] = useState('');
+  const [dishPrepTime, setDishPrepTime] = useState(15);
+  const [dishSpice, setDishSpice] = useState<MenuItem['spiceLevel']>('Monrovia Hot');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+
+  const restaurantOrders = orders.filter(
+    (o) => !o.restaurantId || o.restaurantId === restaurant.id
+  );
+  const activeOrders = restaurantOrders.filter((o) => o.status !== 'completed');
+
+  // Play audio chime and dispatch browser notification when orders count increases
+  const [prevOrdersCount, setPrevOrdersCount] = useState(restaurantOrders.length);
+  useEffect(() => {
+    if (restaurantOrders.length > prevOrdersCount) {
+      if (soundEnabled) {
+        playOrderAlertSound();
+      }
+      const newestOrder = restaurantOrders[0];
+      if (newestOrder) {
+        sendBrowserNotification({
+          title: `🔔 New Kitchen Order #${newestOrder.id}`,
+          body: `${newestOrder.customerName} ordered ${newestOrder.items.length} items (${newestOrder.diningMode}) • $${newestOrder.total.toFixed(2)}`,
+          tag: `kitchen-order-${newestOrder.id}`,
+        });
+      }
+      setPrevOrdersCount(restaurantOrders.length);
+    }
+  }, [restaurantOrders.length, prevOrdersCount, soundEnabled, restaurantOrders]);
+
+  const formatPrice = (usd: number) => {
+    if (currency === 'LRD') {
+      return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
+    }
+    return `$${usd.toFixed(2)}`;
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result && typeof event.target.result === 'string') {
+          setUploadedImages((prev) => [...prev, event.target!.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddImageUrl = () => {
+    if (imageUrlInput.trim()) {
+      setUploadedImages((prev) => [...prev, imageUrlInput.trim()]);
+      setImageUrlInput('');
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Open Edit Dish Modal
+  const handleOpenEditDish = (dish: MenuItem) => {
+    setEditingDish(dish);
+    setDishName(dish.name);
+    setDishPrice(dish.price.toString());
+    setDishCategory(dish.category);
+    setDishDescription(dish.description);
+    setDishPrepTime(dish.prepTimeMinutes);
+    setDishSpice(dish.spiceLevel || 'Monrovia Hot');
+    const images = dish.images && dish.images.length > 0 ? dish.images : dish.image ? [dish.image] : [];
+    setUploadedImages(images);
+    setIsAddDishOpen(true);
+  };
+
+  const handleCreateOrUpdateDish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dishName.trim()) return;
+
+    const priceNum = parseFloat(dishPrice) || 5.0;
+    const dishId = editingDish ? editingDish.id : `dish-${restaurant.id}-${Date.now().toString().slice(-4)}`;
+
+    const targetDish: MenuItem = {
+      id: dishId,
+      restaurantId: restaurant.id,
+      name: dishName.trim(),
+      subname: 'Freshly prepared specialty',
+      category: dishCategory,
+      description: dishDescription.trim() || 'Delicious Monrovia specialty prepared fresh to order.',
+      price: priceNum,
+      priceLrd: priceNum * USD_TO_LRD_RATE,
+      calories: 500,
+      prepTimeMinutes: Number(dishPrepTime) || 15,
+      dietary: ['Spicy'],
+      ingredients: ['Local ingredients', 'Liberian spices'],
+      provenance: restaurant.neighborhood,
+      illustrationType: 'jollof',
+      images: uploadedImages.length > 0 ? uploadedImages : undefined,
+      image: uploadedImages.length > 0 ? uploadedImages[0] : undefined,
+      spiceLevel: dishSpice,
+      isAvailable: editingDish ? editingDish.isAvailable !== false : true,
+    };
+
+    onAddMenuItem(targetDish);
+
+    // Save to Firestore in Real Time
+    try {
+      await setDoc(doc(db, 'menu_items', targetDish.id), {
+        id: targetDish.id,
+        restaurantId: targetDish.restaurantId,
+        name: targetDish.name,
+        subname: targetDish.subname,
+        category: targetDish.category,
+        description: targetDish.description,
+        priceUsd: targetDish.price,
+        priceLrd: targetDish.priceLrd,
+        prepTimeMinutes: targetDish.prepTimeMinutes,
+        spiceLevel: targetDish.spiceLevel,
+        images: targetDish.images || [],
+        image: targetDish.image || '',
+        isAvailable: targetDish.isAvailable,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log('Dish successfully synced to Firestore:', targetDish.id);
+    } catch (err) {
+      console.warn('Firestore dish write notice:', err);
+    }
+
+    setIsAddDishOpen(false);
+    setEditingDish(null);
+    setDishName('');
+    setDishDescription('');
+    setUploadedImages([]);
+  };
+
+  const handleDeleteDish = async (dishId: string) => {
+    if (!confirm('Are you sure you want to remove this dish from your menu?')) return;
+    try {
+      await deleteDoc(doc(db, 'menu_items', dishId));
+    } catch {}
+  };
+
+  // Save Restaurant Profile
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const phonesList = restAllowedPhones
+        .split(/[,;\n]+/)
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+
+      await updateDoc(doc(db, 'restaurants', restaurant.id), {
+        name: restName,
+        neighborhood: restNeighborhood,
+        address: restAddress,
+        phone: restPhone,
+        momoNumber: restMomoNumber,
+        deliveryFeeUsd: parseFloat(restDeliveryFee) || 2.0,
+        deliveryTimeMinutes: parseInt(restPrepTime) || 25,
+        isOpen: restIsOpen,
+        allowedPhoneNumbers: phonesList,
+      });
+      setProfileSaveSuccess(true);
+      setTimeout(() => setProfileSaveSuccess(false), 3000);
+    } catch (e) {
+      console.warn('Firestore profile update notice:', e);
+    }
+  };
+
+  // Save Twilio Config & Send Test
+  const handleSaveTwilio = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveTwilioConfig(twilioConfig);
+    setTestAlertStatus('Twilio WhatsApp configuration saved!');
+    setTimeout(() => setTestAlertStatus(null), 3000);
+  };
+
+  const handleSendTestTwilio = async () => {
+    setTestAlertStatus('Dispatching test WhatsApp alert...');
+    const dummyOrder: Order = {
+      id: `TEST-${Math.floor(1000 + Math.random() * 9000)}`,
+      createdAt: 'Just now',
+      status: 'received',
+      items: [
+        {
+          cartItemId: '1',
+          quantity: 2,
+          itemTotal: 17.0,
+          selectedSpiceLevel: 'Monrovia Hot',
+          selectedAddons: [],
+          menuItem: menuItems[0] || { id: 'test', name: 'Liberian Jollof Rice', price: 8.5 } as MenuItem,
+        },
+      ],
+      diningMode: 'delivery',
+      customerName: 'Koffa Davies',
+      customerPhone: '+231 886 554 123',
+      customerEmail: 'koffa@monrovia.lr',
+      deliveryArea: 'Sinkor, Tubman Blvd',
+      deliveryAddress: '12th Street, Near ERA Supermarket',
+      subtotal: 17.0,
+      discount: 0,
+      serviceFee: 0.75,
+      deliveryFee: 2.0,
+      tax: 0.68,
+      tip: 0,
+      total: 20.43,
+      currency: 'USD',
+      estimatedDeliveryTime: '25 mins',
+      paymentMethod: 'momo-mtn',
+      paymentNumber: '0886 554 123',
+    };
+
+    const res = await sendTwilioOrderNotification(dummyOrder, restaurant.name);
+    setTestAlertStatus(res.whatsappStatus || res.smsStatus || 'Twilio Alert Dispatched');
+    if (soundEnabled) playOrderAlertSound();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans">
+      
+      {/* Modern White Kitchen Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs h-16 flex items-center">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onExitPortal}
+              className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-1.5 text-xs font-bold"
+              title="Return to customer app"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Customer App</span>
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white">
+                  <Store className="w-4 h-4" />
+                </div>
+                <h1 className="text-base sm:text-lg font-black text-[#111827] truncate max-w-[180px] sm:max-w-none">
+                  {restaurant.name}
+                </h1>
+              </div>
+              <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                <span>{restaurant.neighborhood}</span>
+                <span>•</span>
+                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  KDS Active · /restaurant-management/{restaurant.id}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Audio Chime Toggle */}
+            <button
+              onClick={() => {
+                setSoundEnabled(!soundEnabled);
+                if (!soundEnabled) playOrderAlertSound();
+              }}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 ${
+                soundEnabled ? 'bg-orange-50 border-orange-200 text-[#FF4B26]' : 'bg-gray-100 border-gray-200 text-gray-400'
+              }`}
+              title={soundEnabled ? 'Audio alerts ON' : 'Audio alerts MUTED'}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={onToggleCurrency}
+              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800"
+            >
+              {currency}
+            </button>
+
+            <button
+              onClick={() => {
+                logout();
+                onExitPortal();
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Verification Warning Alert Banner if unverified */}
+      {restaurant.isVerified === false && (
+        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-4">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+            <div>
+              <div className="font-extrabold text-amber-800 text-sm">
+                Kitchen Pending Verification
+              </div>
+              <p className="text-amber-700 mt-0.5">
+                Your kitchen profile and menu are currently under review. You can configure your menu, dishes, and staff access right now. Once approved, your kitchen will immediately be live to customers across Monrovia.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        
+        {/* Navigation Tabs */}
+        <div className="flex items-center justify-between border-b border-gray-200 pb-2 overflow-x-auto gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                activeTab === 'orders'
+                  ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              Live Kitchen Orders ({activeOrders.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('menu')}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                activeTab === 'menu'
+                  ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              Menu & Dishes ({menuItems.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                activeTab === 'profile'
+                  ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              Restaurant Profile & MoMo
+            </button>
+
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'notifications'
+                  ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Twilio & WhatsApp Alerts</span>
+            </button>
+          </div>
+
+          {activeTab === 'menu' && (
+            <button
+              onClick={() => {
+                setEditingDish(null);
+                setDishName('');
+                setDishPrice('8.00');
+                setDishDescription('');
+                setUploadedImages([]);
+                setIsAddDishOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-[#FF4B26]/20 hover:shadow-lg shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>+ Add Dish</span>
+            </button>
+          )}
+        </div>
+
+        {/* TAB 1: KITCHEN DISPLAY SYSTEM (ORDERS) */}
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <Bell className="w-3.5 h-3.5 text-[#FF4B26]" />
+                <span>Live orders stream with instant WhatsApp dispatch & audio alerts</span>
+              </span>
+              <span className="font-bold text-gray-900">{activeOrders.length} orders cooking</span>
+            </div>
+
+            {restaurantOrders.length === 0 ? (
+              <div className="bg-white p-16 text-center rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF4B26] flex items-center justify-center mx-auto mb-2">
+                  <Flame className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-extrabold text-[#111827]">No active orders right now</h3>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                  When a customer orders from Monrovia, the kitchen chime will sound and the order slip will appear here in real time.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {restaurantOrders.map((order) => {
+                  const isDone = order.status === 'completed';
+                  const waUrl = getWhatsAppDispatchUrl(
+                    twilioConfig.targetWhatsAppNumber || order.customerPhone,
+                    order,
+                    restaurant.name
+                  );
+
+                  return (
+                    <div
+                      key={order.id}
+                      className={`p-5 rounded-3xl border shadow-xs space-y-3 transition-all ${
+                        isDone ? 'bg-gray-50 border-gray-100 opacity-75' : 'bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)]'
+                      }`}
+                    >
+                      {/* Order Header */}
+                      <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-gray-100">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-gray-900">
+                              {order.id}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {order.createdAt}
+                            </span>
+                          </div>
+                          <div className="text-xs font-extrabold text-gray-900 mt-0.5">
+                            {order.customerName} ({order.customerPhone})
+                          </div>
+                          <div className="text-[11px] text-[#FF4B26] font-semibold">
+                            {order.deliveryArea || order.diningMode}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-mono text-base font-black text-gray-900 tabular-nums block">
+                            {formatPrice(order.total)}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-50 text-[#FF4B26]">
+                            {order.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items List */}
+                      <div className="space-y-1.5 text-xs text-gray-600">
+                        {order.items.map((i) => (
+                          <div key={i.cartItemId} className="flex justify-between items-start">
+                            <div>
+                              <span className="font-black text-gray-900">{i.quantity}x</span> {i.menuItem.name}
+                              {i.selectedSpiceLevel && (
+                                <span className="ml-1 text-red-500 font-bold text-[11px]">
+                                  [{i.selectedSpiceLevel}]
+                                </span>
+                              )}
+                              {i.selectedAddons && i.selectedAddons.length > 0 && (
+                                <div className="text-[11px] text-gray-400 pl-4">
+                                  +{i.selectedAddons.map((a) => a.name).join(', ')}
+                                </div>
+                              )}
+                              {i.specialInstructions && (
+                                <div className="text-[11px] italic text-orange-600 pl-4">
+                                  Note: "{i.specialInstructions}"
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-mono font-semibold">{formatPrice(i.itemTotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Payment & WhatsApp Dispatch Button */}
+                      <div className="p-2.5 bg-gray-50 rounded-2xl text-[11px] text-gray-600 flex items-center justify-between gap-2">
+                        <div>
+                          <span>Payment: <strong className="text-gray-900">{order.paymentMethod}</strong></span>
+                          {order.paymentNumber && <span className="font-mono font-bold block text-gray-700">MoMo: {order.paymentNumber}</span>}
+                        </div>
+
+                        {/* WhatsApp Dispatch Link */}
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-colors shrink-0"
+                          title="Open WhatsApp order slip"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+
+                      {/* Order Action Progression Buttons */}
+                      {!isDone && (
+                        <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                          {order.status === 'received' && (
+                            <button
+                              onClick={() => onUpdateOrderStatus(order.id, 'preparing')}
+                              className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <Flame className="w-3.5 h-3.5 fill-white" />
+                              <span>Accept & Start Cooking</span>
+                            </button>
+                          )}
+
+                          {order.status === 'preparing' && (
+                            <button
+                              onClick={() => onUpdateOrderStatus(order.id, 'plating')}
+                              className="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <span>Pack in Thermal Bag</span>
+                            </button>
+                          )}
+
+                          {order.status === 'plating' && (
+                            <button
+                              onClick={() => onUpdateOrderStatus(order.id, 'en-route')}
+                              className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <Bike className="w-3.5 h-3.5" />
+                              <span>Hand to Courier / Serve</span>
+                            </button>
+                          )}
+
+                          {order.status === 'en-route' && (
+                            <button
+                              onClick={() => onUpdateOrderStatus(order.id, 'completed')}
+                              className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Mark Delivered & Paid</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {isDone && (
+                        <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Delivered & Completed</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* TAB 2: MENU & DISHES MANAGER (FULL CRUD) */}
+        {activeTab === 'menu' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {menuItems.map((item) => {
+                const primaryImg = item.image || item.images?.[0];
+                const imageCount = item.images?.length || (item.image ? 1 : 0);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-3"
+                  >
+                    <div>
+                      {primaryImg && (
+                        <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden mb-3 bg-gray-100">
+                          <img src={primaryImg} alt={item.name} className="w-full h-full object-cover" />
+                          {imageCount > 1 && (
+                            <span className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              {imageCount} photos
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-base font-extrabold text-[#111827]">
+                          {item.name}
+                        </h4>
+                        <span className="font-mono text-base font-black text-gray-900">
+                          {formatPrice(item.price)}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+
+                      <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-2">
+                        <span className="capitalize">{item.category}</span>
+                        <span>•</span>
+                        <span className="text-[#FF4B26] font-bold">{item.prepTimeMinutes}m prep time</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => onToggleItemAvailability(item.id)}
+                        className={`text-xs font-extrabold px-3 py-1 rounded-xl transition-colors ${
+                          item.isAvailable !== false
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-red-50 text-red-600'
+                        }`}
+                      >
+                        {item.isAvailable !== false ? '● In Stock' : '✕ Sold Out'}
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditDish(item)}
+                          className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
+                          title="Edit Dish"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDish(item.id)}
+                          className="p-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded-xl transition-colors"
+                          title="Delete Dish"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: RESTAURANT PROFILE & SETTINGS */}
+        {activeTab === 'profile' && (
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xs space-y-6 max-w-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-extrabold text-[#111827]">
+                  Restaurant Profile & Payout Settings
+                </h3>
+                <p className="text-xs text-gray-500">Manage business details and delivery parameters</p>
+              </div>
+              {profileSaveSuccess && (
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Saved!
+                </span>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="font-bold text-gray-700">Restaurant Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={restName}
+                    onChange={(e) => setRestName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Neighborhood</label>
+                  <input
+                    type="text"
+                    required
+                    value={restNeighborhood}
+                    onChange={(e) => setRestNeighborhood(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Street Address</label>
+                  <input
+                    type="text"
+                    required
+                    value={restAddress}
+                    onChange={(e) => setRestAddress(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={restPhone}
+                    onChange={(e) => setRestPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Mobile Money Number (MoMo / Orange)</label>
+                  <input
+                    type="tel"
+                    required
+                    value={restMomoNumber}
+                    onChange={(e) => setRestMomoNumber(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#FF4B26]"
+                  />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="font-bold text-gray-700 flex items-center justify-between">
+                    <span>Authorized Staff Phone Numbers (Team Login)</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Separate with commas</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={restAllowedPhones}
+                    onChange={(e) => setRestAllowedPhones(e.target.value)}
+                    placeholder="e.g. 0886 554 321, 0777 990 123, +231 881 223 456"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
+                  />
+                  <p className="text-[10px] text-gray-500">
+                    Any kitchen manager or chef whose phone number is listed above can log into this kitchen display portal without complex passwords.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Delivery Fee ($ USD)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={restDeliveryFee}
+                    onChange={(e) => setRestDeliveryFee(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Avg Prep / Delivery Time (mins)</label>
+                  <input
+                    type="number"
+                    required
+                    value={restPrepTime}
+                    onChange={(e) => setRestPrepTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-gray-100">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={restIsOpen}
+                    onChange={(e) => setRestIsOpen(e.target.checked)}
+                    className="w-4 h-4 accent-[#FF4B26] rounded"
+                  />
+                  <span>Kitchen is currently Open for Orders</span>
+                </label>
+
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white font-extrabold rounded-xl shadow-md flex items-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 4: TWILIO & WHATSAPP NOTIFICATIONS */}
+        {activeTab === 'notifications' && (
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xs space-y-6 max-w-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-extrabold text-[#111827]">
+                  Twilio WhatsApp & SMS Alert Gateway
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Automatically ping kitchen managers & riders via WhatsApp when new orders arrive
+                </p>
+              </div>
+            </div>
+
+            {testAlertStatus && (
+              <div className="p-3.5 bg-orange-50 border border-orange-200 text-[#FF4B26] text-xs font-bold rounded-2xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{testAlertStatus}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveTwilio} className="space-y-4 text-xs">
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                <div className="font-bold text-gray-900">How WhatsApp Alerts Work:</div>
+                <p className="text-gray-600 leading-relaxed">
+                  1. When a customer orders, the KDS sounds an instant Web Audio chime.<br />
+                  2. A pre-formatted WhatsApp order slip is created with customer name, items, Monrovia address & MoMo payment.<br />
+                  3. Direct 1-tap WhatsApp button dispatches to WhatsApp Web/App, or Twilio REST API automatically pushes the template.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-gray-700">Kitchen Manager WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={twilioConfig.targetWhatsAppNumber}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, targetWhatsAppNumber: e.target.value })}
+                  placeholder="+231 886 554 123"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-gray-700">Twilio Account SID (Optional for automated API)</label>
+                <input
+                  type="text"
+                  value={twilioConfig.accountSid}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, accountSid: e.target.value })}
+                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-gray-700">Twilio Auth Token</label>
+                <input
+                  type="password"
+                  value={twilioConfig.authToken}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, authToken: e.target.value })}
+                  placeholder="••••••••••••••••••••••••"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-gray-700">Twilio WhatsApp Sandbox (From)</label>
+                <input
+                  type="text"
+                  value={twilioConfig.whatsappFromNumber}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, whatsappFromNumber: e.target.value })}
+                  placeholder="whatsapp:+14155238886"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-wrap gap-2 justify-between border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleSendTestTwilio}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Test Alert Now</span>
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white font-extrabold rounded-xl shadow-md flex items-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Twilio Gateway</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+      </main>
+
+      {/* Add / Edit Dish Modal */}
+      {isAddDishOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-extrabold text-[#111827]">
+                  {editingDish ? 'Edit Dish' : 'Add New Dish to Menu'}
+                </h3>
+                <p className="text-xs text-gray-500">Upload multiple food photos & set prep time</p>
+              </div>
+              <button onClick={() => setIsAddDishOpen(false)} className="p-1 text-gray-400 hover:text-black">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOrUpdateDish} className="space-y-4 text-xs">
+              
+              <div className="space-y-1">
+                <label className="font-bold text-gray-700">Dish Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={dishName}
+                  onChange={(e) => setDishName(e.target.value)}
+                  placeholder="e.g. Grilled Snapper with Sweet Plantains"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Price ($ USD) *</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    required
+                    value={dishPrice}
+                    onChange={(e) => setDishPrice(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Category</label>
+                  <select
+                    value={dishCategory}
+                    onChange={(e) => setDishCategory(e.target.value as MenuItem['category'])}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  >
+                    <option value="liberian-favorites">Liberian Classics</option>
+                    <option value="hearth-mains">Suya & Grills</option>
+                    <option value="starters">Snacks & Kala</option>
+                    <option value="beverages">Wonjo & Drinks</option>
+                    <option value="pasta">Pastas</option>
+                    <option value="desserts">Desserts</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-[#FF4B26]" />
+                    <span>Prep Time (Minutes) *</span>
+                  </label>
+                  <select
+                    value={dishPrepTime}
+                    onChange={(e) => setDishPrepTime(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  >
+                    <option value={10}>10 minutes (Fast Snack)</option>
+                    <option value={15}>15 minutes (Standard)</option>
+                    <option value={20}>20 minutes (Cooked-to-Order)</option>
+                    <option value={25}>25 minutes (Deep Grilling)</option>
+                    <option value={35}>35 minutes (Slow Simmer)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Spice Level</label>
+                  <select
+                    value={dishSpice}
+                    onChange={(e) => setDishSpice(e.target.value as MenuItem['spiceLevel'])}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  >
+                    <option value="Mild">Mild</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Monrovia Hot">Monrovia Hot</option>
+                    <option value="Extreme Pepper">Extreme Pepper</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Multiple Image Upload */}
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <label className="font-bold text-gray-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5 text-[#FF4B26]" />
+                    <span>Multiple Dish Images ({uploadedImages.length})</span>
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-normal">PNG, JPG, WebP</span>
+                </label>
+
+                <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 hover:border-[#FF4B26] hover:bg-orange-50/40 rounded-2xl cursor-pointer transition-all">
+                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                  <span className="text-xs font-bold text-gray-700">Choose images from device</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="Or paste image URL..."
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    className="px-3 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {PRESET_FOOD_IMAGES.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setUploadedImages((prev) => [...prev, preset.url])}
+                      className="text-[10px] font-semibold bg-gray-100 hover:bg-orange-100 hover:text-[#FF4B26] px-2.5 py-1 rounded-lg transition-colors"
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 pt-2">
+                    {uploadedImages.map((img, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group">
+                        <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-80 hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1 pt-2 border-t border-gray-100">
+                <label className="font-bold text-gray-700">Description</label>
+                <input
+                  type="text"
+                  value={dishDescription}
+                  onChange={(e) => setDishDescription(e.target.value)}
+                  placeholder="Short appetizing note..."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all mt-2"
+              >
+                {editingDish ? 'Update Dish' : 'Publish Dish to Menu'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};

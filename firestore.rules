@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // User profiles & RBAC
+    match /users/{userId} {
+      allow read: if isValidId(userId);
+      allow create, update: if isValidId(userId);
+    }
+
+    // Monrovia Restaurants
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow create: if isValidId(restaurantId) &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+        incoming().neighborhood is string && incoming().neighborhood.size() <= 80;
+      allow update: if isValidId(restaurantId) &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
+      allow delete: if true;
+
+      // Menu Items
+      match /menu_items/{menuItemId} {
+        allow read: if true;
+        allow create, update: if isValidId(menuItemId) &&
+          incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100;
+        allow delete: if true;
+      }
+    }
+
+    // Customer & Restaurant Orders
+    match /orders/{orderId} {
+      allow read: if isValidId(orderId);
+      allow create: if isValidId(orderId) &&
+        incoming().customerName is string && incoming().customerName.size() > 0 && incoming().customerName.size() <= 100;
+      allow update: if isValidId(orderId);
+      allow delete: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

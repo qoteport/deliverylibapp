@@ -1,0 +1,519 @@
+import React, { useState, useEffect } from 'react';
+import { X, Check, Lock, Bike, ShoppingBag, UtensilsCrossed, Phone, DollarSign, ShieldCheck, User as UserIcon, Copy } from 'lucide-react';
+import { CartItem, DiningMode, Order, Currency, PaymentMethod, MONROVIA_NEIGHBORHOODS, USD_TO_LRD_RATE, AppUser, Restaurant } from '../types';
+import { db } from '../firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
+import { CustomDropdown } from './CustomDropdown';
+import { sendTwilioOrderNotification } from '../utils/twilio';
+
+interface CheckoutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  items: CartItem[];
+  diningMode: DiningMode;
+  currency: Currency;
+  currentUser?: AppUser | null;
+  restaurants?: Restaurant[];
+  cartTotals: {
+    subtotal: number;
+    discount: number;
+    serviceFee: number;
+    deliveryFee: number;
+    tax: number;
+    tip: number;
+    total: number;
+    promoCode: string;
+  };
+  onOrderPlaced: (order: Order) => void;
+}
+
+export const CheckoutModal: React.FC<CheckoutModalProps> = ({
+  isOpen,
+  onClose,
+  items,
+  diningMode,
+  currency,
+  currentUser,
+  restaurants,
+  cartTotals,
+  onOrderPlaced,
+}) => {
+  if (!isOpen) return null;
+
+  const [orderId, setOrderId] = useState(() => `AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [neighborhood, setNeighborhood] = useState(
+    currentUser?.location && MONROVIA_NEIGHBORHOODS.includes(currentUser.location)
+      ? currentUser.location
+      : MONROVIA_NEIGHBORHOODS[0]
+  );
+  const [address, setAddress] = useState(currentUser?.address || '');
+  const [tableNumber, setTableNumber] = useState('Table 4');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo-mtn');
+  const [momoNumber, setMomoNumber] = useState(currentUser?.phone || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2500);
+  };
+
+  // Determine primary restaurant for order
+  const primaryRestaurantId = items[0]?.menuItem?.restaurantId;
+  const targetRestaurant = restaurants?.find((r) => r.id === primaryRestaurantId);
+  const restaurantName = targetRestaurant?.name || 'AURA Kitchen & Grill';
+  const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '0886 554 123';
+
+  // Sync / prefill when currentUser updates or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setOrderId(`AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name) setName(currentUser.name);
+      if (currentUser.phone) {
+        setPhone(currentUser.phone);
+        setMomoNumber(currentUser.phone);
+      }
+      if (currentUser.location && MONROVIA_NEIGHBORHOODS.includes(currentUser.location)) {
+        setNeighborhood(currentUser.location);
+      }
+      if (currentUser.address) {
+        setAddress(currentUser.address);
+      }
+    }
+  }, [currentUser, isOpen]);
+
+  const formatPrice = (usd: number) => {
+    if (currency === 'LRD') {
+      return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
+    }
+    return `$${usd.toFixed(2)}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const now = new Date();
+    const nowTimestamp = now.getTime();
+    const prepMinutes = diningMode === 'pickup' ? 15 : diningMode === 'dine-in' ? 12 : 25;
+    const eta = new Date(nowTimestamp + prepMinutes * 60000);
+
+    const newOrder: Order = {
+      id: orderId,
+      createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAtTimestamp: nowTimestamp,
+      prepDurationMinutes: prepMinutes,
+      status: 'received',
+      items,
+      diningMode,
+      deliveryArea: neighborhood,
+      deliveryAddress: diningMode === 'delivery' ? (address.trim() ? `${address.trim()}, ${neighborhood}` : neighborhood) : undefined,
+      tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
+      customerName: name.trim() || (currentUser?.name || 'Monrovia Customer'),
+      customerPhone: phone.trim() || (currentUser?.phone || '0886 000 000'),
+      customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
+      subtotal: cartTotals.subtotal,
+      discount: cartTotals.discount,
+      serviceFee: cartTotals.serviceFee,
+      deliveryFee: cartTotals.deliveryFee,
+      tax: cartTotals.tax,
+      tip: cartTotals.tip,
+      total: cartTotals.total,
+      currency,
+      estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      paymentMethod,
+      paymentNumber: momoNumber || phone,
+    };
+
+    // Save order to Firebase Firestore
+    try {
+      const primaryRestaurantId = items[0]?.menuItem?.restaurantId || 'aura-sinkor';
+      await setDoc(doc(db, 'orders', newOrder.id), {
+        id: newOrder.id,
+        customerName: newOrder.customerName,
+        customerPhone: newOrder.customerPhone,
+        customerEmail: newOrder.customerEmail,
+        deliveryArea: newOrder.deliveryArea || '',
+        deliveryAddress: newOrder.deliveryAddress || '',
+        diningMode: newOrder.diningMode,
+        restaurantId: primaryRestaurantId,
+        paymentMethod: newOrder.paymentMethod,
+        paymentNumber: newOrder.paymentNumber || '',
+        currency: newOrder.currency,
+        subtotal: newOrder.subtotal,
+        deliveryFee: newOrder.deliveryFee,
+        total: newOrder.total,
+        status: newOrder.status,
+        createdAt: newOrder.createdAt,
+        itemsCount: newOrder.items.length,
+        items: newOrder.items.map((i) => ({
+          cartItemId: i.cartItemId,
+          quantity: i.quantity,
+          itemTotal: i.itemTotal,
+          selectedSpiceLevel: i.selectedSpiceLevel || '',
+          specialInstructions: i.specialInstructions || '',
+          selectedAddons: i.selectedAddons || [],
+          menuItem: {
+            id: i.menuItem.id,
+            name: i.menuItem.name,
+            price: i.menuItem.price,
+            category: i.menuItem.category,
+            restaurantId: i.menuItem.restaurantId || primaryRestaurantId,
+          },
+        })),
+      });
+      console.log('Order successfully synced to Firebase Firestore:', newOrder.id);
+    } catch (err) {
+      console.warn('Firestore order write error (offline fallback):', err);
+    }
+
+    // Dispatch Twilio SMS & WhatsApp alerts to customer and dispatch desk
+    sendTwilioOrderNotification(newOrder, items[0]?.menuItem?.name ? 'AURA Monrovia' : undefined)
+      .then((res) => {
+        console.log('📱 Twilio Dispatch Status:', res);
+      })
+      .catch((err) => {
+        console.warn('Twilio Dispatch Notice:', err);
+      });
+
+    setIsSubmitting(false);
+    onOrderPlaced(newOrder);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div 
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-[#111827]">
+              Checkout & Payment
+            </h2>
+            <div className="text-xs text-gray-500 font-medium">
+              Monrovia, Liberia · {diningMode === 'delivery' ? 'White-Glove Dispatch' : diningMode === 'pickup' ? 'Counter Pickup' : 'Table Service'}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 min-h-[38px] min-w-[38px] flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 pb-[calc(1.75rem+var(--sab))] overflow-y-auto space-y-4">
+          
+          {/* Customer Details */}
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="font-extrabold text-[#111827] uppercase tracking-wider">
+                1. Contact Information
+              </div>
+              {currentUser && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <UserIcon className="w-2.5 h-2.5" />
+                  <span>Account Linked</span>
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="text-gray-500 font-semibold mb-1 block">Your Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full Name"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                />
+              </div>
+              <div>
+                <label className="text-gray-500 font-semibold mb-1 block">Phone Number</label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="088... / 077..."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location in Monrovia */}
+          <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+            <div className="font-extrabold text-[#111827] uppercase tracking-wider">
+              2. {diningMode === 'delivery' ? 'Delivery Destination' : diningMode === 'dine-in' ? 'Table Number' : 'Pickup Point'}
+            </div>
+
+            {diningMode === 'delivery' && (
+              <div className="space-y-2">
+                <CustomDropdown
+                  options={MONROVIA_NEIGHBORHOODS}
+                  value={neighborhood}
+                  onChange={(val) => setNeighborhood(val)}
+                  buttonClassName="bg-gray-50 border-gray-200"
+                />
+
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street name, landmark, gate or house description"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                />
+              </div>
+            )}
+
+            {diningMode === 'dine-in' && (
+              <input
+                type="text"
+                required
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="e.g. Table 4 or Terrace"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+              />
+            )}
+
+            {diningMode === 'pickup' && (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600">
+                ⚡ Order will be freshly prepared and waiting at the counter in 15–20 minutes.
+              </div>
+            )}
+          </div>
+
+          {/* Payment Selection for Liberia */}
+          <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+            <div className="font-extrabold text-[#111827] uppercase tracking-wider flex items-center justify-between">
+              <span>3. Payment Option</span>
+              <span className="font-mono text-[#FF4B26] font-bold">Currency: {currency}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* Lonestar MTN MoMo */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('momo-mtn')}
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                  paymentMethod === 'momo-mtn'
+                    ? 'border-[#FFCC00] bg-[#FFFBEA] ring-2 ring-[#FFCC00]/30 shadow-xs'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-xl bg-[#FFCC00] text-black font-black flex items-center justify-center text-xs shrink-0 shadow-xs">
+                  M
+                </div>
+                <div>
+                  <div className="text-xs font-black text-gray-950">MTN MoMo</div>
+                  <div className="text-[10px] text-amber-800 font-medium">088 / 055</div>
+                </div>
+              </button>
+
+              {/* Orange Money */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('orange-money')}
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                  paymentMethod === 'orange-money'
+                    ? 'border-[#FF6600] bg-[#FFF5EF] ring-2 ring-[#FF6600]/30 shadow-xs'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-xl bg-[#FF6600] text-white font-black flex items-center justify-center text-xs shrink-0 shadow-xs">
+                  O
+                </div>
+                <div>
+                  <div className="text-xs font-black text-[#B84A00]">Orange Money</div>
+                  <div className="text-[10px] text-orange-700 font-medium">077</div>
+                </div>
+              </button>
+
+              {/* Cash on Delivery (USD) */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cod-usd')}
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                  paymentMethod === 'cod-usd'
+                    ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <DollarSign className="w-6 h-6 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="text-xs font-black text-emerald-800">Cash (USD $)</div>
+                  <div className="text-[10px] text-emerald-600 font-medium">Pay courier in USD</div>
+                </div>
+              </button>
+
+              {/* Cash on Delivery (LRD) */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cod-lrd')}
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                  paymentMethod === 'cod-lrd'
+                    ? 'border-[#FF4B26] bg-[#FFF2EE] ring-2 ring-[#FF4B26]/20 shadow-xs'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <span className="font-mono text-sm font-black text-[#FF4B26] shrink-0">L$</span>
+                <div>
+                  <div className="text-xs font-black text-[#FF4B26]">Cash (LRD L$)</div>
+                  <div className="text-[10px] text-orange-700 font-medium">Pay in Liberian $</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Mobile Money Transfer Details Box */}
+            {(paymentMethod === 'momo-mtn' || paymentMethod === 'orange-money') && (
+              <div className="p-4 bg-orange-50/90 rounded-2xl border border-orange-200 space-y-3">
+                <div className="text-[11px] text-gray-700 leading-snug">
+                  Please transfer <strong className="text-gray-900 font-mono font-black">{formatPrice(cartTotals.total)}</strong> to <strong>{restaurantName}</strong> using the details below:
+                </div>
+
+                {/* 1. Restaurant Primary MoMo Number with Copy Button */}
+                <div className="bg-white p-3 rounded-xl border border-orange-200/90 flex items-center justify-between gap-2 shadow-xs">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
+                      Restaurant MoMo Number
+                    </div>
+                    <div className="font-mono text-sm sm:text-base font-black text-[#111827] mt-0.5 truncate">
+                      {restaurantPhone}
+                    </div>
+                    <div className="text-[10px] text-gray-500 font-semibold truncate">
+                      Account: {restaurantName}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(restaurantPhone, 'phone')}
+                    className="px-3 py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-black text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+                    title="Copy restaurant phone number"
+                  >
+                    {copiedField === 'phone' ? (
+                      <span className="flex items-center gap-1.5 text-emerald-400">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Copied!</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Number</span>
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* 2. Order ID with Copy Button */}
+                <div className="bg-white p-3 rounded-xl border border-orange-200/90 flex items-center justify-between gap-2 shadow-xs">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
+                      Transfer Reference / Note
+                    </div>
+                    <div className="font-mono text-sm sm:text-base font-black text-[#FF4B26] mt-0.5 tracking-wide">
+                      {orderId}
+                    </div>
+                    <div className="text-[10px] text-gray-500 font-semibold">
+                      Attach this Order ID as the transfer reason
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(orderId, 'orderId')}
+                    className="px-3 py-2 bg-[#FFF2EE] hover:bg-[#FFE5DC] text-[#FF4B26] border border-orange-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+                    title="Copy Order ID"
+                  >
+                    {copiedField === 'orderId' ? (
+                      <span className="flex items-center gap-1.5 text-[#FF4B26]">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Copied!</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Order ID</span>
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* 3. Customer's Sending Phone */}
+                <div className="space-y-1 pt-0.5">
+                  <label className="text-[11px] font-extrabold text-gray-800 block">
+                    Your Sending Number (for kitchen payment verification):
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={momoNumber}
+                    onChange={(e) => setMomoNumber(e.target.value)}
+                    placeholder="Enter the number sending the MoMo"
+                    className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#FF4B26]"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Total Breakdown Snapshot */}
+          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between text-xs font-semibold">
+            <div>
+              <span className="text-gray-900 font-extrabold">Total Amount</span>
+              <div className="text-[10px] text-gray-500 font-normal">
+                {items.length} items · Fast dispatch
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-mono text-xl font-black text-[#111827] tabular-nums">
+                {formatPrice(cartTotals.total)}
+              </span>
+              {currency === 'USD' && (
+                <div className="text-[10px] text-gray-500 font-mono">
+                  ~L${Math.round(cartTotals.total * USD_TO_LRD_RATE).toLocaleString()} LRD
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Place Order CTA */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-4 px-5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#FF4B26]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px]"
+          >
+            {isSubmitting ? (
+              <span>Transmitting Order to Kitchen...</span>
+            ) : (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Place Order • {formatPrice(cartTotals.total)}</span>
+              </>
+            )}
+          </button>
+
+        </form>
+
+      </div>
+    </div>
+  );
+};

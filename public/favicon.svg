@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="auraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF4B26" />
+      <stop offset="100%" stop-color="#FF7A00" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#auraGrad)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Fork -->
+    <path d="M180 140v90a40 40 0 0 0 40 40v102"/>
+    <path d="M180 140v90a40 40 0 0 1-40-40v-50"/>
+    <path d="M180 140v90a40 40 0 0 0 40-40v-50"/>
+    <!-- Spoon/Knife -->
+    <path d="M332 140v140c0 22-18 40-40 40v52"/>
+    <path d="M332 140c24 0 40 18 40 40s-16 40-40 40"/>
+  </g>
+</svg>
