@@ -13,6 +13,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { AdminPortal } from './components/AdminPortal';
+import { AdminAuthGuard } from './components/AdminAuthGuard';
 import { RestaurantPortal } from './components/RestaurantPortal';
 import { DriverPortal } from './components/DriverPortal';
 import { DriverJoinModal } from './components/DriverJoinModal';
@@ -720,21 +721,23 @@ export default function App() {
   if (currentRoute.name === 'admin') {
     return (
       <ErrorBoundary>
-        <AdminPortal
-          restaurants={restaurants}
-          orders={orders}
-          drivers={drivers}
-          onOpenOnboarding={() => setIsOnboardingOpen(true)}
-          onExitAdmin={() => navigateTo({ name: 'home' })}
-          onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
-          onToggleRestaurantStatus={handleToggleRestaurantStatus}
-          onDeleteRestaurant={handleDeleteRestaurant}
-          onUpdateOrderStatus={handleUpdateOrderStatus}
-          onUpdateDriver={handleUpdateDriver}
-          onPurgeDemoData={handlePurgeAllDemoData}
-          currency={currency}
-          onToggleCurrency={handleToggleCurrency}
-        />
+        <AdminAuthGuard onReturnHome={() => navigateTo({ name: 'home' })}>
+          <AdminPortal
+            restaurants={restaurants}
+            orders={orders}
+            drivers={drivers}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            onExitAdmin={() => navigateTo({ name: 'home' })}
+            onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
+            onToggleRestaurantStatus={handleToggleRestaurantStatus}
+            onDeleteRestaurant={handleDeleteRestaurant}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onUpdateDriver={handleUpdateDriver}
+            onPurgeDemoData={handlePurgeAllDemoData}
+            currency={currency}
+            onToggleCurrency={handleToggleCurrency}
+          />
+        </AdminAuthGuard>
       </ErrorBoundary>
     );
   }

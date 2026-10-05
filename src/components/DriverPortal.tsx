@@ -24,6 +24,7 @@ import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 interface DriverPortalProps {
   driver: DeliveryDriver;
@@ -206,34 +207,27 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   // Location coords for the map
   const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[activeDelivery?.deliveryArea || offeredOrder?.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
+  const { logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-[#FBFBF9] text-[#111827] flex flex-col font-sans pb-20">
       
-      {/* Top Navigation Bar with AURA Monrovia styling */}
+      {/* Top Navigation Bar with AURA Monrovia styling (Locked In - No Back Button) */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-3 shadow-xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={onExitPortal}
-              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-colors cursor-pointer"
-              title="Return to Main Menu"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-md shadow-[#06C167]/20">
-                <Bike className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-md shadow-[#06C167]/20">
+              <Bike className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-black text-sm text-[#111827] flex items-center gap-1.5 leading-none">
+                <span>{driver.name}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold uppercase">
+                  {driver.vehicleType}
+                </span>
               </div>
-              <div>
-                <div className="font-black text-sm text-[#111827] flex items-center gap-1.5 leading-none">
-                  <span>{driver.name}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold uppercase">
-                    {driver.vehicleType}
-                  </span>
-                </div>
-                <div className="text-[11px] text-gray-500 font-mono mt-1">
-                  {driver.plateNumber || 'Fleet Rider'} • {driver.baseZone.split(' ')[0]}
-                </div>
+              <div className="text-[11px] text-gray-500 font-mono mt-1">
+                {driver.plateNumber || 'Fleet Rider'} • {driver.baseZone.split(' ')[0]}
               </div>
             </div>
           </div>
@@ -259,6 +253,15 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             >
               <Power className="w-3.5 h-3.5" />
               <span>{isOnline ? 'Online' : 'Offline'}</span>
+            </button>
+
+            {/* Sign Out */}
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <Power className="w-4 h-4" />
             </button>
           </div>
         </div>

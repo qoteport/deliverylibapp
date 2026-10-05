@@ -52,6 +52,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [declineReason, setDeclineReason] = useState<string>('Kitchen at capacity / Items out of stock');
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
 
   // Audio State
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -287,22 +288,17 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <button
-              onClick={onExitPortal}
-              className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-1.5 text-xs font-bold"
-              title="Return to customer app"
-            >
-              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Customer App</span>
-            </button>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs">
+              <Store className="w-4 h-4" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white">
-                  <Store className="w-4 h-4" />
-                </div>
-                <h1 className="text-base sm:text-lg font-black text-[#111827] truncate max-w-[180px] sm:max-w-none">
+                <h1 className="text-base sm:text-lg font-black text-[#111827] truncate max-w-[200px] sm:max-w-none">
                   {restaurant.name}
                 </h1>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#FF4B26] text-[10px] font-extrabold uppercase tracking-wider">
+                  Kitchen KDS
+                </span>
               </div>
               <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
                 <span>{restaurant.neighborhood}</span>
@@ -322,7 +318,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                 setSoundEnabled(!soundEnabled);
                 if (!soundEnabled) playOrderAlertSound();
               }}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 ${
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 soundEnabled ? 'bg-orange-50 border-orange-200 text-[#FF4B26]' : 'bg-gray-100 border-gray-200 text-gray-400'
               }`}
               title={soundEnabled ? 'Audio alerts ON' : 'Audio alerts MUTED'}
@@ -332,17 +328,14 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
 
             <button
               onClick={onToggleCurrency}
-              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800"
+              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800 cursor-pointer"
             >
               {currency}
             </button>
 
             <button
-              onClick={() => {
-                logout();
-                onExitPortal();
-              }}
-              className="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors"
+              onClick={logout}
+              className="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer"
             >
               Sign Out
             </button>
@@ -562,7 +555,17 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                           {order.paymentNumber && <span className="font-mono font-bold block text-gray-700">MoMo: {order.paymentNumber}</span>}
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForModal(order)}
+                            className="px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 border border-gray-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer active:scale-95"
+                            title="Open large order slip & details"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#FF4B26]" />
+                            <span>View Ticket</span>
+                          </button>
+
                           {/* Call Customer Button */}
                           {order.customerPhone && (
                             <a
@@ -571,7 +574,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                               title="Call customer directly"
                             >
                               <Phone className="w-3.5 h-3.5 text-[#06C167]" />
-                              <span>Call Customer</span>
+                              <span>Call</span>
                             </a>
                           )}
 
