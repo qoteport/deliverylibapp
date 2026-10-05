@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Check, Flame, Clock, ChevronLeft, ChevronRight, Store } from 'lucide-react';
+import { X, Plus, Minus, Check, Flame, Clock, ChevronLeft, ChevronRight, Store, ShieldCheck } from 'lucide-react';
 import { MenuItem, SelectedAddon, CartItem, Currency, USD_TO_LRD_RATE, AddonOption, Restaurant } from '../types';
 import { DishIllustration } from './DishIllustration';
+import { RestaurantDetailsModal } from './RestaurantDetailsModal';
 
 interface DishModalProps {
   dish: MenuItem | null;
@@ -10,6 +11,7 @@ interface DishModalProps {
   currency: Currency;
   restaurants?: Restaurant[];
   restaurantName?: string;
+  allMenuItems?: MenuItem[];
 }
 
 const DEFAULT_MONROVIA_ADDONS: AddonOption[] = [
@@ -34,6 +36,7 @@ export const DishModal: React.FC<DishModalProps> = ({
   currency,
   restaurants = [],
   restaurantName,
+  allMenuItems = [],
 }) => {
   if (!dish) return null;
 
@@ -47,9 +50,12 @@ export const DishModal: React.FC<DishModalProps> = ({
   );
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+  const [isRestaurantDetailsOpen, setIsRestaurantDetailsOpen] = useState(false);
 
-  const targetRestaurant = restaurants.find((r) => r.id === dish.restaurantId);
-  const resolvedRestaurantName = restaurantName || targetRestaurant?.name || '';
+  const targetRestaurant = restaurants.find(
+    (r) => r.id === dish.restaurantId || (r.name && dish.provenance && r.name.toLowerCase() === dish.provenance.toLowerCase())
+  );
+  const resolvedRestaurantName = restaurantName || targetRestaurant?.name || dish.provenance || '';
 
   const availableAddonsList: AddonOption[] = (dish.availableAddons && dish.availableAddons.length > 0)
     ? dish.availableAddons
@@ -347,6 +353,54 @@ export const DishModal: React.FC<DishModalProps> = ({
             />
           </div>
 
+          {/* RESTAURANT NAME & DETAILS POPUP CARD (AFTER SPECIAL INSTRUCTIONS) */}
+          {targetRestaurant ? (
+            <div className="pt-3 border-t border-gray-100 space-y-1.5">
+              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider block">
+                Restaurant
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsRestaurantDetailsOpen(true)}
+                className="w-full p-3.5 bg-gradient-to-r from-emerald-50/70 via-gray-50 to-emerald-50/40 hover:from-emerald-100/70 hover:to-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center justify-between text-left transition-all group cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 text-[#048747] flex items-center justify-center group-hover:bg-[#06C167] group-hover:text-white transition-colors shadow-2xs shrink-0">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-extrabold text-[#111827] flex items-center gap-1.5 truncate">
+                      <span className="truncate">{targetRestaurant.name}</span>
+                      {targetRestaurant.isVerified && (
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#06C167] shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5 mt-0.5 truncate">
+                      <span className="truncate">{targetRestaurant.neighborhood}</span>
+                      <span>•</span>
+                      <span className="text-[#048747] font-bold shrink-0">~{targetRestaurant.deliveryTimeMinutes}m</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] font-bold text-[#06C167] group-hover:translate-x-0.5 transition-transform shrink-0 pl-2">
+                  <span>View Details</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </button>
+            </div>
+          ) : resolvedRestaurantName ? (
+            <div className="pt-3 border-t border-gray-100 space-y-1.5">
+              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider block">
+                Restaurant
+              </label>
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2.5 text-xs font-extrabold text-gray-800">
+                <Store className="w-4 h-4 text-[#06C167]" />
+                <span>{resolvedRestaurantName}</span>
+              </div>
+            </div>
+          ) : null}
+
         </div>
 
         {/* Modal Bottom CTA Action */}
@@ -391,6 +445,15 @@ export const DishModal: React.FC<DishModalProps> = ({
         </div>
 
       </div>
+
+      {/* Restaurant Details Popup */}
+      <RestaurantDetailsModal
+        restaurant={targetRestaurant || null}
+        isOpen={isRestaurantDetailsOpen}
+        onClose={() => setIsRestaurantDetailsOpen(false)}
+        currency={currency}
+        menuItems={allMenuItems}
+      />
     </div>
   );
 };

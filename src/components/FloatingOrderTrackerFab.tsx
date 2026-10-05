@@ -17,8 +17,8 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
 }) => {
   if (!order || isOpen) return null;
 
-  // Don't show if completed
-  if (order.status === 'completed') return null;
+  // Don't show if completed or cancelled
+  if (order.status === 'completed' || order.status === 'cancelled') return null;
 
   const isConfirmed = order.status !== 'received';
   const prepMinutes = order.prepDurationMinutes || (order.diningMode === 'pickup' ? 15 : order.diningMode === 'dine-in' ? 12 : 25);

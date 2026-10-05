@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save } from 'lucide-react';
-import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE } from '../types';
+import { Store, Utensils, Clock, CheckCircle2, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation } from 'lucide-react';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getSavedTwilioConfig, saveTwilioConfig, sendTwilioOrderNotification, getWhatsAppDispatchUrl, TwilioConfig } from '../utils/twilio';
+import { LocationPickerModal } from './LocationPickerModal';
 
 interface RestaurantPortalProps {
   restaurant: Restaurant;
@@ -54,6 +55,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [restName, setRestName] = useState(restaurant?.name || '');
   const [restNeighborhood, setRestNeighborhood] = useState(restaurant?.neighborhood || 'Sinkor');
   const [restAddress, setRestAddress] = useState(restaurant?.address || '');
+  const [restLocation, setRestLocation] = useState<LocationCoords | null>(restaurant?.location || null);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [restPhone, setRestPhone] = useState(restaurant?.phone || '');
   const [restMomoNumber, setRestMomoNumber] = useState(restaurant?.momoNumber || restaurant?.phone || '');
   const [restAllowedPhones, setRestAllowedPhones] = useState(
@@ -69,6 +72,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       setRestName(restaurant.name || '');
       setRestNeighborhood(restaurant.neighborhood || 'Sinkor');
       setRestAddress(restaurant.address || '');
+      setRestLocation(restaurant.location || null);
       setRestPhone(restaurant.phone || '');
       setRestMomoNumber(restaurant.momoNumber || restaurant.phone || '');
       setRestAllowedPhones(restaurant.allowedPhoneNumbers?.join(', ') || restaurant.phone || '');
@@ -244,6 +248,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         .map((p) => p.trim())
         .filter((p) => p.length > 0);
 
+      const finalLocation = restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || { lat: 6.2907, lng: -10.7818 };
+
       await updateDoc(doc(db, 'restaurants', restaurant.id), {
         name: restName,
         neighborhood: restNeighborhood,
@@ -254,6 +260,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
+        location: finalLocation,
       });
       setProfileSaveSuccess(true);
       setTimeout(() => setProfileSaveSuccess(false), 3000);
@@ -766,7 +773,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                   />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 sm:col-span-2">
                   <label className="font-bold text-gray-700">Street Address</label>
                   <input
                     type="text"
@@ -775,6 +782,51 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                     onChange={(e) => setRestAddress(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827]"
                   />
+                </div>
+
+                {/* Map Pinpoint Location Selector */}
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="font-bold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#06C167]" />
+                      <span>Exact GPS Coordinates &amp; Pinpoint on Monrovia Map</span>
+                    </span>
+                    {restLocation && (
+                      <span className="text-[10px] font-mono font-bold text-[#048747] bg-[#E8F8EE] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                        ✓ {restLocation.lat.toFixed(4)}, {restLocation.lng.toFixed(4)}
+                      </span>
+                    )}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen(true)}
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                      restLocation
+                        ? 'border-[#06C167] bg-[#E8F8EE]/50 text-gray-900'
+                        : 'border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        restLocation ? 'bg-[#06C167] text-white shadow-xs' : 'bg-white text-gray-500 border border-gray-200'
+                      }`}>
+                        <Navigation className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-gray-900">
+                          {restLocation ? 'Coordinates Defined' : 'Pin Exact Location on Map'}
+                        </div>
+                        <div className="text-[11px] text-gray-500">
+                          {restLocation
+                            ? `Lat: ${restLocation.lat.toFixed(5)}, Lng: ${restLocation.lng.toFixed(5)}`
+                            : 'Click to drag marker and pinpoint your kitchen location'}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 bg-white border border-gray-200 rounded-lg text-gray-800 shadow-2xs">
+                      {restLocation ? 'Change Pin' : 'Open Map'}
+                    </span>
+                  </button>
                 </div>
 
                 <div className="space-y-1">
@@ -1141,6 +1193,21 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Interactive Monrovia Map Pinpoint Picker Modal */}
+      <LocationPickerModal
+        isOpen={isMapPickerOpen}
+        onClose={() => setIsMapPickerOpen(false)}
+        initialCoords={restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood]}
+        initialArea={restNeighborhood}
+        initialAddress={restAddress}
+        onConfirmLocation={(data) => {
+          setRestLocation(data.coords);
+          if (data.address) setRestAddress(data.address);
+          if (data.area) setRestNeighborhood(data.area);
+          setIsMapPickerOpen(false);
+        }}
+      />
 
     </div>
   );

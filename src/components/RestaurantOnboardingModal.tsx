@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info } from 'lucide-react';
-import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, USD_TO_LRD_RATE } from '../types';
+import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation } from 'lucide-react';
+import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
+import { LocationPickerModal } from './LocationPickerModal';
 
 interface RestaurantOnboardingModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [name, setName] = useState('');
   const [neighborhood, setNeighborhood] = useState(MONROVIA_NEIGHBORHOODS[0]);
   const [address, setAddress] = useState('');
+  const [locationCoords, setLocationCoords] = useState<LocationCoords | null>(null);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [cuisine, setCuisine] = useState('Liberian Local Food & Grill');
   const [phone, setPhone] = useState('+231 ');
   const [momoNumber, setMomoNumber] = useState('');
@@ -87,6 +90,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
 
     const isVerified = isSuperAdminMode ? true : false;
     const verificationStatus: 'verified' | 'pending' = isSuperAdminMode ? 'verified' : 'pending';
+    const finalLocationCoords = locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood] || { lat: 6.2907, lng: -10.7818 };
 
     const newRestaurant: Restaurant = {
       id: restaurantId,
@@ -107,6 +111,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       verificationStatus,
       allowedPhoneNumbers: parsedAllowedPhones,
       tagline: tagline.trim() || `Authentic ${cuisine} in ${neighborhood}`,
+      location: finalLocationCoords,
       createdAt: new Date().toISOString(),
     };
 
@@ -133,6 +138,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         verificationStatus: newRestaurant.verificationStatus,
         allowedPhoneNumbers: newRestaurant.allowedPhoneNumbers,
         tagline: newRestaurant.tagline,
+        location: newRestaurant.location,
         createdAt: newRestaurant.createdAt,
       });
     } catch (error) {
@@ -307,6 +313,55 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     placeholder="e.g. 17th Street, Tubman Blvd, Opposite Total Station"
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                   />
+                </div>
+
+                {/* Map Pinpoint Location Selector */}
+                <div className="sm:col-span-2 space-y-1.5 pt-1">
+                  <label className="text-gray-600 font-bold flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#06C167]" />
+                      <span>Exact GPS Pinpoint on Map</span>
+                    </span>
+                    {locationCoords && (
+                      <span className="text-[10px] font-mono font-bold text-[#048747] bg-[#E8F8EE] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                        ✓ Coordinates Captured ({locationCoords.lat.toFixed(4)}, {locationCoords.lng.toFixed(4)})
+                      </span>
+                    )}
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen(true)}
+                    className={`w-full p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
+                      locationCoords
+                        ? 'border-[#06C167] bg-[#E8F8EE]/60 text-gray-900 shadow-2xs'
+                        : 'border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400 text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                        locationCoords ? 'bg-[#06C167] text-white shadow-xs' : 'bg-white text-gray-500 border border-gray-200'
+                      }`}>
+                        <Navigation className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-extrabold text-gray-900">
+                          {locationCoords ? 'Kitchen Pinpoint Active' : 'Pin Kitchen Location on Map'}
+                        </div>
+                        <div className="text-[11px] text-gray-500">
+                          {locationCoords
+                            ? `Lat: ${locationCoords.lat.toFixed(5)}, Lng: ${locationCoords.lng.toFixed(5)}`
+                            : 'Click to drag marker & capture exact longitude and latitude'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-xl ${
+                      locationCoords ? 'bg-white border border-emerald-300 text-[#048747]' : 'bg-gray-900 text-white'
+                    }`}>
+                      {locationCoords ? 'Adjust Pin' : 'Open Map Pin Tool'}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -542,6 +597,23 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         )}
 
       </div>
+
+      {/* Interactive Monrovia Map Pinpoint Picker Modal */}
+      <LocationPickerModal
+        isOpen={isMapPickerOpen}
+        onClose={() => setIsMapPickerOpen(false)}
+        initialCoords={locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood]}
+        initialArea={neighborhood}
+        initialAddress={address}
+        onConfirmLocation={(data) => {
+          setLocationCoords(data.coords);
+          if (data.address) setAddress(data.address);
+          if (data.area && MONROVIA_NEIGHBORHOODS.includes(data.area)) {
+            setNeighborhood(data.area);
+          }
+          setIsMapPickerOpen(false);
+        }}
+      />
     </div>
   );
 };

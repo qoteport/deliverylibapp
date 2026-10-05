@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check } from 'lucide-react';
+import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle } from 'lucide-react';
 import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 
@@ -16,12 +16,15 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   isOpen = true,
   order,
   onClose,
+  onUpdateOrderStatus,
   currency,
   restaurants,
 }) => {
   if (!isOpen || !order) return null;
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -29,12 +32,20 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
     setTimeout(() => setCopiedField(null), 2500);
   };
 
-  const isConfirmed = order.status !== 'received';
+  const isCancelled = order.status === 'cancelled';
+  const isConfirmed = order.status !== 'received' && !isCancelled;
   const isCompleted = order.status === 'completed';
   const prepMinutes = order.prepDurationMinutes || (order.diningMode === 'pickup' ? 15 : order.diningMode === 'dine-in' ? 12 : 25);
 
+  const handleCancelOrder = async () => {
+    setIsCancelling(true);
+    await onUpdateOrderStatus(order.id, 'cancelled');
+    setIsCancelling(false);
+    setShowCancelConfirm(false);
+  };
+
   const calculateSecondsLeft = () => {
-    if (isCompleted) return 0;
+    if (isCompleted || isCancelled) return 0;
     if (!isConfirmed) return prepMinutes * 60;
     const targetTimestamp = order.targetEtaTimestamp || (
       order.confirmedAtTimestamp 
@@ -160,44 +171,126 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
         {/* Body Content */}
         <div className="p-5 overflow-y-auto space-y-4">
           
-          {/* Live Countdown Card */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white flex items-center justify-between shadow-lg shadow-[#06C167]/20">
-            <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
-                {isCompleted ? (
-                  <span>Order Completed</span>
-                ) : !isConfirmed ? (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
-                    <span>Awaiting Kitchen Confirmation</span>
-                  </span>
-                ) : (
-                  <span>Estimated Delivery Countdown</span>
-                )}
+          {/* Live Countdown / Status Card */}
+          {isCancelled ? (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-gray-900 to-red-950 text-white flex items-center justify-between shadow-lg">
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-red-300 flex items-center gap-1.5">
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>Order Cancelled</span>
+                </div>
+                <div className="font-mono text-xl font-black mt-0.5 text-white">
+                  Cancelled
+                </div>
+                <div className="text-xs text-gray-300 font-medium">
+                  This order was cancelled before kitchen confirmation.
+                </div>
               </div>
-              <div className="font-mono text-2xl font-black mt-0.5">
-                {isCompleted ? (
-                  'Delivered!'
-                ) : !isConfirmed ? (
-                  'Reviewing Order...'
-                ) : (
-                  `~${formatCountdown(secondsRemaining)}`
-                )}
-              </div>
-              <div className="text-xs text-white/90 font-medium">
-                {!isConfirmed
-                  ? `Timer starts upon kitchen accept (~${prepMinutes} mins)`
-                  : order.deliveryArea || 'Monrovia, LR'}
+              <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center shrink-0">
+                <XCircle className="w-6 h-6 text-red-400 stroke-[2.5]" />
               </div>
             </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white flex items-center justify-between shadow-lg shadow-[#06C167]/20">
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                  {isCompleted ? (
+                    <span>Order Completed</span>
+                  ) : !isConfirmed ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
+                      <span>Awaiting Kitchen Confirmation</span>
+                    </span>
+                  ) : (
+                    <span>Estimated Delivery Countdown</span>
+                  )}
+                </div>
+                <div className="font-mono text-2xl font-black mt-0.5">
+                  {isCompleted ? (
+                    'Delivered!'
+                  ) : !isConfirmed ? (
+                    'Reviewing Order...'
+                  ) : (
+                    `~${formatCountdown(secondsRemaining)}`
+                  )}
+                </div>
+                <div className="text-xs text-white/90 font-medium">
+                  {!isConfirmed
+                    ? `Timer starts upon kitchen accept (~${prepMinutes} mins)`
+                    : order.deliveryArea || 'Monrovia, LR'}
+                </div>
+              </div>
 
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-              <Clock className="w-6 h-6 text-white stroke-[2.5]" />
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6 text-white stroke-[2.5]" />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Cancellation Action for Unconfirmed Orders (status === 'received') */}
+          {order.status === 'received' && (
+            <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-2.5 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-amber-900 truncate">Not Yet Confirmed by Kitchen</div>
+                    <div className="text-[11px] text-amber-700 truncate">You can cancel free of charge now</div>
+                  </div>
+                </div>
+
+                {!showCancelConfirm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+              </div>
+
+              {/* Inline Cancel Confirmation Prompt */}
+              {showCancelConfirm && (
+                <div className="p-3 bg-white border border-red-200 rounded-xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-extrabold text-red-900">
+                        Confirm Order Cancellation?
+                      </h4>
+                      <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
+                        Your meal preparation has not started. If you cancel, your order will be stopped immediately.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelConfirm(false)}
+                      disabled={isCancelling}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Keep Order
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelOrder}
+                      disabled={isCancelling}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold rounded-lg shadow-xs transition-colors cursor-pointer"
+                    >
+                      {isCancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Live Google Map Interactive View (Delivery Mode) */}
-          {order.diningMode === 'delivery' && (
+          {order.diningMode === 'delivery' && !isCancelled && (
             <div className="space-y-1.5">
               <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 Monrovia Delivery Route
@@ -216,51 +309,67 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
           {/* Progress Timeline */}
           <div className="space-y-3 pt-2">
             <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-              Preparation &amp; Delivery Milestones
+              {isCancelled ? 'Order Status' : 'Preparation & Delivery Milestones'}
             </div>
 
-            <div className="space-y-3">
-              {steps.map((step, idx) => {
-                const Icon = step.icon;
-                const isPassed = idx <= currentIndex;
-                const isCurrent = idx === currentIndex;
+            {isCancelled ? (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0">
+                  <XCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-red-900">
+                    Order Cancelled by Customer
+                  </div>
+                  <div className="text-[11px] text-red-700">
+                    Cancelled prior to restaurant acceptance.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {steps.map((step, idx) => {
+                  const Icon = step.icon;
+                  const isPassed = idx <= currentIndex;
+                  const isCurrent = idx === currentIndex;
 
-                return (
-                  <div key={step.key} className="flex items-start gap-3">
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all duration-300 ${
-                        isPassed
-                          ? isCurrent
-                            ? 'bg-[#06C167] text-white shadow-md shadow-[#06C167]/30 animate-pulse'
-                            : 'bg-emerald-600 text-white'
-                          : 'bg-gray-100 text-gray-400'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 stroke-[2.5]" />
-                    </div>
-
-                    <div className="flex-1 pb-1">
+                  return (
+                    <div key={step.key} className="flex items-start gap-3">
                       <div
-                        className={`text-xs font-bold leading-tight ${
-                          isCurrent
-                            ? 'text-[#048747]'
-                            : isPassed
-                            ? 'text-gray-900'
-                            : 'text-gray-400'
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all duration-300 ${
+                          isPassed
+                            ? isCurrent
+                              ? 'bg-[#06C167] text-white shadow-md shadow-[#06C167]/30 animate-pulse'
+                              : 'bg-emerald-600 text-white'
+                            : 'bg-gray-100 text-gray-400'
                         }`}
                       >
-                        {step.label}
+                        <Icon className="w-3.5 h-3.5 stroke-[2.5]" />
                       </div>
-                      {isCurrent && (
-                        <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                          In progress now in Monrovia
+
+                      <div className="flex-1 pb-1">
+                        <div
+                          className={`text-xs font-bold leading-tight ${
+                            isCurrent
+                              ? 'text-[#048747]'
+                              : isPassed
+                              ? 'text-gray-900'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          {step.label}
                         </div>
-                      )}
+                        {isCurrent && (
+                          <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+                            In progress now in Monrovia
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Contact & Support Section */}

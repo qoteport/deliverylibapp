@@ -167,7 +167,15 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                         <span className="font-mono text-xs font-bold text-gray-900">{order.id}</span>
                         <div className="text-[10px] text-gray-400">{order.createdAt}</div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-50 text-[#FF4B26]">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          order.status === 'cancelled'
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : order.status === 'completed'
+                            ? 'bg-emerald-50 text-[#048747] border border-emerald-200'
+                            : 'bg-orange-50 text-[#FF4B26]'
+                        }`}
+                      >
                         {order.status}
                       </span>
                     </div>

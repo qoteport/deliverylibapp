@@ -472,6 +472,7 @@ export default function App() {
     else if (status === 'plating') statusText = '🍲 Your meal is freshly packed in an insulated thermal carrier!';
     else if (status === 'en-route') statusText = '🛵 Courier is on the way to your delivery address!';
     else if (status === 'completed') statusText = '✅ Your order was delivered! Enjoy your Monrovia meal.';
+    else if (status === 'cancelled') statusText = '❌ Your order has been cancelled.';
 
     if (statusText) {
       sendBrowserNotification({
@@ -897,6 +898,8 @@ export default function App() {
         onClose={() => setSelectedDishForModal(null)}
         onAddToCart={handleAddToCart}
         currency={currency}
+        restaurants={restaurants}
+        allMenuItems={menuItems}
       />
 
       {/* Mobile Bottom Sheet: Cart */}

@@ -145,7 +145,7 @@ export interface Restaurant {
 export interface Order {
   id: string;
   createdAt: string;
-  status: 'received' | 'preparing' | 'plating' | 'en-route' | 'completed';
+  status: 'received' | 'preparing' | 'plating' | 'en-route' | 'completed' | 'cancelled';
   items: CartItem[];
   diningMode: DiningMode;
   restaurantId?: string;
