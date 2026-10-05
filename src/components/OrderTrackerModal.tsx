@@ -199,7 +199,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                 </div>
                 <div className="text-xs text-gray-300 font-medium">
                   {order.cancelledBy === 'restaurant'
-                    ? `${spotName} could not accept this order (${order.cancellationReason || 'Kitchen busy / item out of stock'}). Please choose another spot.`
+                    ? `${restaurantName} could not accept this order (${order.cancellationReason || 'Kitchen busy / item out of stock'}). Please choose another spot.`
                     : order.cancelledBy === 'customer'
                       ? 'You cancelled this order before kitchen confirmation. No charges were made.'
                       : (order.cancellationReason || 'This order was cancelled by dispatch administration.')}
@@ -347,7 +347,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                     order.cancelledBy === 'restaurant' ? 'text-amber-900' : 'text-red-900'
                   }`}>
                     {order.cancelledBy === 'restaurant'
-                      ? `Declined by ${spotName}`
+                      ? `Declined by ${restaurantName}`
                       : order.cancelledBy === 'customer'
                         ? 'Cancelled by Customer'
                         : 'Cancelled by Dispatch'}

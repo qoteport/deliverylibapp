@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -187,13 +187,13 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   });
 
   const liveOrders = restaurantOrders.filter(
-    (o) => o.status !== 'completed' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'rejected'
+    (o) => o.status !== 'completed' && o.status !== 'cancelled'
   );
   const deliveredOrders = restaurantOrders.filter(
-    (o) => o.status === 'completed' || o.status === 'delivered'
+    (o) => o.status === 'completed'
   );
   const cancelledOrders = restaurantOrders.filter(
-    (o) => o.status === 'cancelled' || o.status === 'rejected'
+    (o) => o.status === 'cancelled'
   );
 
   const displayedOrders =

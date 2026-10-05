@@ -103,7 +103,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [driverVehicleType, setDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [driverPlate, setDriverPlate] = useState('');
   const [driverBaseZone, setDriverBaseZone] = useState<string>('Sinkor');
-  const [driverMomoProvider, setDriverMomoProvider] = useState<'MTN' | 'Orange'>('MTN');
+  const [driverMomoProvider, setDriverMomoProvider] = useState<DeliveryDriver['momoProvider']>('mtn');
   const [driverMomoNumber, setDriverMomoNumber] = useState('');
   const [driverIsVerified, setDriverIsVerified] = useState(true);
 
@@ -115,7 +115,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [editDriverVehicleType, setEditDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [editDriverPlate, setEditDriverPlate] = useState('');
   const [editDriverBaseZone, setEditDriverBaseZone] = useState<string>('Sinkor');
-  const [editDriverMomoProvider, setEditDriverMomoProvider] = useState<'MTN' | 'Orange'>('MTN');
+  const [editDriverMomoProvider, setEditDriverMomoProvider] = useState<DeliveryDriver['momoProvider']>('mtn');
   const [editDriverMomoNumber, setEditDriverMomoNumber] = useState('');
   const [editDriverIsVerified, setEditDriverIsVerified] = useState(true);
   const [editDriverIsOnline, setEditDriverIsOnline] = useState(false);
@@ -313,6 +313,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       isVerified: driverIsVerified,
       verificationStatus: driverIsVerified ? 'verified' : 'pending',
       currentLocation: zoneCoords,
+      createdAt: new Date().toISOString(),
     };
 
     onUpdateDriver(newDriver);
@@ -1432,11 +1433,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <label className="font-bold text-emerald-800 text-[11px]">Provider</label>
                     <select
                       value={driverMomoProvider}
-                      onChange={(e) => setDriverMomoProvider(e.target.value as 'MTN' | 'Orange')}
+                      onChange={(e) => setDriverMomoProvider(e.target.value as DeliveryDriver['momoProvider'])}
                       className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs text-gray-900"
                     >
-                      <option value="MTN">MTN Mobile Money</option>
-                      <option value="Orange">Orange Money</option>
+                      <option value="mtn">Lonestar MTN MoMo</option>
+                      <option value="orange">Orange Money</option>
+                      <option value="both">Both (MTN & Orange)</option>
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -1593,11 +1595,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <label className="text-[11px] font-bold text-gray-600">Provider</label>
                     <select
                       value={editDriverMomoProvider}
-                      onChange={(e) => setEditDriverMomoProvider(e.target.value as 'MTN' | 'Orange')}
+                      onChange={(e) => setEditDriverMomoProvider(e.target.value as DeliveryDriver['momoProvider'])}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs"
                     >
-                      <option value="MTN">MTN Mobile Money</option>
-                      <option value="Orange">Orange Money</option>
+                      <option value="mtn">Lonestar MTN MoMo</option>
+                      <option value="orange">Orange Money</option>
+                      <option value="both">Both (MTN & Orange)</option>
                     </select>
                   </div>
                   <div>

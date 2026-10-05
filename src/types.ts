@@ -33,7 +33,7 @@ export type Category = 'liberian-favorites' | 'starters' | 'pasta' | 'hearth-mai
 
 export type PaymentMethod = 'momo-mtn' | 'orange-money' | 'cod-usd' | 'cod-lrd' | 'card';
 
-export type UserRole = 'super_admin' | 'restaurant_owner' | 'driver' | 'customer';
+export type UserRole = 'super_admin' | 'admin' | 'restaurant_owner' | 'driver' | 'customer';
 
 export interface AppUser {
   uid: string;
@@ -67,7 +67,7 @@ export interface DeliveryDriver {
   earningsTodayUsd: number;
   activeOrderId?: string;
   driverPin?: string; // 4 to 6 digit security PIN for login
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface AddonOption {

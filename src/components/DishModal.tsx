@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Check, Flame, Clock, Store, ShieldCheck } from 'lucide-react';
+import { X, Plus, Minus, Check, Flame, Clock, Store, ShieldCheck, ChevronRight } from 'lucide-react';
 import { MenuItem, SelectedAddon, CartItem, Currency, USD_TO_LRD_RATE, AddonOption, Restaurant } from '../types';
 import { DishIllustration } from './DishIllustration';
 import { RestaurantDetailsModal } from './RestaurantDetailsModal';
