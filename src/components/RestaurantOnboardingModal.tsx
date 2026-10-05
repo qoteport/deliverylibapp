@@ -396,7 +396,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     <span className={`text-xs font-bold px-3 py-1.5 rounded-xl ${
                       locationCoords ? 'bg-white border border-emerald-300 text-[#048747]' : 'bg-gray-900 text-white'
                     }`}>
-                      {locationCoords ? 'Adjust Pin' : 'Open Map Pin Tool'}
+                      {locationCoords ? 'Update Location' : 'Set Location'}
                     </span>
                   </button>
                 </div>

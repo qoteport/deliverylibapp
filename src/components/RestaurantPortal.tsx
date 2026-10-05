@@ -1213,7 +1213,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                       </div>
                     </div>
                     <span className="text-xs font-bold px-3 py-1 bg-white border border-gray-200 rounded-lg text-gray-800 shadow-2xs">
-                      {restLocation ? 'Change Pin' : 'Open Map'}
+                      {restLocation ? 'Update Location' : 'Open Map'}
                     </span>
                   </button>
                 </div>
