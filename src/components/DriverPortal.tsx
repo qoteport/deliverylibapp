@@ -19,7 +19,7 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react';
-import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { db } from '../firebase/config';
@@ -34,6 +34,7 @@ interface DriverPortalProps {
   onDriverRejectOrder: (orderId: string, driverId: string) => void;
   currency: Currency;
   onToggleCurrency: () => void;
+  restaurants?: Restaurant[];
 }
 
 export const DriverPortal: React.FC<DriverPortalProps> = ({
@@ -45,6 +46,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   onDriverRejectOrder,
   currency,
   onToggleCurrency,
+  restaurants,
 }) => {
   const [isOnline, setIsOnline] = useState(driver.isOnline);
   const [activeTab, setActiveTab] = useState<'dispatch' | 'earnings' | 'fleet'>('dispatch');
@@ -186,8 +188,17 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     }
   };
 
+  // Dynamic Restaurant context for the offered or active delivery
+  const currentOrderContext = activeDelivery || offeredOrder;
+  const targetRestaurant = restaurants?.find(
+    (r) => r.id === currentOrderContext?.restaurantId || r.name.toLowerCase() === currentOrderContext?.restaurantName?.toLowerCase()
+  );
+  const restaurantNeighborhood = targetRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
+  const restaurantCoords = targetRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restaurantNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+  const restaurantPickupAddress = targetRestaurant?.address || targetRestaurant?.neighborhood || 'Monrovia, LR';
+  const restaurantPickupName = currentOrderContext?.restaurantName || targetRestaurant?.name || 'Monrovia Kitchen';
+
   // Location coords for the map
-  const restaurantCoords = MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
   const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[activeDelivery?.deliveryArea || offeredOrder?.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
   return (
@@ -306,9 +317,9 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                 <div className="text-white/80 text-[11px] font-bold uppercase tracking-wider">1. Pickup Kitchen:</div>
                 <div className="font-extrabold text-white text-sm flex items-center gap-1.5">
                   <Store className="w-4 h-4 text-white" />
-                  <span>{offeredOrder.restaurantName || 'Monrovia Kitchen'}</span>
+                  <span>{restaurantPickupName}</span>
                 </div>
-                <div className="text-white/80 text-[11px]">Tubman Blvd, Sinkor</div>
+                <div className="text-white/80 text-[11px]">{restaurantPickupAddress}</div>
               </div>
 
               <div className="space-y-1">

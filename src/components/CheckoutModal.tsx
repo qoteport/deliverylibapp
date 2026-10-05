@@ -7,6 +7,7 @@ import { CustomDropdown } from './CustomDropdown';
 import { sendTwilioOrderNotification } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
+import { normalizeLiberianPhoneNumber } from '../utils/phoneUtils';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -157,6 +158,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       fullAddress = fullAddress ? `${fullAddress} (GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)})` : `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
     }
 
+    const resolvedRestaurantId = primaryRestaurantId || targetRestaurant?.id;
+    const resolvedRestaurantName = targetRestaurant?.name || items[0]?.menuItem?.provenance || 'Monrovia Kitchen';
+
     const newOrder: Order = {
       id: orderId,
       createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -165,11 +169,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       status: 'received',
       items,
       diningMode,
+      restaurantId: resolvedRestaurantId,
+      restaurantName: resolvedRestaurantName,
       deliveryArea: chosenDeliveryArea,
       deliveryAddress: diningMode === 'delivery' ? (fullAddress ? `${fullAddress}, ${chosenDeliveryArea}` : chosenDeliveryArea) : undefined,
       tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
       customerName: name.trim() || (currentUser?.name || 'Monrovia Customer'),
-      customerPhone: phone.trim() || (currentUser?.phone || '0886 000 000'),
+      customerPhone: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
       customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
       subtotal: cartTotals.subtotal,
       discount: cartTotals.discount,
@@ -181,12 +187,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       currency,
       estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       paymentMethod,
-      paymentNumber: phone.trim() || currentUser?.phone || '0886 000 000',
+      paymentNumber: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
     };
 
     // Save order to Firebase Firestore with complete metadata for realtime listeners
     try {
-      const primaryRestaurantId = items[0]?.menuItem?.restaurantId || 'rest_living_room';
       await setDoc(doc(db, 'orders', newOrder.id), {
         id: newOrder.id,
         customerName: newOrder.customerName,
@@ -196,8 +201,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         deliveryAddress: newOrder.deliveryAddress || '',
         diningMode: newOrder.diningMode,
         tableNumber: newOrder.tableNumber || '',
-        restaurantId: primaryRestaurantId,
-        restaurantName: restaurantName,
+        restaurantId: resolvedRestaurantId || '',
+        restaurantName: resolvedRestaurantName,
         paymentMethod: newOrder.paymentMethod,
         paymentNumber: newOrder.paymentNumber || '',
         currency: newOrder.currency,

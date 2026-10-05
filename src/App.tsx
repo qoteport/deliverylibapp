@@ -385,7 +385,11 @@ export default function App() {
 
     // Run Delegation Engine to find and assign closest driver
     if (newOrder.diningMode === 'delivery') {
-      const restCoords = MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+      const orderRestaurant = restaurants.find(
+        (r) => r.id === newOrder.restaurantId || r.name.toLowerCase() === newOrder.restaurantName?.toLowerCase()
+      );
+      const restNeighborhood = orderRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
+      const restCoords = orderRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
       const delegationRes = await delegateOrderToDriver(newOrder, drivers, restCoords);
       if (delegationRes.success && delegationRes.updatedOrder) {
         setOrders((prev) =>
@@ -409,7 +413,11 @@ export default function App() {
     };
 
     // Re-run Delegation Engine to find next best driver
-    const restCoords = MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+    const orderRestaurant = restaurants.find(
+      (r) => r.id === orderWithRejected.restaurantId || r.name.toLowerCase() === orderWithRejected.restaurantName?.toLowerCase()
+    );
+    const restNeighborhood = orderRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
+    const restCoords = orderRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
     const res = await delegateOrderToDriver(orderWithRejected, drivers, restCoords);
 
     if (res.success && res.updatedOrder) {
@@ -732,6 +740,7 @@ export default function App() {
             onDriverRejectOrder={handleDriverRejectOrder}
             currency={currency}
             onToggleCurrency={handleToggleCurrency}
+            restaurants={restaurants}
           />
         </React.Suspense>
       </ErrorBoundary>
@@ -932,6 +941,7 @@ export default function App() {
         onClose={() => setIsOrderTrackerOpen(false)}
         onUpdateOrderStatus={handleUpdateOrderStatus}
         currency={currency}
+        restaurants={restaurants}
       />
 
       {/* Mobile Bottom Sheet: Favorites & History */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check } from 'lucide-react';
-import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 
 interface OrderTrackerModalProps {
@@ -9,6 +9,7 @@ interface OrderTrackerModalProps {
   onClose: () => void;
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   currency: Currency;
+  restaurants?: Restaurant[];
 }
 
 export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
@@ -16,6 +17,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   order,
   onClose,
   currency,
+  restaurants,
 }) => {
   if (!isOpen || !order) return null;
 
@@ -92,14 +94,18 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const statusOrder: Order['status'][] = ['received', 'preparing', 'plating', 'en-route', 'completed'];
   const currentIndex = statusOrder.indexOf(order.status);
 
-  // Map coordinates
-  const restaurantCoords = MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
-  const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
+  // Dynamic Restaurant Resolution
+  const targetRestaurant = restaurants?.find(
+    (r) => r.id === order.restaurantId || r.name.toLowerCase() === order.restaurantName?.toLowerCase()
+  ) || (order.items?.[0]?.menuItem?.restaurantId ? restaurants?.find(r => r.id === order.items[0].menuItem.restaurantId) : undefined);
 
-  // Restaurant details fallback
-  const restaurantName = order.restaurantName || 'Sinkor Kitchen';
-  const restaurantLocation = 'Tubman Blvd, Sinkor';
-  const restaurantPhone = '+231 886 554 123';
+  const restaurantName = order.restaurantName || targetRestaurant?.name || order.items?.[0]?.menuItem?.provenance || 'Monrovia Kitchen';
+  const restaurantLocation = targetRestaurant?.address || targetRestaurant?.neighborhood || 'Monrovia, LR';
+  const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '+231 886 554 123';
+  const restaurantNeighborhood = targetRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
+  const restaurantCoords = targetRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restaurantNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+
+  const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
   // Driver details (Real dynamic dispatch info)
   const driverName = order.assignedDriverName || null;
