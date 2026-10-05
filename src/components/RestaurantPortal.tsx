@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -100,9 +100,13 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [restPhone, setRestPhone] = useState(restaurant?.phone || '');
   const [restMomoNumber, setRestMomoNumber] = useState(restaurant?.momoNumber || restaurant?.phone || '');
-  const [restAllowedPhones, setRestAllowedPhones] = useState(
-    restaurant?.allowedPhoneNumbers?.join(', ') || restaurant?.phone || ''
-  );
+  const [restAllowedPhonesList, setRestAllowedPhonesList] = useState<string[]>(() => {
+    return restaurant?.allowedPhoneNumbers && restaurant.allowedPhoneNumbers.length > 0
+      ? restaurant.allowedPhoneNumbers
+      : (restaurant?.phone ? [restaurant.phone] : []);
+  });
+  const [newStaffPhoneInput, setNewStaffPhoneInput] = useState('');
+  const [staffPhoneError, setStaffPhoneError] = useState('');
   const [restDeliveryFee, setRestDeliveryFee] = useState((restaurant?.deliveryFeeUsd ?? 2.0).toString());
   const [restPrepTime, setRestPrepTime] = useState((restaurant?.deliveryTimeMinutes ?? 25).toString());
   const [restIsOpen, setRestIsOpen] = useState(restaurant?.isOpen ?? true);
@@ -116,12 +120,37 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       setRestLocation(restaurant.location || null);
       setRestPhone(restaurant.phone || '');
       setRestMomoNumber(restaurant.momoNumber || restaurant.phone || '');
-      setRestAllowedPhones(restaurant.allowedPhoneNumbers?.join(', ') || restaurant.phone || '');
+      setRestAllowedPhonesList(
+        restaurant.allowedPhoneNumbers && restaurant.allowedPhoneNumbers.length > 0
+          ? restaurant.allowedPhoneNumbers
+          : (restaurant.phone ? [restaurant.phone] : [])
+      );
       setRestDeliveryFee((restaurant.deliveryFeeUsd ?? 2.0).toString());
       setRestPrepTime((restaurant.deliveryTimeMinutes ?? 25).toString());
       setRestIsOpen(restaurant.isOpen ?? true);
     }
   }, [restaurant]);
+
+  const handleAddStaffPhone = () => {
+    const raw = newStaffPhoneInput.trim();
+    if (!raw) return;
+    const digits = raw.replace(/[^0-9]/g, '');
+    if (digits.length < 6) {
+      setStaffPhoneError('Please enter a valid phone number (e.g. 0886 554 321)');
+      return;
+    }
+    if (restAllowedPhonesList.includes(raw)) {
+      setStaffPhoneError('This phone number has already been added');
+      return;
+    }
+    setRestAllowedPhonesList((prev) => [...prev, raw]);
+    setNewStaffPhoneInput('');
+    setStaffPhoneError('');
+  };
+
+  const handleRemoveStaffPhone = (phoneToRemove: string) => {
+    setRestAllowedPhonesList((prev) => prev.filter((p) => p !== phoneToRemove));
+  };
 
   // Dish Form State (Add / Edit)
   const [dishName, setDishName] = useState('');
@@ -456,10 +485,12 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const phonesList = restAllowedPhones
-        .split(/[,;\n]+/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0);
+      const phonesList = Array.from(
+        new Set([
+          ...restAllowedPhonesList.map((p) => p.trim()).filter(Boolean),
+          restPhone.trim(),
+        ].filter(Boolean))
+      );
 
       const finalLocation = restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || { lat: 6.2907, lng: -10.7818 };
 
@@ -1240,20 +1271,82 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                   />
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-gray-700 flex items-center justify-between">
-                    <span>Authorized Staff Phone Numbers (Team Login)</span>
-                    <span className="text-[10px] text-gray-400 font-normal">Separate with commas</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={restAllowedPhones}
-                    onChange={(e) => setRestAllowedPhones(e.target.value)}
-                    placeholder="e.g. 0886 554 321, 0777 990 123, +231 881 223 456"
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827]"
-                  />
+                <div className="space-y-2 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#FF4B26]" />
+                      <span>Authorized Staff Phone Numbers (Team Kitchen Login)</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {restAllowedPhonesList.length} staff {restAllowedPhonesList.length === 1 ? 'number' : 'numbers'}
+                    </span>
+                  </div>
+
+                  {/* Add Input Row */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="tel"
+                        value={newStaffPhoneInput}
+                        onChange={(e) => {
+                          setNewStaffPhoneInput(e.target.value);
+                          setStaffPhoneError('');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddStaffPhone();
+                          }
+                        }}
+                        placeholder="e.g. 0886 554 321 or 0777 990 123"
+                        className="w-full pl-9 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddStaffPhone}
+                      className="px-4 py-2.5 bg-[#06C167] hover:bg-[#048747] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+
+                  {staffPhoneError && (
+                    <p className="text-[11px] text-red-500 font-semibold">{staffPhoneError}</p>
+                  )}
+
+                  {/* Badges / Chips list of added phone numbers */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {restPhone.trim().length > 4 && !restAllowedPhonesList.includes(restPhone.trim()) && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-700">
+                        <Phone className="w-3 h-3 text-gray-500" />
+                        <span>{restPhone} (Main)</span>
+                      </div>
+                    )}
+                    {restAllowedPhonesList.map((p) => (
+                      <div
+                        key={p}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
+                      >
+                        <Phone className="w-3 h-3 text-[#06C167]" />
+                        <span>{p}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStaffPhone(p)}
+                          className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                          title={`Remove ${p}`}
+                          aria-label={`Remove phone ${p}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
                   <p className="text-[10px] text-gray-500">
-                    Any kitchen manager or chef whose phone number is listed above can log into this kitchen display portal without complex passwords.
+                    Any kitchen manager or chef whose phone number is listed above can log into this kitchen display portal using the 6-digit PIN.
                   </p>
                 </div>
 
@@ -1436,7 +1529,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                     }`}
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>+ Custom Category</span>
+                    <span>Custom Category</span>
                   </button>
                 </div>
 

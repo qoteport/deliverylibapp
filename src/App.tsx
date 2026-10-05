@@ -418,10 +418,16 @@ export default function App() {
       console.error('Firestore order sync error in handleOrderPlaced:', err);
     }
 
-    // Dispatch Browser Push / Mobile Notification
+    // Format clean dish summary for customer notification
+    const dishSummary = newOrder.items
+      .map((i) => `${i.quantity}x ${i.menuItem.name}`)
+      .join(', ');
+    const displaySummary = dishSummary.length > 55 ? `${dishSummary.slice(0, 52)}...` : dishSummary;
+
+    // Dispatch Browser Push / Mobile Notification (Awaiting kitchen confirmation)
     sendBrowserNotification({
-      title: `🔥 Order Placed! #${newOrder.id}`,
-      body: `Your order for ${newOrder.items.length} items (${newOrder.diningMode}) has been confirmed!`,
+      title: `Order Received · #${newOrder.id}`,
+      body: `Your order for ${displaySummary} has been sent to the kitchen. Awaiting kitchen confirmation.`,
       tag: `order-${newOrder.id}`,
     });
 
@@ -527,21 +533,25 @@ export default function App() {
     }
 
     // Trigger Customized Browser Notification for Status Update
-    let statusTitle = `AURA Order Update #${orderId}`;
+    let statusTitle = `Order Update #${orderId}`;
     let statusText = '';
     let toastText = `Order status: ${status}`;
 
     if (status === 'preparing') {
-      statusText = '👨‍🍳 The kitchen has accepted and started cooking your order!';
-      toastText = 'Order accepted! Cooking in progress.';
+      statusTitle = `Order Confirmed · #${orderId}`;
+      statusText = `👨‍🍳 ${spotName} has confirmed your order and started cooking!`;
+      toastText = 'Kitchen confirmed your order! Cooking in progress.';
     } else if (status === 'plating') {
+      statusTitle = `Order Ready · #${orderId}`;
       statusText = '🍲 Your meal is freshly packed in an insulated thermal carrier!';
-      toastText = 'Order packed for dispatch.';
+      toastText = 'Order packed for handover.';
     } else if (status === 'en-route') {
-      statusText = '🛵 Courier is on the way to your delivery address!';
-      toastText = 'Order en-route to customer.';
+      statusTitle = `Out for Delivery · #${orderId}`;
+      statusText = '🛵 Courier is on the way with your order!';
+      toastText = 'Order is en-route with courier.';
     } else if (status === 'completed') {
-      statusText = '✅ Your order was delivered! Enjoy your Monrovia meal.';
+      statusTitle = `Order Delivered · #${orderId}`;
+      statusText = '✅ Your order was delivered! Enjoy your meal.';
       toastText = 'Order delivered & completed!';
     } else if (status === 'cancelled') {
       if (cancelledBy === 'customer') {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation } from 'lucide-react';
+import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2 } from 'lucide-react';
 import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -511,17 +511,18 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     {allowedPhonesList.map((p) => (
                       <div
                         key={p}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
                       >
                         <Phone className="w-3 h-3 text-[#06C167]" />
                         <span>{p}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveStaffPhone(p)}
-                          className="p-0.5 ml-1 text-emerald-600 hover:text-red-600 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
+                          className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                          title={`Remove ${p}`}
                           aria-label={`Remove phone ${p}`}
                         >
-                          <X className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
