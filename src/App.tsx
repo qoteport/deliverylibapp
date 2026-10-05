@@ -12,11 +12,11 @@ import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-const AdminPortal = React.lazy(() => import('./components/AdminPortal').then(m => ({ default: m.AdminPortal })));
-const RestaurantPortal = React.lazy(() => import('./components/RestaurantPortal').then(m => ({ default: m.RestaurantPortal })));
-const DriverPortal = React.lazy(() => import('./components/DriverPortal').then(m => ({ default: m.DriverPortal })));
-const DriverJoinModal = React.lazy(() => import('./components/DriverJoinModal').then(m => ({ default: m.DriverJoinModal })));
-const RestaurantOnboardingModal = React.lazy(() => import('./components/RestaurantOnboardingModal').then(m => ({ default: m.RestaurantOnboardingModal })));
+import { AdminPortal } from './components/AdminPortal';
+import { RestaurantPortal } from './components/RestaurantPortal';
+import { DriverPortal } from './components/DriverPortal';
+import { DriverJoinModal } from './components/DriverJoinModal';
+import { RestaurantOnboardingModal } from './components/RestaurantOnboardingModal';
 import { RestaurantBar } from './components/RestaurantBar';
 import { PopularHorizontalBar } from './components/PopularHorizontalBar';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
