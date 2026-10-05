@@ -786,7 +786,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                             : 'bg-red-50 text-red-600'
                         }`}
                       >
-                        {item.isAvailable !== false ? '● In Stock' : '✕ Sold Out'}
+                        {item.isAvailable !== false ? '● Available' : '✕ Sold Out'}
                       </button>
 
                       <div className="flex items-center gap-1.5">
