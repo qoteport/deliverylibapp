@@ -61,32 +61,39 @@ export default function App() {
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
   const [isOrderTrackerOpen, setIsOrderTrackerOpen] = useState(false);
 
-  // Restaurants & Menu Items (Initialized with Monrovia spots, synced with Firestore)
+  // Restaurants & Menu Items (Clean state synced with Firestore)
   const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
     try {
       const saved = localStorage.getItem('aura_monrovia_restaurants');
-      return saved ? JSON.parse(saved) : INITIAL_RESTAURANTS;
-    } catch {
-      return INITIAL_RESTAURANTS;
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Clean out legacy demo ids if present
+        const cleaned = Array.isArray(parsed) ? parsed.filter((r: any) => !r.id?.startsWith('rest_living') && !r.id?.startsWith('rest_evelyn')) : [];
+        return cleaned;
+      }
+    } catch {}
+    return [];
   });
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
     try {
       const saved = localStorage.getItem('aura_monrovia_menu');
-      return saved ? JSON.parse(saved) : MENU_ITEMS;
-    } catch {
-      return MENU_ITEMS;
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const cleaned = Array.isArray(parsed) ? parsed.filter((m: any) => !m.id?.startsWith('dish_living') && !m.id?.startsWith('dish_evelyn')) : [];
+        return cleaned;
+      }
+    } catch {}
+    return [];
   });
 
   // Drivers Fleet State
   const [drivers, setDrivers] = useState<DeliveryDriver[]>(() => {
     try {
       const saved = localStorage.getItem('aura_monrovia_drivers');
-      return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DRIVERS;
+      return [];
     }
   });
 

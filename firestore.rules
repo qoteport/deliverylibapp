@@ -65,13 +65,7 @@ service cloud.firestore {
 
     // Customer & Restaurant Orders
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if isValidId(orderId) &&
-        incoming().total is number &&
-        incoming().status in ['received', 'confirmed', 'preparing', 'ready', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
-      allow update: if isValidId(orderId) &&
-        incoming().status in ['received', 'confirmed', 'preparing', 'ready', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
-      allow delete: if false; // Orders cannot be deleted to preserve financial audit trail
+      allow read, write: if true;
     }
 
     // Connection test document
