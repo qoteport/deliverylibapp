@@ -295,16 +295,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="font-extrabold text-[#111827] uppercase tracking-wider">
                 1. Contact Information
               </div>
-              {currentUser ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <UserIcon className="w-2.5 h-2.5" />
-                  <span>Account Linked</span>
-                </span>
-              ) : (
-                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span>✨ Auto-saved for next order</span>
-                </span>
-              )}
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
@@ -497,13 +487,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Mobile Money Transfer Details Box */}
             {(paymentMethod === 'momo-mtn' || paymentMethod === 'orange-money') && (
-              <div className="p-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 space-y-3">
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
                 <div className="text-[11px] text-gray-700 leading-snug">
                   Please transfer <strong className="text-gray-900 font-mono font-black">{formatPrice(cartTotals.total)}</strong> to <strong>{restaurantName}</strong> using the details below:
                 </div>
 
                 {/* 1. Restaurant Primary MoMo Number with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-emerald-200/90 flex items-center justify-between gap-2 shadow-xs">
+                <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
                   <div className="min-w-0">
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
                       Restaurant MoMo Number
@@ -537,12 +527,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
 
                 {/* 2. Order ID with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-emerald-200/90 flex items-center justify-between gap-2 shadow-xs">
+                <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
                   <div className="min-w-0">
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
                       Transfer Reference / Note
                     </div>
-                    <div className="font-mono text-sm sm:text-base font-black text-[#048747] mt-0.5 tracking-wide">
+                    <div className="font-mono text-sm sm:text-base font-black text-[#111827] mt-0.5 tracking-wide">
                       {orderId}
                     </div>
                     <div className="text-[10px] text-gray-500 font-semibold">
@@ -553,11 +543,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCopy(orderId, 'orderId')}
-                    className="px-3 py-2 bg-[#E8F8EE] hover:bg-[#D4F4E0] text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
                     title="Copy Order ID"
                   >
                     {copiedField === 'orderId' ? (
-                      <span className="flex items-center gap-1.5 text-[#048747]">
+                      <span className="flex items-center gap-1.5 text-emerald-600">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                         <span>Copied!</span>
                       </span>
