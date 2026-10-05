@@ -90,12 +90,17 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
 
-  const restaurantOrders = orders.filter(
-    (o) =>
-      o.restaurantId === restaurant.id ||
-      (o.restaurantName && o.restaurantName.toLowerCase() === restaurant.name?.toLowerCase()) ||
-      (!o.restaurantId && o.items?.some((i) => i.menuItem?.restaurantId === restaurant.id))
-  );
+  const restaurantOrders = orders.filter((o) => {
+    if (!restaurant) return false;
+    const currentRestId = (restaurant.id || '').trim().toLowerCase();
+    const currentRestName = (restaurant.name || '').trim().toLowerCase();
+
+    if (o.restaurantId && o.restaurantId.trim().toLowerCase() === currentRestId) return true;
+    if (o.restaurantName && o.restaurantName.trim().toLowerCase() === currentRestName) return true;
+    if (o.items?.some((i) => i.menuItem?.restaurantId && i.menuItem.restaurantId.trim().toLowerCase() === currentRestId)) return true;
+    if (o.items?.some((i) => i.menuItem?.provenance && i.menuItem.provenance.trim().toLowerCase() === currentRestName)) return true;
+    return false;
+  });
   const activeOrders = restaurantOrders.filter((o) => o.status !== 'completed');
 
   useEffect(() => {

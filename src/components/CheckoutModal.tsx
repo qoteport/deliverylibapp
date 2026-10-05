@@ -8,6 +8,7 @@ import { sendTwilioOrderNotification } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 import { normalizeLiberianPhoneNumber } from '../utils/phoneUtils';
+import { sanitizeForFirestore } from '../utils/cleanData';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -192,7 +193,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     // Save order to Firebase Firestore with complete metadata for realtime listeners
     try {
-      await setDoc(doc(db, 'orders', newOrder.id), {
+      const orderPayload = sanitizeForFirestore({
         id: newOrder.id,
         customerName: newOrder.customerName,
         customerPhone: newOrder.customerPhone,
@@ -231,15 +232,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             name: i.menuItem.name,
             price: i.menuItem.price,
             category: i.menuItem.category,
-            restaurantId: i.menuItem.restaurantId || primaryRestaurantId,
+            restaurantId: i.menuItem.restaurantId || primaryRestaurantId || '',
             image: i.menuItem.image || '',
+            images: i.menuItem.images || [],
             illustrationType: i.menuItem.illustrationType || 'jollof',
           },
         })),
       });
+
+      await setDoc(doc(db, 'orders', newOrder.id), orderPayload);
       console.log('Order successfully synced to Firebase Firestore:', newOrder.id);
     } catch (err) {
-      console.warn('Firestore order write error (offline fallback):', err);
+      console.error('Firestore order write error:', err);
     }
 
     // Dispatch Twilio SMS & WhatsApp alerts to customer and dispatch desk

@@ -32,6 +32,7 @@ import { useAuth } from './context/AuthContext';
 import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
 import { sendBrowserNotification } from './utils/browserNotifications';
 import { delegateOrderToDriver } from './utils/dispatchEngine';
+import { sanitizeForFirestore } from './utils/cleanData';
 import { Check } from 'lucide-react';
 
 export default function App() {
@@ -367,12 +368,23 @@ export default function App() {
   };
 
   const handleOrderPlaced = async (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === newOrder.id);
+      return exists ? prev : [newOrder, ...prev];
+    });
     setCartItems([]);
     setIsCheckoutOpen(false);
     setActiveTrackingOrder(newOrder);
     setIsOrderTrackerOpen(true);
     showToast(`Order ${newOrder.id} placed! Transmitted to kitchen & delegation engine.`);
+
+    // Guarantee order document in Firebase Firestore
+    try {
+      await setDoc(doc(db, 'orders', newOrder.id), sanitizeForFirestore(newOrder), { merge: true });
+      console.log('Order confirmed written to Firestore:', newOrder.id);
+    } catch (err) {
+      console.error('Firestore order sync error in handleOrderPlaced:', err);
+    }
 
     // Dispatch Browser Push / Mobile Notification
     sendBrowserNotification({
