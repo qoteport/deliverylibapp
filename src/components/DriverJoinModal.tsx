@@ -35,6 +35,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
 
   if (!isOpen) return null;
 
+  const [isMomoNumberManuallyEdited, setIsMomoNumberManuallyEdited] = useState(false);
+
   // Auto detect Liberia MoMo Provider from prefix
   const detectMomoNetwork = (num: string): DeliveryDriver['momoProvider'] => {
     const clean = num.replace(/\D/g, '');
@@ -60,7 +62,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
 
   const handlePhoneChange = (val: string) => {
     setPhone(val);
-    if (!momoNumber || momoNumber === phone) {
+    if (!isMomoNumberManuallyEdited || !momoNumber || momoNumber === phone) {
       setMomoNumber(val);
     }
     const detected = detectMomoNetwork(val);
@@ -316,14 +318,17 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             <div className="space-y-2">
               <div className="space-y-1.5">
                 <label className="font-bold text-gray-700 flex items-center justify-between">
-                  <span>Mobile Money Payout Number *</span>
+                  <span>MoMo / Orange Money Payout Number *</span>
                   <span className="text-[10px] text-gray-400 font-normal">Auto-filled from phone</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={momoNumber}
-                  onChange={(e) => setMomoNumber(e.target.value)}
+                  onChange={(e) => {
+                    setMomoNumber(e.target.value);
+                    setIsMomoNumberManuallyEdited(true);
+                  }}
                   placeholder="e.g. 0886991223"
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#06C167] focus:outline-none focus:border-[#06C167]"
                 />
