@@ -1,13 +1,29 @@
 // Web Audio API Synthesizer for Kitchen Order Chimes & Notifications
 let audioContext: AudioContext | null = null;
 
+export function primeAudioContext() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!audioContext) {
+      audioContext = new AudioCtx();
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+  } catch {}
+}
+
 export function playOrderAlertSound() {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
 
-    if (!audioContext || audioContext.state === 'suspended') {
+    if (!audioContext) {
       audioContext = new AudioCtx();
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
     }
 
     const now = audioContext.currentTime;

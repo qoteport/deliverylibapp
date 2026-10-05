@@ -4,7 +4,7 @@ import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE } from '../types
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { playOrderAlertSound } from '../utils/audioAlert';
+import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getSavedTwilioConfig, saveTwilioConfig, sendTwilioOrderNotification, getWhatsAppDispatchUrl, TwilioConfig } from '../utils/twilio';
 
@@ -89,9 +89,18 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [imageUrlInput, setImageUrlInput] = useState('');
 
   const restaurantOrders = orders.filter(
-    (o) => !o.restaurantId || o.restaurantId === restaurant.id
+    (o) =>
+      o.restaurantId === restaurant.id ||
+      (o.restaurantName && o.restaurantName.toLowerCase() === restaurant.name?.toLowerCase()) ||
+      (!o.restaurantId && o.items?.some((i) => i.menuItem?.restaurantId === restaurant.id))
   );
   const activeOrders = restaurantOrders.filter((o) => o.status !== 'completed');
+
+  useEffect(() => {
+    const handlePrime = () => primeAudioContext();
+    window.addEventListener('click', handlePrime, { once: true });
+    return () => window.removeEventListener('click', handlePrime);
+  }, []);
 
   // Play audio chime and dispatch browser notification when orders count increases
   const [prevOrdersCount, setPrevOrdersCount] = useState(restaurantOrders.length);

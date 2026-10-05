@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   Store, 
@@ -33,6 +33,8 @@ import { db } from '../firebase/config';
 import { doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { getSavedTwilioConfig, saveTwilioConfig, TwilioConfig } from '../utils/twilio';
+import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
+import { sendBrowserNotification } from '../utils/browserNotifications';
 
 interface AdminPortalProps {
   restaurants: Restaurant[];
@@ -72,6 +74,32 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchRestaurant, setSearchRestaurant] = useState<string>('');
   
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [prevOrdersCount, setPrevOrdersCount] = useState(orders.length);
+
+  useEffect(() => {
+    const handlePrime = () => primeAudioContext();
+    window.addEventListener('click', handlePrime, { once: true });
+    return () => window.removeEventListener('click', handlePrime);
+  }, []);
+
+  useEffect(() => {
+    if (orders.length > prevOrdersCount) {
+      if (soundEnabled) {
+        playOrderAlertSound();
+      }
+      const newest = orders[0];
+      if (newest) {
+        sendBrowserNotification({
+          title: `🔔 [Admin Live] New Order #${newest.id}`,
+          body: `${newest.customerName} ordered at ${newest.restaurantName || 'Monrovia Spot'} ($${newest.total.toFixed(2)})`,
+          tag: `admin-order-${newest.id}`,
+        });
+      }
+      setPrevOrdersCount(orders.length);
+    }
+  }, [orders.length, prevOrdersCount, soundEnabled, orders]);
+
   // Inline Phone Edit State for Restaurant
   const [editingPhoneRestId, setEditingPhoneRestId] = useState<string | null>(null);
   const [editingPhoneInput, setEditingPhoneInput] = useState<string>('');
@@ -202,9 +230,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-[#E8F8EE] border border-emerald-200 text-[#048747] text-[10px] font-extrabold uppercase tracking-wider">
               Super User
             </span>
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Sync</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setSoundEnabled((prev) => !prev)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                soundEnabled
+                  ? 'bg-emerald-50 border border-emerald-200 text-[#048747]'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+              title={soundEnabled ? 'Live Order Chime Active' : 'Live Order Chime Muted'}
+            >
+              <span>{soundEnabled ? '🔔 Chime On' : '🔕 Muted'}</span>
+            </button>
             <button
               onClick={onToggleCurrency}
               className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800 cursor-pointer"

@@ -209,17 +209,15 @@ export default function App() {
     const unsub = onSnapshot(
       collection(db, 'orders'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const remoteOrders: Order[] = [];
-          snapshot.forEach((docSnap) => {
-            remoteOrders.push(docSnap.data() as Order);
-          });
-          setOrders(
-            remoteOrders.sort(
-              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            )
-          );
-        }
+        const remoteOrders: Order[] = [];
+        snapshot.forEach((docSnap) => {
+          remoteOrders.push(docSnap.data() as Order);
+        });
+        setOrders(
+          remoteOrders.sort(
+            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+          )
+        );
       },
       (error) => {
         console.warn('Firestore orders snapshot notice:', error);
