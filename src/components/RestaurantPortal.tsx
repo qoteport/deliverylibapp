@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation } from 'lucide-react';
-import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag } from 'lucide-react';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
@@ -33,6 +33,41 @@ const PRESET_FOOD_IMAGES = [
   { label: 'Rich Pepper Soup', url: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&auto=format&fit=crop&q=80' },
   { label: 'Snacks & Kala', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80' },
   { label: 'Wonjo & Fresh Juices', url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80' },
+];
+
+const PRESET_DISH_CATEGORIES = [
+  { id: 'liberian-favorites', label: 'Liberian Classics', icon: '🍲' },
+  { id: 'hearth-mains', label: 'Suya & Grills', icon: '🥩' },
+  { id: 'starters', label: 'Snacks & Kala', icon: '🍢' },
+  { id: 'beverages', label: 'Wonjo & Drinks', icon: '🍹' },
+  { id: 'pasta', label: 'Pastas', icon: '🍝' },
+  { id: 'desserts', label: 'Desserts', icon: '🍰' },
+];
+
+const PRESET_PREP_TIMES = [
+  { minutes: 10, label: '10 mins', note: 'Fast / Ready' },
+  { minutes: 15, label: '15 mins', note: 'Standard' },
+  { minutes: 20, label: '20 mins', note: 'Cook-to-order' },
+  { minutes: 25, label: '25 mins', note: 'Grilling' },
+  { minutes: 35, label: '35 mins', note: 'Slow simmer' },
+  { minutes: 45, label: '45 mins', note: 'Special pot' },
+];
+
+const PRESET_SPICE_LEVELS = [
+  { id: 'Mild', label: 'Mild', badge: '🌶️ Gentle' },
+  { id: 'Medium', label: 'Medium', badge: '🌶️🌶️ Classic' },
+  { id: 'Monrovia Hot', label: 'Monrovia Hot', badge: '🔥 Local Fire' },
+  { id: 'Extreme Pepper', label: 'Extreme Pepper', badge: '💥 Fire' },
+  { id: 'No Pepper', label: 'No Pepper', badge: '🥗 Zero Spice' },
+];
+
+const PRESET_ADDON_SUGGESTIONS = [
+  { name: 'Fried Sweet Plantains (Dodo)', price: 1.50, description: 'Golden fried ripe plantains' },
+  { name: 'Extra Monrovia Hot Pepper Sauce', price: 0.75, description: 'Authentic spicy glaze' },
+  { name: 'Grilled Suya Beef Skewer', price: 2.50, description: 'Spiced with traditional yaji' },
+  { name: 'Fried Kala Balls (2 pcs)', price: 1.00, description: 'Crispy fried dough' },
+  { name: 'Chilled Fresh Wonjo Juice', price: 1.50, description: 'Ginger-infused hibiscus juice' },
+  { name: 'Extra Portion of Jollof Rice', price: 2.00, description: 'Steaming seasoned rice' },
 ];
 
 export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
@@ -91,10 +126,20 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   // Dish Form State (Add / Edit)
   const [dishName, setDishName] = useState('');
   const [dishPrice, setDishPrice] = useState('8.00');
-  const [dishCategory, setDishCategory] = useState<MenuItem['category']>('liberian-favorites');
+  const [dishCategory, setDishCategory] = useState<string>('liberian-favorites');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryText, setCustomCategoryText] = useState('');
   const [dishDescription, setDishDescription] = useState('');
-  const [dishPrepTime, setDishPrepTime] = useState(15);
-  const [dishSpice, setDishSpice] = useState<MenuItem['spiceLevel']>('Monrovia Hot');
+  const [dishPrepTime, setDishPrepTime] = useState<number>(15);
+  const [isCustomPrepTime, setIsCustomPrepTime] = useState(false);
+  const [customPrepTimeText, setCustomPrepTimeText] = useState('');
+  const [dishSpice, setDishSpice] = useState<string>('Monrovia Hot');
+  const [isCustomSpice, setIsCustomSpice] = useState(false);
+  const [customSpiceText, setCustomSpiceText] = useState('');
+  const [dishAddons, setDishAddons] = useState<AddonOption[]>([]);
+  const [newAddonName, setNewAddonName] = useState('');
+  const [newAddonPrice, setNewAddonPrice] = useState('1.50');
+  const [newAddonDesc, setNewAddonDesc] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
 
@@ -162,6 +207,28 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     return `$${usd.toFixed(2)}`;
   };
 
+  const resetDishForm = () => {
+    setDishName('');
+    setDishPrice('8.00');
+    setDishCategory('liberian-favorites');
+    setIsCustomCategory(false);
+    setCustomCategoryText('');
+    setDishDescription('');
+    setDishPrepTime(15);
+    setIsCustomPrepTime(false);
+    setCustomPrepTimeText('');
+    setDishSpice('Monrovia Hot');
+    setIsCustomSpice(false);
+    setCustomSpiceText('');
+    setDishAddons([]);
+    setNewAddonName('');
+    setNewAddonPrice('1.50');
+    setNewAddonDesc('');
+    setUploadedImages([]);
+    setImageUrlInput('');
+    setEditingDish(null);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -188,17 +255,122 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleMoveImageLeft = (index: number) => {
+    if (index <= 0) return;
+    setUploadedImages((prev) => {
+      const next = [...prev];
+      const temp = next[index - 1];
+      next[index - 1] = next[index];
+      next[index] = temp;
+      return next;
+    });
+  };
+
+  const handleMoveImageRight = (index: number) => {
+    setUploadedImages((prev) => {
+      if (index >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[index + 1];
+      next[index + 1] = next[index];
+      next[index] = temp;
+      return next;
+    });
+  };
+
+  const handleMakePrimaryImage = (index: number) => {
+    if (index === 0) return;
+    setUploadedImages((prev) => {
+      const target = prev[index];
+      const remaining = prev.filter((_, i) => i !== index);
+      return [target, ...remaining];
+    });
+  };
+
+  const handleAddCustomAddon = () => {
+    if (!newAddonName.trim()) return;
+    const price = Math.max(0, parseFloat(newAddonPrice) || 0);
+    const newAddon: AddonOption = {
+      id: `addon-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: newAddonName.trim(),
+      price,
+      description: newAddonDesc.trim() || undefined,
+    };
+    setDishAddons((prev) => [...prev, newAddon]);
+    setNewAddonName('');
+    setNewAddonPrice('1.50');
+    setNewAddonDesc('');
+  };
+
+  const handleRemoveAddon = (id: string) => {
+    setDishAddons((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleQuickAddPresetAddon = (preset: { name: string; price: number; description?: string }) => {
+    if (dishAddons.some((a) => a.name.toLowerCase() === preset.name.toLowerCase())) return;
+    const newAddon: AddonOption = {
+      id: `addon-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: preset.name,
+      price: preset.price,
+      description: preset.description,
+    };
+    setDishAddons((prev) => [...prev, newAddon]);
+  };
+
   // Open Edit Dish Modal
   const handleOpenEditDish = (dish: MenuItem) => {
     setEditingDish(dish);
     setDishName(dish.name);
     setDishPrice(dish.price.toString());
-    setDishCategory(dish.category);
-    setDishDescription(dish.description);
-    setDishPrepTime(dish.prepTimeMinutes);
-    setDishSpice(dish.spiceLevel || 'Monrovia Hot');
+
+    // Check category
+    const isStandardCat = PRESET_DISH_CATEGORIES.some((c) => c.id === dish.category);
+    if (isStandardCat) {
+      setDishCategory(dish.category);
+      setIsCustomCategory(false);
+      setCustomCategoryText('');
+    } else {
+      setDishCategory('custom');
+      setIsCustomCategory(true);
+      setCustomCategoryText(dish.category);
+    }
+
+    setDishDescription(dish.description || '');
+
+    // Check prep time
+    const isStandardTime = PRESET_PREP_TIMES.some((t) => t.minutes === dish.prepTimeMinutes);
+    if (isStandardTime) {
+      setDishPrepTime(dish.prepTimeMinutes);
+      setIsCustomPrepTime(false);
+      setCustomPrepTimeText('');
+    } else {
+      setDishPrepTime(dish.prepTimeMinutes || 15);
+      setIsCustomPrepTime(true);
+      setCustomPrepTimeText((dish.prepTimeMinutes || 15).toString());
+    }
+
+    // Check spice level
+    const isStandardSpice = PRESET_SPICE_LEVELS.some((s) => s.id === dish.spiceLevel);
+    if (isStandardSpice) {
+      setDishSpice(dish.spiceLevel || 'Monrovia Hot');
+      setIsCustomSpice(false);
+      setCustomSpiceText('');
+    } else if (dish.spiceLevel) {
+      setDishSpice('custom');
+      setIsCustomSpice(true);
+      setCustomSpiceText(dish.spiceLevel);
+    } else {
+      setDishSpice('Monrovia Hot');
+      setIsCustomSpice(false);
+      setCustomSpiceText('');
+    }
+
+    // Set Addons
+    setDishAddons(dish.availableAddons ? [...dish.availableAddons] : []);
+
+    // Set images
     const images = dish.images && dish.images.length > 0 ? dish.images : dish.image ? [dish.image] : [];
     setUploadedImages(images);
+
     setIsAddDishOpen(true);
   };
 
@@ -209,24 +381,37 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     const priceNum = parseFloat(dishPrice) || 5.0;
     const dishId = editingDish ? editingDish.id : `dish-${restaurant.id}-${Date.now().toString().slice(-4)}`;
 
+    const finalCategory = isCustomCategory && customCategoryText.trim()
+      ? customCategoryText.trim()
+      : dishCategory;
+
+    const finalPrepTime = isCustomPrepTime && customPrepTimeText.trim()
+      ? Math.max(1, parseInt(customPrepTimeText, 10) || 15)
+      : (Number(dishPrepTime) || 15);
+
+    const finalSpice = isCustomSpice && customSpiceText.trim()
+      ? customSpiceText.trim()
+      : dishSpice;
+
     const targetDish: MenuItem = {
       id: dishId,
       restaurantId: restaurant.id,
       name: dishName.trim(),
       subname: 'Freshly prepared specialty',
-      category: dishCategory,
+      category: finalCategory,
       description: dishDescription.trim() || 'Delicious Monrovia specialty prepared fresh to order.',
       price: priceNum,
       priceLrd: priceNum * USD_TO_LRD_RATE,
       calories: 500,
-      prepTimeMinutes: Number(dishPrepTime) || 15,
+      prepTimeMinutes: finalPrepTime,
       dietary: ['Spicy'],
       ingredients: ['Local ingredients', 'Liberian spices'],
       provenance: restaurant.neighborhood,
       illustrationType: 'jollof',
       images: uploadedImages.length > 0 ? uploadedImages : undefined,
       image: uploadedImages.length > 0 ? uploadedImages[0] : undefined,
-      spiceLevel: dishSpice,
+      availableAddons: dishAddons.length > 0 ? dishAddons : undefined,
+      spiceLevel: finalSpice,
       isAvailable: editingDish ? editingDish.isAvailable !== false : true,
     };
 
@@ -247,6 +432,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         spiceLevel: targetDish.spiceLevel,
         images: targetDish.images || [],
         image: targetDish.image || '',
+        availableAddons: targetDish.availableAddons || [],
         isAvailable: targetDish.isAvailable,
         updatedAt: new Date().toISOString(),
       });
@@ -255,11 +441,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       console.warn('Firestore dish write notice:', err);
     }
 
+    resetDishForm();
     setIsAddDishOpen(false);
-    setEditingDish(null);
-    setDishName('');
-    setDishDescription('');
-    setUploadedImages([]);
   };
 
   const handleDeleteDish = async (dishId: string) => {
@@ -423,14 +606,10 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
           {activeTab === 'menu' && (
             <button
               onClick={() => {
-                setEditingDish(null);
-                setDishName('');
-                setDishPrice('8.00');
-                setDishDescription('');
-                setUploadedImages([]);
+                resetDishForm();
                 setIsAddDishOpen(true);
               }}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-[#FF4B26]/20 hover:shadow-lg shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-[#FF4B26]/20 hover:shadow-lg shrink-0 cursor-pointer active:scale-95"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
               <span>Add Dish</span>
@@ -885,10 +1064,23 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                         {item.description}
                       </p>
 
-                      <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-2">
-                        <span className="capitalize">{item.category}</span>
-                        <span>•</span>
-                        <span className="text-[#FF4B26] font-bold">{item.prepTimeMinutes}m prep time</span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500 mt-2">
+                        <span className="capitalize font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
+                          {item.category}
+                        </span>
+                        <span className="text-[#FF4B26] font-bold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">
+                          ⏱️ {item.prepTimeMinutes}m
+                        </span>
+                        {item.spiceLevel && (
+                          <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                            🌶️ {item.spiceLevel}
+                          </span>
+                        )}
+                        {item.availableAddons && item.availableAddons.length > 0 && (
+                          <span className="font-bold text-[#048747] bg-[#E8F8EE] px-2 py-0.5 rounded-md border border-[#A7F3D0]">
+                            +{item.availableAddons.length} Extras
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1117,183 +1309,587 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       {/* Add / Edit Dish Modal */}
       {isAddDishOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-3xl border border-gray-100 p-5 sm:p-7 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-gray-100">
               <div>
-                <h3 className="text-lg font-extrabold text-[#111827]">
+                <h3 className="text-lg sm:text-xl font-extrabold text-[#111827]">
                   {editingDish ? 'Edit Dish' : 'Add New Dish to Menu'}
                 </h3>
-                <p className="text-xs text-gray-500">Upload multiple food photos & set prep time</p>
+                <p className="text-xs text-gray-500">
+                  Upload food photos, configure sides/extras, custom prep time &amp; spice preference
+                </p>
               </div>
-              <button onClick={() => setIsAddDishOpen(false)} className="p-1 text-gray-400 hover:text-black">
+              <button
+                onClick={() => {
+                  resetDishForm();
+                  setIsAddDishOpen(false);
+                }}
+                className="p-1.5 text-gray-400 hover:text-black rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateOrUpdateDish} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateOrUpdateDish} className="space-y-5 text-xs">
               
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700">Dish Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={dishName}
-                  onChange={(e) => setDishName(e.target.value)}
-                  placeholder="e.g. Grilled Snapper with Sweet Plantains"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* SECTION 1: NAME & PRICE */}
+              <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-gray-700">Price ($ USD) *</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={dishPrice}
-                    onChange={(e) => setDishPrice(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-gray-700">Category</label>
-                  <select
-                    value={dishCategory}
-                    onChange={(e) => setDishCategory(e.target.value as MenuItem['category'])}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  >
-                    <option value="liberian-favorites">Liberian Classics</option>
-                    <option value="hearth-mains">Suya & Grills</option>
-                    <option value="starters">Snacks & Kala</option>
-                    <option value="beverages">Wonjo & Drinks</option>
-                    <option value="pasta">Pastas</option>
-                    <option value="desserts">Desserts</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1">
-                  <label className="font-bold text-gray-700 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-[#FF4B26]" />
-                    <span>Prep Time (Minutes) *</span>
+                  <label className="font-bold text-gray-700 flex items-center justify-between">
+                    <span>Dish Name *</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Title seen by customers</span>
                   </label>
-                  <select
-                    value={dishPrepTime}
-                    onChange={(e) => setDishPrepTime(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  >
-                    <option value={10}>10 minutes (Fast Snack)</option>
-                    <option value={15}>15 minutes (Standard)</option>
-                    <option value={20}>20 minutes (Cooked-to-Order)</option>
-                    <option value={25}>25 minutes (Deep Grilling)</option>
-                    <option value={35}>35 minutes (Slow Simmer)</option>
-                  </select>
+                  <input
+                    type="text"
+                    required
+                    value={dishName}
+                    onChange={(e) => setDishName(e.target.value)}
+                    placeholder="e.g. Grilled Snapper with Sweet Plantains"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26] focus:bg-white transition-all"
+                  />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-gray-700">Spice Level</label>
-                  <select
-                    value={dishSpice}
-                    onChange={(e) => setDishSpice(e.target.value as MenuItem['spiceLevel'])}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  >
-                    <option value="Mild">Mild</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Monrovia Hot">Monrovia Hot</option>
-                    <option value="Extreme Pepper">Extreme Pepper</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span>Price ($ USD) *</span>
+                      {dishPrice && (
+                        <span className="text-[10px] font-mono text-[#06C167] font-bold">
+                          ≈ L$ {Math.round((parseFloat(dishPrice) || 0) * USD_TO_LRD_RATE).toLocaleString()}
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-gray-400">$</span>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0.5"
+                        required
+                        value={dishPrice}
+                        onChange={(e) => setDishPrice(e.target.value)}
+                        className="w-full pl-8 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26] focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-700">Appetizing Description</label>
+                    <input
+                      type="text"
+                      value={dishDescription}
+                      onChange={(e) => setDishDescription(e.target.value)}
+                      placeholder="e.g. Served with spicy habanero glaze & fried dodo"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26] focus:bg-white transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Multiple Image Upload */}
-              <div className="space-y-2 pt-2 border-t border-gray-100">
-                <label className="font-bold text-gray-700 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5 text-[#FF4B26]" />
-                    <span>Multiple Dish Images ({uploadedImages.length})</span>
+              {/* SECTION 2: CUSTOM CATEGORY PICKER */}
+              <div className="space-y-2 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#FF4B26]" />
+                    <span>Dish Category</span>
+                  </label>
+                  <span className="text-[10px] text-[#FF4B26] font-bold">
+                    {isCustomCategory ? (customCategoryText || 'Custom') : (PRESET_DISH_CATEGORIES.find(c => c.id === dishCategory)?.label || dishCategory)}
                   </span>
-                  <span className="text-[10px] text-gray-400 font-normal">PNG, JPG, WebP</span>
-                </label>
+                </div>
 
-                <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 hover:border-[#FF4B26] hover:bg-orange-50/40 rounded-2xl cursor-pointer transition-all">
-                  <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                  <span className="text-xs font-bold text-gray-700">Choose images from device</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_DISH_CATEGORIES.map((cat) => {
+                    const isSelected = !isCustomCategory && dishCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setIsCustomCategory(false);
+                          setDishCategory(cat.id);
+                        }}
+                        className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#FF4B26] text-white border-[#FF4B26] shadow-xs'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
 
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={imageUrlInput}
-                    onChange={(e) => setImageUrlInput(e.target.value)}
-                    placeholder="Or paste image URL..."
-                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  />
                   <button
                     type="button"
-                    onClick={handleAddImageUrl}
-                    className="px-3 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
+                    onClick={() => {
+                      setIsCustomCategory(true);
+                      setDishCategory('custom');
+                    }}
+                    className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isCustomCategory
+                        ? 'bg-[#FF4B26] text-white border-[#FF4B26] shadow-xs'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}
                   >
-                    Add
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>+ Custom Category</span>
                   </button>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {PRESET_FOOD_IMAGES.map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => setUploadedImages((prev) => [...prev, preset.url])}
-                      className="text-[10px] font-semibold bg-gray-100 hover:bg-orange-100 hover:text-[#FF4B26] px-2.5 py-1 rounded-lg transition-colors"
-                    >
-                      + {preset.label}
-                    </button>
-                  ))}
-                </div>
-
-                {uploadedImages.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 pt-2">
-                    {uploadedImages.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group">
-                        <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-80 hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                {isCustomCategory && (
+                  <div className="pt-1.5 animate-in fade-in slide-in-from-top-1">
+                    <input
+                      type="text"
+                      required={isCustomCategory}
+                      value={customCategoryText}
+                      onChange={(e) => setCustomCategoryText(e.target.value)}
+                      placeholder="Enter custom category name (e.g. Seafood Specials, Night Grills)..."
+                      className="w-full px-3.5 py-2 bg-orange-50/50 border border-orange-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#FF4B26]"
+                    />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1 pt-2 border-t border-gray-100">
-                <label className="font-bold text-gray-700">Description</label>
-                <input
-                  type="text"
-                  value={dishDescription}
-                  onChange={(e) => setDishDescription(e.target.value)}
-                  placeholder="Short appetizing note..."
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                />
+              {/* SECTION 3: CUSTOM PREP TIME PICKER */}
+              <div className="space-y-2 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#FF4B26]" />
+                    <span>Kitchen Prep Time</span>
+                  </label>
+                  <span className="text-[10px] text-[#048747] font-bold bg-[#E8F8EE] px-2 py-0.5 rounded-full border border-[#A7F3D0]">
+                    ⏱️ {isCustomPrepTime ? (customPrepTimeText ? `${customPrepTimeText} mins` : 'Custom') : `${dishPrepTime} mins`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PRESET_PREP_TIMES.map((pt) => {
+                    const isSelected = !isCustomPrepTime && dishPrepTime === pt.minutes;
+                    return (
+                      <button
+                        key={pt.minutes}
+                        type="button"
+                        onClick={() => {
+                          setIsCustomPrepTime(false);
+                          setDishPrepTime(pt.minutes);
+                        }}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#E8F8EE] text-[#048747] border-[#06C167] ring-1 ring-[#06C167] shadow-xs'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold">{pt.label}</div>
+                        <div className="text-[9px] text-gray-400 font-medium truncate">{pt.note}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomPrepTime(!isCustomPrepTime);
+                      if (!isCustomPrepTime && !customPrepTimeText) {
+                        setCustomPrepTimeText(dishPrepTime.toString());
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                      isCustomPrepTime ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isCustomPrepTime ? '✓ Custom Time Active' : '+ Set Custom Minutes'}
+                  </button>
+
+                  {isCustomPrepTime && (
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="180"
+                        value={customPrepTimeText}
+                        onChange={(e) => setCustomPrepTimeText(e.target.value)}
+                        placeholder="e.g. 18"
+                        className="w-24 px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#FF4B26]"
+                      />
+                      <span className="text-xs text-gray-500 font-bold">minutes</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all mt-2"
-              >
-                {editingDish ? 'Update Dish' : 'Publish Dish to Menu'}
-              </button>
+              {/* SECTION 4: SPICE PREFERENCE */}
+              <div className="space-y-2 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-red-500" />
+                    <span>Spice Preference &amp; Pepper Level</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-red-600">
+                    {isCustomSpice ? (customSpiceText || 'Custom') : dishSpice}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {PRESET_SPICE_LEVELS.map((spice) => {
+                    const isSelected = !isCustomSpice && dishSpice === spice.id;
+                    return (
+                      <button
+                        key={spice.id}
+                        type="button"
+                        onClick={() => {
+                          setIsCustomSpice(false);
+                          setDishSpice(spice.id);
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-red-50 border-red-400 text-red-800 ring-1 ring-red-400 shadow-xs'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className="text-[10px] text-gray-500 font-semibold">{spice.badge}</span>
+                        <span className="text-xs font-extrabold mt-0.5 truncate">{spice.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomSpice(!isCustomSpice);
+                      if (!isCustomSpice && !customSpiceText) {
+                        setCustomSpiceText(dishSpice);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                      isCustomSpice ? 'bg-red-600 text-white border-red-600' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isCustomSpice ? '✓ Custom Spice Active' : '+ Custom Spice Note'}
+                  </button>
+
+                  {isCustomSpice && (
+                    <input
+                      type="text"
+                      value={customSpiceText}
+                      onChange={(e) => setCustomSpiceText(e.target.value)}
+                      placeholder="e.g. Pepper on the side, Habanero dip..."
+                      className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-red-500"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 5: SIDE ITEMS & EXTRAS (ADDONS) WITH PRICES */}
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <ListPlus className="w-3.5 h-3.5 text-[#06C167]" />
+                      <span>Side Items &amp; Extras ({dishAddons.length})</span>
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                      Buyers can add these extra side portions and pay the specified amount
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Add Preset Monrovia Addons */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quick Add Presets:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_ADDON_SUGGESTIONS.map((preset) => {
+                      const alreadyAdded = dishAddons.some((a) => a.name.toLowerCase() === preset.name.toLowerCase());
+                      return (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => handleQuickAddPresetAddon(preset)}
+                          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                            alreadyAdded
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 opacity-50 cursor-not-allowed'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-[#06C167] hover:text-[#048747] hover:bg-[#E8F8EE]/40'
+                          }`}
+                        >
+                          + {preset.name} (${preset.price.toFixed(2)})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Currently Added Addons List */}
+                {dishAddons.length > 0 && (
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    {dishAddons.map((addon, idx) => (
+                      <div
+                        key={addon.id || idx}
+                        className="p-2.5 bg-gray-50 rounded-xl border border-gray-200/80 flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-md bg-[#E8F8EE] text-[#048747] text-[10px] font-black flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="font-bold text-gray-900 truncate block">{addon.name}</span>
+                            {addon.description && (
+                              <span className="text-[10px] text-gray-400 truncate block">{addon.description}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono text-xs font-black text-[#048747] bg-white px-2 py-0.5 rounded-lg border border-gray-200 shadow-2xs">
+                            +${addon.price.toFixed(2)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAddon(addon.id)}
+                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Remove Extra"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Form row to add custom Extra */}
+                <div className="p-3 bg-gray-50/80 rounded-2xl border border-gray-200 space-y-2">
+                  <span className="text-[10px] font-bold text-gray-600 block">Add Custom Side / Extra:</span>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newAddonName}
+                      onChange={(e) => setNewAddonName(e.target.value)}
+                      placeholder="Extra Name (e.g. Extra Fried Plantains, Avocado Dip)..."
+                      className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-28">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-gray-400">$</span>
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={newAddonPrice}
+                          onChange={(e) => setNewAddonPrice(e.target.value)}
+                          placeholder="Price"
+                          className="w-full pl-6 pr-2.5 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomAddon}
+                        disabled={!newAddonName.trim()}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                          newAddonName.trim()
+                            ? 'bg-[#06C167] hover:bg-[#048747] text-white shadow-xs'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Add Extra</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 6: MULTIPLE FOOD PHOTOS & IMAGE ARRANGER */}
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5 text-[#FF4B26]" />
+                      <span>Food Photos &amp; Display Order ({uploadedImages.length})</span>
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                      The 1st photo is used as the main cover on the menu. Use arrows to arrange order.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-normal">PNG, JPG, WebP</span>
+                </div>
+
+                {/* Upload & Preset Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-gray-200 hover:border-[#FF4B26] hover:bg-orange-50/40 rounded-2xl cursor-pointer transition-all">
+                    <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                    <span className="text-xs font-bold text-gray-700">Choose images from device</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <div className="flex flex-col justify-between gap-1.5">
+                    <div className="flex gap-1.5">
+                      <input
+                        type="url"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        placeholder="Or paste photo URL..."
+                        className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddImageUrl}
+                        className="px-3.5 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {PRESET_FOOD_IMAGES.map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setUploadedImages((prev) => [...prev, preset.url])}
+                          className="text-[9px] font-semibold bg-gray-100 hover:bg-orange-100 hover:text-[#FF4B26] px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          + {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visual Image Arranger List */}
+                {uploadedImages.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                      Uploaded Photos (Drag / Arrange Display Order):
+                    </span>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {uploadedImages.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className={`relative rounded-2xl overflow-hidden border-2 flex flex-col bg-gray-50 transition-all ${
+                            idx === 0
+                              ? 'border-[#06C167] ring-2 ring-[#06C167]/20 shadow-sm'
+                              : 'border-gray-200'
+                          }`}
+                        >
+                          {/* Image preview */}
+                          <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                            <img
+                              src={img}
+                              alt={`Dish photo ${idx + 1}`}
+                              className="w-full h-full object-cover object-center"
+                            />
+
+                            {/* Badge */}
+                            <div className="absolute top-1.5 left-1.5">
+                              {idx === 0 ? (
+                                <span className="px-2 py-0.5 bg-[#06C167] text-white text-[9px] font-black rounded-md shadow-sm flex items-center gap-0.5">
+                                  <Star className="w-2.5 h-2.5 fill-white" />
+                                  <span>Cover (1st)</span>
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold rounded-md">
+                                  #{idx + 1}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors cursor-pointer"
+                              title="Delete Photo"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {/* Reordering Controls */}
+                          <div className="p-1.5 bg-white border-t border-gray-100 flex items-center justify-between gap-1">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveImageLeft(idx)}
+                              className={`p-1 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                                idx === 0
+                                  ? 'border-gray-100 text-gray-300 cursor-not-allowed'
+                                  : 'border-gray-200 hover:bg-gray-100 text-gray-700'
+                              }`}
+                              title="Move Left / Earlier"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+
+                            {idx > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleMakePrimaryImage(idx)}
+                                className="text-[9px] font-extrabold text-[#06C167] hover:underline cursor-pointer"
+                                title="Set as primary cover"
+                              >
+                                Set Cover
+                              </button>
+                            ) : (
+                              <span className="text-[9px] font-extrabold text-[#06C167]">Main</span>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={idx === uploadedImages.length - 1}
+                              onClick={() => handleMoveImageRight(idx)}
+                              className={`p-1 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                                idx === uploadedImages.length - 1
+                                  ? 'border-gray-100 text-gray-300 cursor-not-allowed'
+                                  : 'border-gray-200 hover:bg-gray-100 text-gray-700'
+                              }`}
+                              title="Move Right / Later"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="pt-3 border-t border-gray-100 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetDishForm();
+                    setIsAddDishOpen(false);
+                  }}
+                  className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold rounded-2xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="w-2/3 py-3.5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-98 flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{editingDish ? 'Update Dish on Menu' : 'Publish Dish to Menu'}</span>
+                </button>
+              </div>
+
             </form>
           </div>
         </div>

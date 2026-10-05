@@ -29,7 +29,7 @@ export const MONROVIA_NEIGHBORHOOD_COORDS: Record<string, LocationCoords> = {
 
 export const USD_TO_LRD_RATE = 195;
 
-export type Category = 'liberian-favorites' | 'starters' | 'pasta' | 'hearth-mains' | 'desserts' | 'beverages';
+export type Category = 'liberian-favorites' | 'starters' | 'pasta' | 'hearth-mains' | 'desserts' | 'beverages' | string;
 
 export type PaymentMethod = 'momo-mtn' | 'orange-money' | 'cod-usd' | 'cod-lrd' | 'card';
 
@@ -96,7 +96,7 @@ export interface MenuItem {
   image?: string; // Primary photo URL or base64
   availableAddons?: AddonOption[];
   cookingTemperatures?: string[];
-  spiceLevel?: 'Mild' | 'Medium' | 'Monrovia Hot' | 'Extreme Pepper';
+  spiceLevel?: 'Mild' | 'Medium' | 'Monrovia Hot' | 'Extreme Pepper' | 'No Pepper' | string;
   isAvailable?: boolean;
 }
 
