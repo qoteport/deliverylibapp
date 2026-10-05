@@ -107,27 +107,36 @@ export const DishModal: React.FC<DishModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Visual Top Image Gallery / Illustration */}
-        <div className="relative w-full h-64 sm:h-72 bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden">
+        <div className="relative w-full h-72 sm:h-80 bg-gradient-to-br from-[#1E1A17] via-[#2A221B] to-[#151210] shrink-0 overflow-hidden flex items-center justify-center">
           {/* Mobile top pull indicator */}
-          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/70 rounded-full z-20 sm:hidden shadow-sm pointer-events-none" />
+          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/70 rounded-full z-30 sm:hidden shadow-sm pointer-events-none" />
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors backdrop-blur-md shadow-md absolute top-3.5 right-3.5 z-20"
+            className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white min-h-[38px] min-w-[38px] flex items-center justify-center transition-all backdrop-blur-md shadow-lg absolute top-3.5 right-3.5 z-30 cursor-pointer active:scale-95"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
+
           {allImages.length > 0 ? (
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+              {/* Blurred background backdrop for complete visual coverage */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center blur-2xl scale-125 opacity-40 transform pointer-events-none"
+                style={{ backgroundImage: `url(${allImages[activeImageIndex] || allImages[0]})` }}
+              />
+
+              {/* Centered High-Def Food Image */}
               <img
                 src={allImages[activeImageIndex] || allImages[0]}
                 alt={dish.name}
-                className="w-full h-full object-cover object-center"
+                className="relative z-10 w-full h-full object-cover object-center transform scale-[1.01] transition-all duration-300"
+                loading="eager"
               />
               
-              {/* Subtle bottom gradient to highlight image */}
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+              {/* Subtle top & bottom shadow gradient for depth */}
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
               {allImages.length > 1 && (
                 <>
@@ -137,10 +146,10 @@ export const DishModal: React.FC<DishModalProps> = ({
                       e.stopPropagation();
                       setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
                     }}
-                    className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors z-10 min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md absolute left-3 top-1/2 -translate-y-1/2"
+                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all z-20 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-lg absolute left-3 top-1/2 -translate-y-1/2 backdrop-blur-xs cursor-pointer active:scale-95"
                     aria-label="Previous image"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-4 h-4 stroke-[3]" />
                   </button>
                   <button
                     type="button"
@@ -148,17 +157,17 @@ export const DishModal: React.FC<DishModalProps> = ({
                       e.stopPropagation();
                       setActiveImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
                     }}
-                    className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors z-10 min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md absolute right-3 top-1/2 -translate-y-1/2"
+                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all z-20 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-lg absolute right-3 top-1/2 -translate-y-1/2 backdrop-blur-xs cursor-pointer active:scale-95"
                     aria-label="Next image"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4 stroke-[3]" />
                   </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-xs px-3 py-1 rounded-full z-10">
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full z-20">
                     {allImages.map((_, i) => (
                       <span
                         key={i}
                         className={`h-1.5 rounded-full transition-all ${
-                          i === activeImageIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'
+                          i === activeImageIndex ? 'bg-white w-5' : 'bg-white/50 w-1.5'
                         }`}
                       />
                     ))}
@@ -167,7 +176,9 @@ export const DishModal: React.FC<DishModalProps> = ({
               )}
             </div>
           ) : (
-            <DishIllustration type={dish.illustrationType} />
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <DishIllustration type={dish.illustrationType} className="w-full h-full" />
+            </div>
           )}
         </div>
 
@@ -175,18 +186,18 @@ export const DishModal: React.FC<DishModalProps> = ({
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
           
           {allImages.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar pt-1">
               {allImages.map((imgUrl, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
-                  className={`w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
+                  className={`w-16 h-16 rounded-2xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                     idx === activeImageIndex
-                      ? 'border-[#06C167] ring-2 ring-[#06C167]/20'
-                      : 'border-gray-200 opacity-70 hover:opacity-100'
+                      ? 'border-[#06C167] ring-2 ring-[#06C167]/30 scale-105 shadow-sm'
+                      : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
                   }`}
                 >
-                  <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover object-center" />
                 </button>
               ))}
             </div>
