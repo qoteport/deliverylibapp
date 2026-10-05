@@ -628,9 +628,17 @@ export default function App() {
   };
 
   const handleDriverRegistered = (newDriver: DeliveryDriver) => {
-    setDrivers((prev) => [newDriver, ...prev]);
-    showToast(`Welcome ${newDriver.name}! Driver app active.`);
-    navigateTo({ name: 'driver', driverId: newDriver.id });
+    setDrivers((prev) => {
+      const exists = prev.some((d) => d.id === newDriver.id);
+      const updated = exists ? prev.map((d) => (d.id === newDriver.id ? newDriver : d)) : [newDriver, ...prev];
+      try {
+        localStorage.setItem('aura_monrovia_drivers', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage driver cache notice:', e);
+      }
+      return updated;
+    });
+    showToast(`Welcome ${newDriver.name}! Driver profile created.`);
   };
 
   const handleAddMenuItem = async (item: MenuItem) => {

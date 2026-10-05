@@ -106,16 +106,21 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      await setDoc(doc(db, 'drivers', newDriver.id), newDriver);
-    } catch (err) {
-      console.warn('Firestore driver creation notice:', err);
-    }
-
+    // Optimistically register rider in state immediately
     setIsLoading(false);
     setRegisteredDriver(newDriver);
     setIsSuccess(true);
     onDriverRegistered(newDriver);
+
+    // Sync to Firestore in background without blocking the UI
+    try {
+      await Promise.race([
+        setDoc(doc(db, 'drivers', newDriver.id), newDriver),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore write timeout')), 3500))
+      ]);
+    } catch (err) {
+      console.warn('Firestore driver background sync notice:', err);
+    }
   };
 
   return (
