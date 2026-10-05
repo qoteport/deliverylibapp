@@ -6,7 +6,7 @@ import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
-import { getSavedTwilioConfig, saveTwilioConfig, sendTwilioOrderNotification, getWhatsAppDispatchUrl, TwilioConfig } from '../utils/twilio';
+import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
 
 interface RestaurantPortalProps {
@@ -42,14 +42,12 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   onToggleCurrency,
 }) => {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'profile' | 'notifications'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'profile'>('orders');
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
 
-  // Audio & Twilio Config State
+  // Audio State
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [twilioConfig, setTwilioConfig] = useState<TwilioConfig>(getSavedTwilioConfig());
-  const [testAlertStatus, setTestAlertStatus] = useState<string | null>(null);
 
   // Restaurant Profile Edit State
   const [restName, setRestName] = useState(restaurant?.name || '');
@@ -269,59 +267,11 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     }
   };
 
-  // Save Twilio Config & Send Test
-  const handleSaveTwilio = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveTwilioConfig(twilioConfig);
-    setTestAlertStatus('Twilio WhatsApp configuration saved!');
-    setTimeout(() => setTestAlertStatus(null), 3000);
-  };
-
-  const handleSendTestTwilio = async () => {
-    setTestAlertStatus('Dispatching test WhatsApp alert...');
-    const dummyOrder: Order = {
-      id: `TEST-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: 'Just now',
-      status: 'received',
-      items: [
-        {
-          cartItemId: '1',
-          quantity: 2,
-          itemTotal: 17.0,
-          selectedSpiceLevel: 'Monrovia Hot',
-          selectedAddons: [],
-          menuItem: menuItems[0] || { id: 'test', name: 'Liberian Jollof Rice', price: 8.5 } as MenuItem,
-        },
-      ],
-      diningMode: 'delivery',
-      customerName: 'Koffa Davies',
-      customerPhone: '+231 886 554 123',
-      customerEmail: 'koffa@monrovia.lr',
-      deliveryArea: 'Sinkor, Tubman Blvd',
-      deliveryAddress: '12th Street, Near ERA Supermarket',
-      subtotal: 17.0,
-      discount: 0,
-      serviceFee: 0.75,
-      deliveryFee: 2.0,
-      tax: 0.68,
-      tip: 0,
-      total: 20.43,
-      currency: 'USD',
-      estimatedDeliveryTime: '25 mins',
-      paymentMethod: 'momo-mtn',
-      paymentNumber: '0886 554 123',
-    };
-
-    const res = await sendTwilioOrderNotification(dummyOrder, restaurant.name);
-    setTestAlertStatus(res.whatsappStatus || res.smsStatus || 'Twilio Alert Dispatched');
-    if (soundEnabled) playOrderAlertSound();
-  };
-
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans">
       
       {/* Modern White Kitchen Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs h-16 flex items-center">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs py-4 sm:py-5 flex items-center">
         <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
@@ -444,18 +394,6 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
             >
               Restaurant Profile & MoMo
             </button>
-
-            <button
-              onClick={() => setActiveTab('notifications')}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === 'notifications'
-                  ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Twilio & WhatsApp Alerts</span>
-            </button>
           </div>
 
           {activeTab === 'menu' && (
@@ -483,7 +421,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span className="flex items-center gap-1.5">
                 <Bell className="w-3.5 h-3.5 text-[#FF4B26]" />
-                <span>Live orders stream with instant WhatsApp dispatch & audio alerts</span>
+                <span>Live orders stream with instant WhatsApp/Call dispatch &amp; audio alerts</span>
               </span>
               <span className="font-bold text-gray-900">{activeOrders.length} orders cooking</span>
             </div>
@@ -503,7 +441,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                 {restaurantOrders.map((order) => {
                   const isDone = order.status === 'completed';
                   const waUrl = getWhatsAppDispatchUrl(
-                    twilioConfig.targetWhatsAppNumber || order.customerPhone,
+                    order.customerPhone,
                     order,
                     restaurant.name
                   );
@@ -544,51 +482,99 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                         </div>
                       </div>
 
-                      {/* Items List */}
-                      <div className="space-y-1.5 text-xs text-gray-600">
-                        {order.items.map((i) => (
-                          <div key={i.cartItemId} className="flex justify-between items-start">
-                            <div>
-                              <span className="font-black text-gray-900">{i.quantity}x</span> {i.menuItem.name}
-                              {i.selectedSpiceLevel && (
-                                <span className="ml-1 text-red-500 font-bold text-[11px]">
-                                  [{i.selectedSpiceLevel}]
-                                </span>
-                              )}
-                              {i.selectedAddons && i.selectedAddons.length > 0 && (
-                                <div className="text-[11px] text-gray-400 pl-4">
-                                  +{i.selectedAddons.map((a) => a.name).join(', ')}
+                      {/* Items List with Dish Images */}
+                      <div className="space-y-2">
+                        {order.items.map((i) => {
+                          const dishImg = i.menuItem?.image || i.menuItem?.images?.[0];
+
+                          return (
+                            <div
+                              key={i.cartItemId}
+                              className="p-2.5 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center justify-between gap-3"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {dishImg ? (
+                                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                                    <img
+                                      src={dishImg}
+                                      alt={i.menuItem?.name || 'Dish'}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="w-12 h-12 rounded-xl bg-orange-50 text-[#FF4B26] flex items-center justify-center shrink-0 border border-orange-100">
+                                    <Utensils className="w-5 h-5" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="text-xs font-extrabold text-gray-900 truncate">
+                                    <span className="text-[#FF4B26] font-black">{i.quantity}x</span> {i.menuItem?.name}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                    {i.selectedSpiceLevel && (
+                                      <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.2 rounded border border-red-100">
+                                        🌶️ {i.selectedSpiceLevel}
+                                      </span>
+                                    )}
+                                    {i.selectedTemperature && (
+                                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100">
+                                        🥩 {i.selectedTemperature}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {i.selectedAddons && i.selectedAddons.length > 0 && (
+                                    <div className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
+                                      +{i.selectedAddons.map((a) => a.name).join(', ')}
+                                    </div>
+                                  )}
+                                  {i.specialInstructions && (
+                                    <div className="text-[10px] italic text-[#FF4B26] font-semibold truncate mt-0.5">
+                                      Note: "{i.specialInstructions}"
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                              {i.specialInstructions && (
-                                <div className="text-[11px] italic text-orange-600 pl-4">
-                                  Note: "{i.specialInstructions}"
-                                </div>
-                              )}
+                              </div>
+
+                              <span className="font-mono text-xs font-bold text-gray-900 shrink-0 tabular-nums">
+                                {formatPrice(i.itemTotal)}
+                              </span>
                             </div>
-                            <span className="font-mono font-semibold">{formatPrice(i.itemTotal)}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      {/* Payment & WhatsApp Dispatch Button */}
-                      <div className="p-2.5 bg-gray-50 rounded-2xl text-[11px] text-gray-600 flex items-center justify-between gap-2">
+                      {/* Payment, Direct Call & WhatsApp Dispatch */}
+                      <div className="p-3 bg-gray-50 rounded-2xl text-[11px] text-gray-600 flex flex-wrap items-center justify-between gap-2.5">
                         <div>
                           <span>Payment: <strong className="text-gray-900">{order.paymentMethod}</strong></span>
                           {order.paymentNumber && <span className="font-mono font-bold block text-gray-700">MoMo: {order.paymentNumber}</span>}
                         </div>
 
-                        {/* WhatsApp Dispatch Link */}
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-colors shrink-0"
-                          title="Open WhatsApp order slip"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </a>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Call Customer Button */}
+                          {order.customerPhone && (
+                            <a
+                              href={`tel:${order.customerPhone}`}
+                              className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-[#048747] border border-emerald-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer active:scale-95"
+                              title="Call customer directly"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-[#06C167]" />
+                              <span>Call Customer</span>
+                            </a>
+                          )}
+
+                          {/* WhatsApp Dispatch Link */}
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer active:scale-95"
+                            title="Open WhatsApp order slip"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
                       </div>
 
                       {/* Order Action Progression Buttons */}
@@ -909,98 +895,6 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Changes</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* TAB 4: TWILIO & WHATSAPP NOTIFICATIONS */}
-        {activeTab === 'notifications' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xs space-y-6 max-w-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div>
-                <h3 className="text-lg font-extrabold text-[#111827]">
-                  Twilio WhatsApp & SMS Alert Gateway
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Automatically ping kitchen managers & riders via WhatsApp when new orders arrive
-                </p>
-              </div>
-            </div>
-
-            {testAlertStatus && (
-              <div className="p-3.5 bg-orange-50 border border-orange-200 text-[#FF4B26] text-xs font-bold rounded-2xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                <span>{testAlertStatus}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveTwilio} className="space-y-4 text-xs">
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                <div className="font-bold text-gray-900">How WhatsApp Alerts Work:</div>
-                <p className="text-gray-600 leading-relaxed">
-                  1. When a customer orders, the KDS sounds an instant Web Audio chime.<br />
-                  2. A pre-formatted WhatsApp order slip is created with customer name, items, Monrovia address & MoMo payment.<br />
-                  3. Direct 1-tap WhatsApp button dispatches to WhatsApp Web/App, or Twilio REST API automatically pushes the template.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700">Kitchen Manager WhatsApp Dispatch Number</label>
-                <input
-                  type="text"
-                  value={twilioConfig.targetWhatsAppNumber || ''}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, targetWhatsAppNumber: e.target.value })}
-                  placeholder="+231 886 554 123"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={twilioConfig.enableWhatsApp}
-                    onChange={(e) => setTwilioConfig({ ...twilioConfig, enableWhatsApp: e.target.checked })}
-                    className="rounded text-[#FF4B26] focus:ring-[#FF4B26]"
-                  />
-                  <div>
-                    <span className="font-bold text-gray-900 block">WhatsApp Order Alerts</span>
-                    <span className="text-[10px] text-gray-500">Send WhatsApp slips on order placement</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={twilioConfig.enableSms}
-                    onChange={(e) => setTwilioConfig({ ...twilioConfig, enableSms: e.target.checked })}
-                    className="rounded text-[#FF4B26] focus:ring-[#FF4B26]"
-                  />
-                  <div>
-                    <span className="font-bold text-gray-900 block">SMS Notifications</span>
-                    <span className="text-[10px] text-gray-500">Send SMS confirmation to customers</span>
-                  </div>
-                </label>
-              </div>
-
-              <div className="pt-2 flex flex-wrap gap-2 justify-between border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleSendTestTwilio}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Test Alert Now</span>
-                </button>
-
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white font-extrabold rounded-xl shadow-md flex items-center gap-1.5"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Twilio Gateway</span>
                 </button>
               </div>
             </form>
