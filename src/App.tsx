@@ -205,9 +205,30 @@ export default function App() {
       (snapshot) => {
         const remoteDrivers: DeliveryDriver[] = [];
         snapshot.forEach((docSnap) => {
-          remoteDrivers.push(docSnap.data() as DeliveryDriver);
+          const data = docSnap.data() as DeliveryDriver;
+          if (data) {
+            remoteDrivers.push({
+              ...data,
+              id: data.id || docSnap.id,
+            });
+          }
         });
-        setDrivers(remoteDrivers);
+
+        setDrivers((prev) => {
+          const remoteMap = new Map(remoteDrivers.map((rd) => [rd.id, rd]));
+          const merged = [...remoteDrivers];
+          for (const localD of prev) {
+            if (localD && localD.id && !remoteMap.has(localD.id)) {
+              merged.push(localD);
+            }
+          }
+          try {
+            localStorage.setItem('aura_monrovia_drivers', JSON.stringify(merged));
+          } catch (e) {
+            console.warn('LocalStorage drivers cache error:', e);
+          }
+          return merged;
+        });
       },
       (error) => {
         console.warn('Firestore drivers snapshot notice:', error);

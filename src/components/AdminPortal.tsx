@@ -99,6 +99,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [isOnboardingDriverOpen, setIsOnboardingDriverOpen] = useState(false);
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
+  const [driverPin, setDriverPin] = useState('');
   const [driverVehicleType, setDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [driverPlate, setDriverPlate] = useState('');
   const [driverBaseZone, setDriverBaseZone] = useState<string>('Sinkor');
@@ -110,6 +111,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [editingDriver, setEditingDriver] = useState<DeliveryDriver | null>(null);
   const [editDriverName, setEditDriverName] = useState('');
   const [editDriverPhone, setEditDriverPhone] = useState('');
+  const [editDriverPin, setEditDriverPin] = useState('');
   const [editDriverVehicleType, setEditDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [editDriverPlate, setEditDriverPlate] = useState('');
   const [editDriverBaseZone, setEditDriverBaseZone] = useState<string>('Sinkor');
@@ -208,11 +210,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   });
 
   const filteredDrivers = drivers.filter((d) => {
+    if (!d) return false;
+    const name = (d.name || '').toLowerCase();
+    const phone = (d.phone || '');
+    const baseZone = (d.baseZone || '').toLowerCase();
+    const vehicleType = (d.vehicleType || '').toLowerCase();
+    const plateNumber = (d.plateNumber || '').toLowerCase();
+    const search = (searchDriver || '').toLowerCase().trim();
+
     const matchesSearch = 
-      d.name.toLowerCase().includes(searchDriver.toLowerCase()) ||
-      d.phone.includes(searchDriver) ||
-      d.baseZone.toLowerCase().includes(searchDriver.toLowerCase()) ||
-      d.vehicleType.toLowerCase().includes(searchDriver.toLowerCase());
+      !search ||
+      name.includes(search) ||
+      phone.includes(search) ||
+      baseZone.includes(search) ||
+      vehicleType.includes(search) ||
+      plateNumber.includes(search);
     
     if (!matchesSearch) return false;
 
@@ -292,6 +304,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       baseZone: driverBaseZone,
       momoNumber: driverMomoNumber.trim() || driverPhone.trim(),
       momoProvider: driverMomoProvider,
+      driverPin: driverPin.trim() || '1234',
       rating: 5.0,
       totalDeliveries: 0,
       earningsTodayUsd: 0,
@@ -313,6 +326,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setIsOnboardingDriverOpen(false);
     setDriverName('');
     setDriverPhone('');
+    setDriverPin('');
     setDriverPlate('');
     setDriverMomoNumber('');
   };
@@ -322,6 +336,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setEditingDriver(driver);
     setEditDriverName(driver.name);
     setEditDriverPhone(driver.phone);
+    setEditDriverPin(driver.driverPin || '');
     setEditDriverVehicleType(driver.vehicleType);
     setEditDriverPlate(driver.plateNumber || '');
     setEditDriverBaseZone(driver.baseZone);
@@ -342,6 +357,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       ...editingDriver,
       name: editDriverName.trim(),
       phone: editDriverPhone.trim(),
+      driverPin: editDriverPin.trim() || undefined,
       vehicleType: editDriverVehicleType,
       plateNumber: editDriverPlate.trim() || undefined,
       baseZone: editDriverBaseZone,
@@ -919,10 +935,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                 <Bike className="w-4 h-4" />
                               </div>
                               <div>
-                                <div className="font-extrabold text-gray-900">{d.name}</div>
+                                <div className="font-extrabold text-gray-900">{d.name || 'Courier'}</div>
                                 <div className="text-[10px] text-amber-500 font-bold flex items-center gap-0.5">
                                   <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                  <span>{d.rating.toFixed(1)} rating</span>
+                                  <span>{(d.rating || 5.0).toFixed(1)} rating</span>
                                 </div>
                               </div>
                             </td>
@@ -949,23 +965,28 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             </td>
 
                             <td className="p-3 sm:p-4">
-                              <div className="font-semibold">{d.vehicleType}</div>
+                              <div className="font-semibold">{d.vehicleType || 'Motorbike'}</div>
                               <div className="text-[10px] text-gray-400 font-mono">{d.plateNumber || 'N/A'}</div>
                             </td>
 
                             <td className="p-3 sm:p-4 font-mono text-[11px]">
-                              <div>{d.phone}</div>
+                              <div className="font-bold text-gray-900">{d.phone}</div>
                               <div className="text-[10px] text-emerald-600 font-bold uppercase">
-                                {d.momoProvider} MoMo: {d.momoNumber || d.phone}
+                                {d.momoProvider || 'mtn'} MoMo: {d.momoNumber || d.phone}
                               </div>
+                              {d.driverPin && (
+                                <div className="text-[10px] text-gray-500 font-mono">
+                                  PIN: <span className="font-bold text-gray-800">{d.driverPin}</span>
+                                </div>
+                              )}
                             </td>
 
                             <td className="p-3 sm:p-4 text-[11px] font-semibold">
-                              {d.baseZone.split(' ')[0]}
+                              {(d.baseZone || 'Monrovia').split(' ')[0]}
                             </td>
 
                             <td className="p-3 sm:p-4 font-mono font-bold">
-                              <div>{d.totalDeliveries} trips</div>
+                              <div>{d.totalDeliveries || 0} trips</div>
                               <div className="text-[10px] text-gray-400">${(d.earningsTodayUsd || 0).toFixed(2)} today</div>
                             </td>
 
@@ -1335,7 +1356,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Phone Number *</label>
                   <input
@@ -1345,6 +1366,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     onChange={(e) => setDriverPhone(e.target.value)}
                     placeholder="0886 123 456"
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Security PIN *</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={driverPin}
+                    onChange={(e) => setDriverPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="4-6 digit PIN"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
 
@@ -1489,7 +1522,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Phone Number *</label>
                   <input
@@ -1498,6 +1531,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     value={editDriverPhone}
                     onChange={(e) => setEditDriverPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-700">Security PIN</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={editDriverPin}
+                    onChange={(e) => setEditDriverPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="4-6 digit PIN"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
 
@@ -1678,33 +1723,43 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             </div>
 
-            {/* Contact & MoMo Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 bg-gray-50 rounded-2xl space-y-2 border border-gray-100">
+            {/* Contact, MoMo & PIN Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3.5 bg-gray-50 rounded-2xl space-y-1.5 border border-gray-100">
                 <span className="font-extrabold text-gray-900 flex items-center gap-1.5">
                   <Phone className="w-4 h-4 text-[#06C167]" />
                   <span>Direct Contact</span>
                 </span>
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-gray-800">{selectedDriverForDetails.phone}</span>
+                  <span className="font-mono text-xs font-bold text-gray-800">{selectedDriverForDetails.phone}</span>
                   <a
                     href={`tel:${selectedDriverForDetails.phone}`}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1"
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[10px] flex items-center gap-1"
                   >
-                    <Phone className="w-3 h-3" />
+                    <Phone className="w-2.5 h-2.5" />
                     <span>Call</span>
                   </a>
                 </div>
               </div>
 
-              <div className="p-4 bg-emerald-50/50 rounded-2xl space-y-2 border border-emerald-100">
+              <div className="p-3.5 bg-emerald-50/50 rounded-2xl space-y-1.5 border border-emerald-100">
                 <span className="font-extrabold text-emerald-900 flex items-center gap-1.5">
                   <Wallet className="w-4 h-4 text-[#06C167]" />
-                  <span>MoMo Payout Account</span>
+                  <span>MoMo Account</span>
                 </span>
-                <div className="font-mono text-sm font-bold text-gray-900">
+                <div className="font-mono text-xs font-bold text-gray-900 truncate">
                   {selectedDriverForDetails.momoNumber || selectedDriverForDetails.phone}
-                  <span className="ml-2 text-xs font-sans text-emerald-700 font-bold">({selectedDriverForDetails.momoProvider})</span>
+                  <span className="ml-1 text-[10px] font-sans text-emerald-700 font-bold">({selectedDriverForDetails.momoProvider})</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-amber-50/50 rounded-2xl space-y-1.5 border border-amber-200">
+                <span className="font-extrabold text-amber-900 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>Security PIN</span>
+                </span>
+                <div className="font-mono text-xs font-bold text-amber-950 tracking-wider">
+                  {selectedDriverForDetails.driverPin || 'None (1234)'}
                 </div>
               </div>
             </div>
