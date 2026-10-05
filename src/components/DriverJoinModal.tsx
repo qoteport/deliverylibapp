@@ -314,59 +314,23 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               />
             </div>
 
-            {/* MoMo Payout Number & Network */}
-            <div className="space-y-2">
-              <div className="space-y-1.5">
-                <label className="font-bold text-gray-700 flex items-center justify-between">
-                  <span>MoMo / Orange Money Payout Number *</span>
-                  <span className="text-[10px] text-gray-400 font-normal">Auto-filled from phone</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={momoNumber}
-                  onChange={(e) => {
-                    setMomoNumber(e.target.value);
-                    setIsMomoNumberManuallyEdited(true);
-                  }}
-                  placeholder="e.g. 0886991223"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#06C167] focus:outline-none focus:border-[#06C167]"
-                />
-              </div>
-
-              {/* Supported MoMo Network */}
-              <div className="space-y-1 mt-2">
-                <label className="font-bold text-gray-700 text-[11px] block">
-                  Supported MoMo Network
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMomoProvider('mtn')}
-                    className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      momoProvider === 'mtn'
-                        ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-xs'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span>Lonestar MTN (088 / 055)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMomoProvider('orange')}
-                    className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      momoProvider === 'orange'
-                        ? 'border-orange-500 bg-orange-50 text-orange-900 shadow-xs'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-[#FF7A00]" />
-                    <span>Orange Money (077)</span>
-                  </button>
-                </div>
-              </div>
+            {/* MoMo Payout Number */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-gray-700 flex items-center justify-between">
+                <span>MoMo / Orange Money Payout Number *</span>
+                <span className="text-[10px] text-gray-400 font-normal">Auto-filled from phone</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={momoNumber}
+                onChange={(e) => {
+                  setMomoNumber(e.target.value);
+                  setIsMomoNumberManuallyEdited(true);
+                }}
+                placeholder="e.g. 0886991223"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#06C167] focus:outline-none focus:border-[#06C167]"
+              />
             </div>
 
             {/* Submit Button */}
