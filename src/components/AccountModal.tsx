@@ -90,14 +90,15 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   const hasLocationSet = Boolean(user.location && user.location !== 'all' && (user.address || user.location));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade">
       <div 
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center font-black shadow-md shadow-[#06C167]/20">
               <User className="w-5 h-5" />
@@ -115,14 +116,14 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-black rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-2 text-gray-400 hover:text-black rounded-full hover:bg-gray-100 min-h-[38px] min-w-[38px] flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-5 text-xs">
+        <div className="p-5 sm:p-6 pb-[calc(1.75rem+var(--sab))] sm:pb-6 overflow-y-auto space-y-5 text-xs">
           
           {/* Success Feedback */}
           {saveSuccess && (

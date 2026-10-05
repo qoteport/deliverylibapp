@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Check, Flame, Clock, ChevronLeft, ChevronRight, Store, ShieldCheck } from 'lucide-react';
+import { X, Plus, Minus, Check, Flame, Clock, Store, ShieldCheck } from 'lucide-react';
 import { MenuItem, SelectedAddon, CartItem, Currency, USD_TO_LRD_RATE, AddonOption, Restaurant } from '../types';
 import { DishIllustration } from './DishIllustration';
 import { RestaurantDetailsModal } from './RestaurantDetailsModal';
@@ -50,6 +50,8 @@ export const DishModal: React.FC<DishModalProps> = ({
   );
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
   const [isRestaurantDetailsOpen, setIsRestaurantDetailsOpen] = useState(false);
 
   const targetRestaurant = restaurants.find(
@@ -66,6 +68,31 @@ export const DishModal: React.FC<DishModalProps> = ({
     : dish.image
     ? [dish.image]
     : [];
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 35;
+
+    if (distance > minSwipeDistance) {
+      // Swiped Left -> Next image
+      setActiveImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
+    } else if (distance < -minSwipeDistance) {
+      // Swiped Right -> Previous image
+      setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   const toggleAddon = (addonId: string, addonName: string, price: number) => {
     setSelectedAddons((prev) => {
@@ -120,7 +147,12 @@ export const DishModal: React.FC<DishModalProps> = ({
           </button>
 
           {allImages.length > 0 ? (
-            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="relative w-full h-full flex items-center justify-center overflow-hidden touch-pan-y select-none"
+            >
               {/* Blurred background backdrop for complete visual coverage */}
               <div 
                 className="absolute inset-0 bg-cover bg-center blur-2xl scale-125 opacity-40 transform pointer-events-none"
@@ -131,48 +163,32 @@ export const DishModal: React.FC<DishModalProps> = ({
               <img
                 src={allImages[activeImageIndex] || allImages[0]}
                 alt={dish.name}
-                className="relative z-10 w-full h-full object-cover object-center transform scale-[1.01] transition-all duration-300"
+                className="relative z-10 w-full h-full object-cover object-center transform scale-[1.01] transition-all duration-300 pointer-events-none"
                 loading="eager"
+                draggable={false}
               />
               
               {/* Subtle top & bottom shadow gradient for depth */}
               <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
+              {/* Swipe Dots Indicator */}
               {allImages.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
-                    }}
-                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all z-20 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-lg absolute left-3 top-1/2 -translate-y-1/2 backdrop-blur-xs cursor-pointer active:scale-95"
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeft className="w-4 h-4 stroke-[3]" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
-                    }}
-                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all z-20 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-lg absolute right-3 top-1/2 -translate-y-1/2 backdrop-blur-xs cursor-pointer active:scale-95"
-                    aria-label="Next image"
-                  >
-                    <ChevronRight className="w-4 h-4 stroke-[3]" />
-                  </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full z-20">
-                    {allImages.map((_, i) => (
-                      <span
-                        key={i}
-                        className={`h-1.5 rounded-full transition-all ${
-                          i === activeImageIndex ? 'bg-white w-5' : 'bg-white/50 w-1.5'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </>
+                <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full z-20 shadow-md">
+                  {allImages.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveImageIndex(i);
+                      }}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                        i === activeImageIndex ? 'bg-white w-5' : 'bg-white/50 w-1.5 hover:bg-white/80'
+                      }`}
+                      aria-label={`Go to slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           ) : (
