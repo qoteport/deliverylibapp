@@ -135,6 +135,7 @@ export interface Restaurant {
   isVerified?: boolean;
   verificationStatus?: 'pending' | 'verified' | 'rejected';
   allowedPhoneNumbers?: string[];
+  kitchenPin?: string;
   tagline: string;
   ownerId?: string;
   ownerEmail?: string;

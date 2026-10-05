@@ -26,6 +26,7 @@ interface HeaderProps {
   activeOrderCount: number;
   onOpenOrderTracker: () => void;
   onOpenLogin: () => void;
+  onOpenAccount?: () => void;
   onOpenRegister?: () => void;
   onOpenAdminPortal: () => void;
   onOpenRestaurantPortal: (restaurantId: string) => void;
@@ -46,12 +47,13 @@ export const Header: React.FC<HeaderProps> = ({
   activeOrderCount,
   onOpenOrderTracker,
   onOpenLogin,
+  onOpenAccount,
   onOpenRegister,
   onOpenAdminPortal,
   onOpenRestaurantPortal,
   onOpenDriverPortal,
 }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const modeIcon = {
     delivery: Bike,
@@ -124,32 +126,27 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{currency}</span>
           </button>
 
-          {/* User Role Quick Access or Sign In (Desktop/Tablet) */}
+          {/* User Account or Sign In */}
           <div className="hidden sm:flex items-center gap-1.5">
             {user ? (
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827]">
-                  <User className="w-3.5 h-3.5 text-[#06C167]" />
-                  <span className="truncate max-w-[110px]">{user.name || user.phone || 'My Account'}</span>
-                </div>
-
-                <button
-                  onClick={logout}
-                  className="p-1.5 text-gray-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-colors cursor-pointer"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={onOpenAccount}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[#111827] rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                title="View My Account"
+              >
+                <User className="w-3.5 h-3.5 text-[#06C167]" />
+                <span>Account</span>
+              </button>
             ) : (
               <button
                 type="button"
                 onClick={onOpenLogin}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#111827] rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-                title="Sign In / Account"
+                title="Sign In"
               >
                 <User className="w-3.5 h-3.5 text-[#06C167]" />
-                <span>Log In</span>
+                <span>Sign In</span>
               </button>
             )}
           </div>

@@ -414,7 +414,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-[#FF4B26]/20 hover:shadow-lg shrink-0"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>+ Add Dish</span>
+              <span>Add Dish</span>
             </button>
           )}
         </div>

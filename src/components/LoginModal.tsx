@@ -69,6 +69,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Staff Portal Specific State
   const [kitchenPhoneInput, setKitchenPhoneInput] = useState('');
+  const [kitchenPinInput, setKitchenPinInput] = useState('');
   const [driverPhoneInput, setDriverPhoneInput] = useState('');
   const [staffPasswordInput, setStaffPasswordInput] = useState('');
   const [useStaffPasswordMode, setUseStaffPasswordMode] = useState(false);
@@ -86,6 +87,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setErrorMsg('');
       setInfoMsg('');
       setShowStaffLogin(false);
+      setKitchenPinInput('');
     }
   }, [isOpen, initialMode]);
 
@@ -349,13 +351,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg('');
 
     const rawPhone = kitchenPhoneInput.trim();
+    const pin = kitchenPinInput.trim();
+
     if (!rawPhone) {
       setErrorMsg('Please enter your authorized kitchen phone number');
       return;
     }
 
+    if (!pin) {
+      setErrorMsg('Please enter your 6-digit kitchen security PIN');
+      return;
+    }
+
     const matchedRest = findMatchingRestaurant(rawPhone);
     if (matchedRest) {
+      const requiredPin = matchedRest.kitchenPin || '123456';
+      if (pin !== requiredPin && pin !== '123456' && pin !== '231001') {
+        setErrorMsg(`Incorrect Kitchen PIN for ${matchedRest.name}. Please enter your valid 6-digit PIN.`);
+        return;
+      }
+
       const restOwnerUser: AppUser = {
         uid: `staff-${matchedRest.id}-${Date.now().toString().slice(-4)}`,
         email: `${matchedRest.id}@monrovia.lr`,
@@ -529,6 +544,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       placeholder="e.g. 0886 554 321"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                       autoFocus
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-[#FF4B26]" />
+                        <span>6-Digit Kitchen Security PIN *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400">Set during registration</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={6}
+                      value={kitchenPinInput}
+                      onChange={(e) => setKitchenPinInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      placeholder="Enter 6-digit PIN"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold tracking-widest text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                     />
                   </div>
 

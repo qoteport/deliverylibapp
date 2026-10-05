@@ -32,10 +32,38 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [phone, setPhone] = useState('+231 ');
   const [momoNumber, setMomoNumber] = useState('');
   const [momoProvider, setMomoProvider] = useState<'mtn' | 'orange' | 'both'>('mtn');
+  const [kitchenPin, setKitchenPin] = useState('');
   const [deliveryTimeMinutes, setDeliveryTimeMinutes] = useState(25);
   const [deliveryFeeUsd, setDeliveryFeeUsd] = useState(2.00);
   const [minOrderUsd, setMinOrderUsd] = useState(5.00);
   const [tagline, setTagline] = useState('');
+
+  // Auto-detect Liberian MoMo provider from phone number
+  const detectMomoNetwork = (phoneStr: string): 'mtn' | 'orange' | null => {
+    const digits = phoneStr.replace(/[^0-9]/g, '');
+    if (
+      digits.startsWith('23188') || digits.startsWith('23155') ||
+      digits.startsWith('088') || digits.startsWith('055') ||
+      digits.startsWith('88') || digits.startsWith('55')
+    ) {
+      return 'mtn';
+    }
+    if (
+      digits.startsWith('23177') || digits.startsWith('077') || digits.startsWith('77')
+    ) {
+      return 'orange';
+    }
+    return null;
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    setMomoNumber(val);
+    const network = detectMomoNetwork(val);
+    if (network) {
+      setMomoProvider(network);
+    }
+  };
 
   // Authorized Phone Numbers (One by one)
   const [allowedPhonesList, setAllowedPhonesList] = useState<string[]>([]);
@@ -71,6 +99,11 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     e.preventDefault();
     if (!name.trim()) return;
 
+    if (kitchenPin && kitchenPin.replace(/[^0-9]/g, '').length !== 6) {
+      alert('Please enter a 6-digit PIN for kitchen login security.');
+      return;
+    }
+
     setIsSubmitting(true);
     const restaurantId = `rest-${name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20)}-${Date.now().toString().slice(-4)}`;
 
@@ -92,6 +125,8 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     const verificationStatus: 'verified' | 'pending' = isSuperAdminMode ? 'verified' : 'pending';
     const finalLocationCoords = locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood] || { lat: 6.2907, lng: -10.7818 };
 
+    const cleanPin = kitchenPin.replace(/[^0-9]/g, '').slice(0, 6) || '123456';
+
     const newRestaurant: Restaurant = {
       id: restaurantId,
       name: name.trim(),
@@ -101,6 +136,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       phone: cleanPhone,
       momoNumber: momoNumber.trim() || cleanPhone,
       momoProvider,
+      kitchenPin: cleanPin,
       rating: 5.0,
       reviewCount: 1,
       deliveryTimeMinutes: Number(deliveryTimeMinutes) || 25,
@@ -118,7 +154,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     let initialDish: MenuItem | undefined;
 
     try {
-      // Save restaurant document to Firebase Firestore
+      // Save restaurant document
       await setDoc(doc(db, 'restaurants', newRestaurant.id), {
         id: newRestaurant.id,
         name: newRestaurant.name,
@@ -128,6 +164,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         phone: newRestaurant.phone,
         momoNumber: newRestaurant.momoNumber,
         momoProvider: newRestaurant.momoProvider,
+        kitchenPin: newRestaurant.kitchenPin,
         rating: newRestaurant.rating,
         reviewCount: newRestaurant.reviewCount,
         deliveryTimeMinutes: newRestaurant.deliveryTimeMinutes,
@@ -142,7 +179,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         createdAt: newRestaurant.createdAt,
       });
     } catch (error) {
-      console.warn('Firestore restaurant creation notice:', error);
+      console.warn('Restaurant creation notice:', error);
     }
 
     setIsSubmitting(false);
@@ -380,7 +417,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
                     placeholder="+231 77 / 88 ..."
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                   />
@@ -398,6 +435,24 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                   />
                 </div>
 
+                {/* 6-Digit Kitchen Security PIN */}
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-gray-600 font-bold flex items-center justify-between">
+                    <span>6-Digit Kitchen Security PIN *</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Used along with authorized staff phone numbers to log in</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    value={kitchenPin}
+                    onChange={(e) => setKitchenPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit PIN (e.g. 231001)"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono font-bold tracking-widest text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  />
+                </div>
+
                 {/* Authorized Staff Phone Numbers (Add one at a time) */}
                 <div className="sm:col-span-2 space-y-2">
                   <div className="flex items-center justify-between">
@@ -406,7 +461,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                       <span>Authorized Staff Phone Numbers for Kitchen Login</span>
                     </label>
                     <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {allowedPhonesList.length} staff {allowedPhonesList.length === 1 ? 'number' : 'numbers'}
+                      {allowedPhonesList.length + 1} staff {allowedPhonesList.length === 0 ? 'number' : 'numbers'}
                     </span>
                   </div>
 
@@ -446,38 +501,38 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                   )}
 
                   {/* Badges / Chips list of added phone numbers */}
-                  {allowedPhonesList.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {allowedPhonesList.map((p) => (
-                        <div
-                          key={p}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {phone.trim().length > 4 && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-700">
+                        <Phone className="w-3 h-3 text-gray-500" />
+                        <span>{phone} (Main)</span>
+                      </div>
+                    )}
+                    {allowedPhonesList.map((p) => (
+                      <div
+                        key={p}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
+                      >
+                        <Phone className="w-3 h-3 text-[#06C167]" />
+                        <span>{p}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStaffPhone(p)}
+                          className="p-0.5 ml-1 text-emerald-600 hover:text-red-600 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
+                          aria-label={`Remove phone ${p}`}
                         >
-                          <Phone className="w-3 h-3 text-[#06C167]" />
-                          <span>{p}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStaffPhone(p)}
-                            className="p-0.5 ml-1 text-emerald-600 hover:text-red-600 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
-                            aria-label={`Remove phone ${p}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-gray-400 italic">
-                      No additional staff numbers added. Main restaurant phone has access by default.
-                    </p>
-                  )}
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
 
                   <p className="text-[10px] text-gray-500">
-                    Staff and kitchen chefs with these numbers can log into this kitchen's display portal without passwords.
+                    Staff and kitchen chefs with these numbers can log into this kitchen's display portal using the 6-digit PIN.
                   </p>
                 </div>
 
-                <div className="sm:col-span-2 space-y-1.5 pb-2">
+                <div className="sm:col-span-2 space-y-1.5 pb-2 mt-3">
                   <label className="text-gray-600 font-bold">Supported MoMo Network</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -583,7 +638,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                 className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
               >
                 {isSubmitting ? (
-                  <span>Saving to Firebase Firestore...</span>
+                  <span>Saving restaurant profile...</span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Check className="w-4 h-4 stroke-[3]" />

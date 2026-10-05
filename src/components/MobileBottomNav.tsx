@@ -13,6 +13,7 @@ interface MobileBottomNavProps {
   onOpenCart: () => void;
   onFocusSearch: () => void;
   onOpenLogin: () => void;
+  onOpenAccount?: () => void;
   currency: Currency;
 }
 
@@ -26,6 +27,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenCart,
   onFocusSearch,
   onOpenLogin,
+  onOpenAccount,
   currency,
 }) => {
   const { user } = useAuth();
@@ -128,7 +130,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         {/* Profile / Account Tab */}
         <button
-          onClick={onOpenLogin}
+          onClick={() => {
+            if (user && onOpenAccount) {
+              onOpenAccount();
+            } else {
+              onOpenLogin();
+            }
+          }}
           className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-gray-400 hover:text-gray-700 transition-colors"
         >
           <User className="w-5 h-5 stroke-[1.8]" />

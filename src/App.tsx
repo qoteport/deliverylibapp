@@ -22,6 +22,7 @@ import { RestaurantBar } from './components/RestaurantBar';
 import { PopularHorizontalBar } from './components/PopularHorizontalBar';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { LoginModal } from './components/LoginModal';
+import { AccountModal } from './components/AccountModal';
 import { FloatingOrderTrackerFab } from './components/FloatingOrderTrackerFab';
 import { MenuItem, CartItem, Order, DiningMode, Currency, Restaurant, DeliveryDriver, MONROVIA_NEIGHBORHOOD_COORDS } from './types';
 import { MENU_ITEMS } from './data/menuData';
@@ -59,6 +60,7 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [isDiningModeOpen, setIsDiningModeOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
   const [isOrderTrackerOpen, setIsOrderTrackerOpen] = useState(false);
 
@@ -853,6 +855,7 @@ export default function App() {
           setAuthModalMode('login');
           setIsLoginOpen(true);
         }}
+        onOpenAccount={() => setIsAccountOpen(true)}
         onOpenRegister={() => {
           setAuthModalMode('register');
           setIsLoginOpen(true);
@@ -939,6 +942,7 @@ export default function App() {
           setAuthModalMode('login');
           setIsLoginOpen(true);
         }}
+        onOpenAccount={() => setIsAccountOpen(true)}
         currency={currency}
       />
 
@@ -1041,6 +1045,27 @@ export default function App() {
         onClose={() => setIsDiningModeOpen(false)}
         currentMode={diningMode}
         onSelectMode={(mode) => setDiningMode(mode)}
+      />
+
+      {/* Customer Account & Saved Delivery Location Modal */}
+      <AccountModal
+        isOpen={isAccountOpen}
+        onClose={() => setIsAccountOpen(false)}
+        onOpenOrders={() => {
+          setIsAccountOpen(false);
+          if (activeOrders.length > 0) {
+            setActiveTrackingOrder(activeOrders[0]);
+            setIsOrderTrackerOpen(true);
+          } else {
+            setIsFavoritesOpen(true);
+          }
+        }}
+        onOpenFavorites={() => {
+          setIsAccountOpen(false);
+          setIsFavoritesOpen(true);
+        }}
+        favoritesCount={favoriteIds.length}
+        activeOrderCount={activeOrders.length}
       />
 
       {/* Full Restaurant Onboarding Modal */}
