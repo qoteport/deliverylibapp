@@ -244,13 +244,33 @@ export default function App() {
       (snapshot) => {
         const remoteOrders: Order[] = [];
         snapshot.forEach((docSnap) => {
-          remoteOrders.push(docSnap.data() as Order);
+          const data = docSnap.data() as Order;
+          if (data) {
+            remoteOrders.push({
+              ...data,
+              id: data.id || docSnap.id,
+            });
+          }
         });
-        setOrders(
-          remoteOrders.sort(
+
+        setOrders((prev) => {
+          const remoteMap = new Map(remoteOrders.map((ro) => [ro.id, ro]));
+          const merged = [...remoteOrders];
+          for (const localO of prev) {
+            if (localO && localO.id && !remoteMap.has(localO.id)) {
+              merged.push(localO);
+            }
+          }
+          const sorted = merged.sort(
             (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-          )
-        );
+          );
+          try {
+            localStorage.setItem('aura_orders', JSON.stringify(sorted));
+          } catch (e) {
+            console.warn('LocalStorage orders cache error:', e);
+          }
+          return sorted;
+        });
       },
       (error) => {
         console.warn('Firestore orders snapshot notice:', error);
@@ -658,7 +678,7 @@ export default function App() {
     }
   };
 
-  const handleDriverRegistered = (newDriver: DeliveryDriver) => {
+  const handleDriverRegistered = async (newDriver: DeliveryDriver) => {
     setDrivers((prev) => {
       const exists = prev.some((d) => d.id === newDriver.id);
       const updated = exists ? prev.map((d) => (d.id === newDriver.id ? newDriver : d)) : [newDriver, ...prev];
@@ -670,6 +690,11 @@ export default function App() {
       return updated;
     });
     showToast(`Welcome ${newDriver.name}! Driver profile created.`);
+    try {
+      await setDoc(doc(db, 'drivers', newDriver.id), sanitizeForFirestore(newDriver), { merge: true });
+    } catch (e) {
+      console.warn('Firestore driver write notice:', e);
+    }
   };
 
   const handleAddMenuItem = async (item: MenuItem) => {

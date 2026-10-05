@@ -5,18 +5,10 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// CRITICAL: Must use firestoreDatabaseId from firebase-applet-config.json
-// Use experimentalAutoDetectLongPolling & persistentLocalCache to prevent WebChannel stream CORS issues in sandboxes/iframes
-export const db = initializeFirestore(
-  app,
-  {
-    experimentalAutoDetectLongPolling: true,
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  },
-  firebaseConfig.firestoreDatabaseId
-);
+// Initialize Firestore with auto-detect long polling for reliable real-time updates
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 export const auth = getAuth(app);
 
 // Operation types for error handling

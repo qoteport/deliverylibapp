@@ -4,6 +4,7 @@ import { DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS } 
 import { CustomDropdown } from './CustomDropdown';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
+import { sanitizeForFirestore } from '../utils/cleanData';
 
 interface DriverJoinModalProps {
   isOpen: boolean;
@@ -114,14 +115,12 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
     setIsSuccess(true);
     onDriverRegistered(newDriver);
 
-    // Sync to Firestore in background without blocking the UI
+    // Sync to Firestore
     try {
-      await Promise.race([
-        setDoc(doc(db, 'drivers', newDriver.id), newDriver),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore write timeout')), 3500))
-      ]);
+      await setDoc(doc(db, 'drivers', newDriver.id), sanitizeForFirestore(newDriver), { merge: true });
+      console.log('Driver successfully registered to Firestore:', newDriver.id);
     } catch (err) {
-      console.warn('Firestore driver background sync notice:', err);
+      console.warn('Firestore driver write notice:', err);
     }
   };
 
