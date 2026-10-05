@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -98,6 +98,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
 
+  const [orderFilterTab, setOrderFilterTab] = useState<'live' | 'delivered' | 'cancelled' | 'all'>('live');
+
   const restaurantOrders = orders.filter((o) => {
     if (!restaurant) return false;
     const currentRestId = (restaurant.id || '').trim().toLowerCase();
@@ -109,7 +111,22 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     if (o.items?.some((i) => i.menuItem?.provenance && i.menuItem.provenance.trim().toLowerCase() === currentRestName)) return true;
     return false;
   });
-  const activeOrders = restaurantOrders.filter((o) => o.status !== 'completed');
+
+  const liveOrders = restaurantOrders.filter(
+    (o) => o.status !== 'completed' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'rejected'
+  );
+  const deliveredOrders = restaurantOrders.filter(
+    (o) => o.status === 'completed' || o.status === 'delivered'
+  );
+  const cancelledOrders = restaurantOrders.filter(
+    (o) => o.status === 'cancelled' || o.status === 'rejected'
+  );
+
+  const displayedOrders =
+    orderFilterTab === 'live' ? liveOrders :
+    orderFilterTab === 'delivered' ? deliveredOrders :
+    orderFilterTab === 'cancelled' ? cancelledOrders :
+    restaurantOrders;
 
   useEffect(() => {
     const handlePrime = () => primeAudioContext();
@@ -117,14 +134,14 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     return () => window.removeEventListener('click', handlePrime);
   }, []);
 
-  // Play audio chime and dispatch browser notification when orders count increases
-  const [prevOrdersCount, setPrevOrdersCount] = useState(restaurantOrders.length);
+  // Play audio chime and dispatch browser notification when live orders count increases
+  const [prevOrdersCount, setPrevOrdersCount] = useState(liveOrders.length);
   useEffect(() => {
-    if (restaurantOrders.length > prevOrdersCount) {
+    if (liveOrders.length > prevOrdersCount) {
       if (soundEnabled) {
         playOrderAlertSound();
       }
-      const newestOrder = restaurantOrders[0];
+      const newestOrder = liveOrders[0];
       if (newestOrder) {
         sendBrowserNotification({
           title: `🔔 New Kitchen Order #${newestOrder.id}`,
@@ -132,9 +149,11 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
           tag: `kitchen-order-${newestOrder.id}`,
         });
       }
-      setPrevOrdersCount(restaurantOrders.length);
+      setPrevOrdersCount(liveOrders.length);
+    } else if (liveOrders.length < prevOrdersCount) {
+      setPrevOrdersCount(liveOrders.length);
     }
-  }, [restaurantOrders.length, prevOrdersCount, soundEnabled, restaurantOrders]);
+  }, [liveOrders.length, prevOrdersCount, soundEnabled, liveOrders]);
 
   const formatPrice = (usd: number) => {
     if (currency === 'LRD') {
@@ -375,7 +394,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                   : 'text-gray-600 hover:text-black hover:bg-gray-100'
               }`}
             >
-              Live Kitchen Orders ({activeOrders.length})
+              Live Kitchen Orders ({liveOrders.length})
             </button>
 
             <button
@@ -423,27 +442,123 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         {activeTab === 'orders' && (
           <div className="space-y-4">
             
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            {/* Live stream status */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-500">
               <span className="flex items-center gap-1.5">
                 <Bell className="w-3.5 h-3.5 text-[#FF4B26]" />
                 <span>Live orders stream with instant WhatsApp/Call dispatch &amp; audio alerts</span>
               </span>
-              <span className="font-bold text-gray-900">{activeOrders.length} orders cooking</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900 bg-orange-50 text-[#FF4B26] px-2.5 py-1 rounded-full border border-orange-100">
+                  🔥 {liveOrders.length} Cooking &amp; Active
+                </span>
+              </div>
             </div>
 
-            {restaurantOrders.length === 0 ? (
-              <div className="bg-white p-16 text-center rounded-3xl border border-gray-100 shadow-xs space-y-2">
-                <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF4B26] flex items-center justify-center mx-auto mb-2">
-                  <Flame className="w-7 h-7" />
+            {/* Sub-Tabs: Live Orders, Delivered, Cancelled, All */}
+            <div className="flex items-center gap-1.5 p-1 bg-gray-100/90 rounded-2xl w-full sm:w-fit overflow-x-auto border border-gray-200/60">
+              <button
+                type="button"
+                onClick={() => setOrderFilterTab('live')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  orderFilterTab === 'live'
+                    ? 'bg-white text-gray-900 shadow-xs border border-gray-100'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Flame className={`w-3.5 h-3.5 ${orderFilterTab === 'live' ? 'text-[#FF4B26]' : 'text-gray-400'}`} />
+                <span>Live Orders</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  orderFilterTab === 'live' ? 'bg-orange-100 text-[#FF4B26]' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {liveOrders.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderFilterTab('delivered')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  orderFilterTab === 'delivered'
+                    ? 'bg-white text-gray-900 shadow-xs border border-gray-100'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <CheckCircle2 className={`w-3.5 h-3.5 ${orderFilterTab === 'delivered' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <span>Delivered</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  orderFilterTab === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {deliveredOrders.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderFilterTab('cancelled')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  orderFilterTab === 'cancelled'
+                    ? 'bg-white text-gray-900 shadow-xs border border-gray-100'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <XCircle className={`w-3.5 h-3.5 ${orderFilterTab === 'cancelled' ? 'text-red-500' : 'text-gray-400'}`} />
+                <span>Cancelled</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  orderFilterTab === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {cancelledOrders.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderFilterTab('all')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  orderFilterTab === 'all'
+                    ? 'bg-white text-gray-900 shadow-xs border border-gray-100'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <FileText className={`w-3.5 h-3.5 ${orderFilterTab === 'all' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span>All Orders</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  orderFilterTab === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {restaurantOrders.length}
+                </span>
+              </button>
+            </div>
+
+            {displayedOrders.length === 0 ? (
+              <div className="bg-white p-14 text-center rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                  orderFilterTab === 'live' ? 'bg-orange-50 text-[#FF4B26]' :
+                  orderFilterTab === 'delivered' ? 'bg-emerald-50 text-emerald-600' :
+                  orderFilterTab === 'cancelled' ? 'bg-red-50 text-red-500' :
+                  'bg-gray-50 text-gray-500'
+                }`}>
+                  {orderFilterTab === 'live' && <Flame className="w-7 h-7" />}
+                  {orderFilterTab === 'delivered' && <CheckCircle2 className="w-7 h-7" />}
+                  {orderFilterTab === 'cancelled' && <XCircle className="w-7 h-7" />}
+                  {orderFilterTab === 'all' && <FileText className="w-7 h-7" />}
                 </div>
-                <h3 className="text-base font-extrabold text-[#111827]">No active orders right now</h3>
+                <h3 className="text-base font-extrabold text-[#111827]">
+                  {orderFilterTab === 'live' && 'No live kitchen orders right now'}
+                  {orderFilterTab === 'delivered' && 'No delivered orders yet'}
+                  {orderFilterTab === 'cancelled' && 'No cancelled orders'}
+                  {orderFilterTab === 'all' && 'No orders recorded yet'}
+                </h3>
                 <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                  When a customer orders from Monrovia, the kitchen chime will sound and the order slip will appear here in real time.
+                  {orderFilterTab === 'live' && 'When a customer orders from Monrovia, the kitchen chime will sound and the order slip will appear here in real time.'}
+                  {orderFilterTab === 'delivered' && 'Orders completed and delivered will appear here for your kitchen records.'}
+                  {orderFilterTab === 'cancelled' && 'Declined or customer-cancelled orders will be archived here.'}
+                  {orderFilterTab === 'all' && 'All incoming orders for your kitchen will be logged here.'}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {restaurantOrders.map((order) => {
+                {displayedOrders.map((order) => {
                   const isDone = order.status === 'completed';
                   const waUrl = getWhatsAppDispatchUrl(
                     order.customerPhone,
