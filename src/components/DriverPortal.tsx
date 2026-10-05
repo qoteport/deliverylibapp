@@ -29,7 +29,12 @@ interface DriverPortalProps {
   driver: DeliveryDriver;
   orders: Order[];
   onExitPortal: () => void;
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onUpdateOrderStatus: (
+    orderId: string, 
+    status: Order['status'], 
+    cancelledBy?: 'customer' | 'restaurant' | 'admin', 
+    cancellationReason?: string
+  ) => void;
   onUpdateDriver: (driver: DeliveryDriver) => void;
   onDriverRejectOrder: (orderId: string, driverId: string) => void;
   currency: Currency;

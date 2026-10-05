@@ -7,7 +7,12 @@ interface OrderTrackerModalProps {
   isOpen?: boolean;
   order: Order | null;
   onClose: () => void;
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onUpdateOrderStatus: (
+    orderId: string, 
+    status: Order['status'], 
+    cancelledBy?: 'customer' | 'restaurant' | 'admin', 
+    cancellationReason?: string
+  ) => void;
   currency: Currency;
   restaurants?: Restaurant[];
 }
@@ -39,7 +44,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
 
   const handleCancelOrder = async () => {
     setIsCancelling(true);
-    await onUpdateOrderStatus(order.id, 'cancelled');
+    await onUpdateOrderStatus(order.id, 'cancelled', 'customer', 'Cancelled by customer before kitchen confirmation');
     setIsCancelling(false);
     setShowCancelConfirm(false);
   };
@@ -173,17 +178,31 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
           
           {/* Live Countdown / Status Card */}
           {isCancelled ? (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-gray-900 to-red-950 text-white flex items-center justify-between shadow-lg">
+            <div className={`p-4 rounded-2xl flex items-center justify-between shadow-lg ${
+              order.cancelledBy === 'restaurant'
+                ? 'bg-gradient-to-r from-gray-900 via-amber-950 to-red-950 text-white border border-amber-500/30'
+                : 'bg-gradient-to-r from-gray-900 to-red-950 text-white'
+            }`}>
               <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-wider text-red-300 flex items-center gap-1.5">
-                  <XCircle className="w-3.5 h-3.5" />
-                  <span>Order Cancelled</span>
+                <div className="text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-amber-300">
+                  <XCircle className="w-3.5 h-3.5 text-red-400" />
+                  <span>
+                    {order.cancelledBy === 'restaurant'
+                      ? 'Declined by Restaurant'
+                      : order.cancelledBy === 'customer'
+                        ? 'Cancelled by You'
+                        : 'Order Cancelled'}
+                  </span>
                 </div>
                 <div className="font-mono text-xl font-black mt-0.5 text-white">
-                  Cancelled
+                  {order.cancelledBy === 'restaurant' ? 'Declined by Kitchen' : 'Order Cancelled'}
                 </div>
                 <div className="text-xs text-gray-300 font-medium">
-                  This order was cancelled before kitchen confirmation.
+                  {order.cancelledBy === 'restaurant'
+                    ? `${spotName} could not accept this order (${order.cancellationReason || 'Kitchen busy / item out of stock'}). Please choose another spot.`
+                    : order.cancelledBy === 'customer'
+                      ? 'You cancelled this order before kitchen confirmation. No charges were made.'
+                      : (order.cancellationReason || 'This order was cancelled by dispatch administration.')}
                 </div>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center shrink-0">
@@ -313,16 +332,34 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
             </div>
 
             {isCancelled ? (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0">
+              <div className={`p-3.5 rounded-2xl flex items-center gap-3 border ${
+                order.cancelledBy === 'restaurant'
+                  ? 'bg-amber-50/80 border-amber-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 ${
+                  order.cancelledBy === 'restaurant' ? 'bg-amber-600' : 'bg-red-600'
+                }`}>
                   <XCircle className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-extrabold text-red-900">
-                    Order Cancelled by Customer
+                  <div className={`text-xs font-extrabold ${
+                    order.cancelledBy === 'restaurant' ? 'text-amber-900' : 'text-red-900'
+                  }`}>
+                    {order.cancelledBy === 'restaurant'
+                      ? `Declined by ${spotName}`
+                      : order.cancelledBy === 'customer'
+                        ? 'Cancelled by Customer'
+                        : 'Cancelled by Dispatch'}
                   </div>
-                  <div className="text-[11px] text-red-700">
-                    Cancelled prior to restaurant acceptance.
+                  <div className={`text-[11px] ${
+                    order.cancelledBy === 'restaurant' ? 'text-amber-700' : 'text-red-700'
+                  }`}>
+                    {order.cancelledBy === 'restaurant'
+                      ? (order.cancellationReason ? `Reason: "${order.cancellationReason}". Please select another spot.` : 'The kitchen was unavailable to prepare this order.')
+                      : order.cancelledBy === 'customer'
+                        ? 'Cancelled before kitchen acceptance (no fees charged).'
+                        : (order.cancellationReason || 'Cancelled by dispatch desk.')}
                   </div>
                 </div>
               </div>

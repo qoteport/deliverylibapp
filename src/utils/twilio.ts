@@ -57,10 +57,24 @@ ${itemsText}
 }
 
 export function generateOrderSmsText(order: Order, restaurantName?: string): string {
+  const spotName = restaurantName || order.restaurantName || 'AURA Monrovia';
+
   if (order.status === 'received') {
-    return `AURA Order #${order.id} received! Kitchen: ${restaurantName || 'AURA Monrovia'}. Total: $${order.total.toFixed(2)}. Transmitted to kitchen for preparation. Track live in app!`;
+    return `AURA Order #${order.id} received! Kitchen: ${spotName}. Total: $${order.total.toFixed(2)}. Transmitted to kitchen for preparation. Track live in app!`;
   }
-  return `AURA Order #${order.id} is ${order.status}! Kitchen: ${restaurantName || 'AURA Monrovia'}. Total: $${order.total.toFixed(2)}. ETA: ${order.estimatedDeliveryTime || '25 mins'}. Track live in app!`;
+  
+  if (order.status === 'cancelled') {
+    if (order.cancelledBy === 'customer') {
+      return `AURA Notice: Order #${order.id} was cancelled by you (customer request). No charges were incurred. Feel free to reorder anytime!`;
+    }
+    if (order.cancelledBy === 'restaurant') {
+      const reason = order.cancellationReason ? ` Reason: ${order.cancellationReason}.` : '';
+      return `AURA Alert: Order #${order.id} was declined/cancelled by ${spotName}.${reason} We apologize for the inconvenience. Please choose another spot in the app.`;
+    }
+    return `AURA Notice: Order #${order.id} was cancelled by dispatch (${order.cancellationReason || 'Admin request'}).`;
+  }
+
+  return `AURA Order #${order.id} is ${order.status}! Kitchen: ${spotName}. Total: $${order.total.toFixed(2)}. ETA: ${order.estimatedDeliveryTime || '25 mins'}. Track live in app!`;
 }
 
 export function getWhatsAppDispatchUrl(phoneNumber: string, order: Order, restaurantName?: string): string {

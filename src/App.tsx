@@ -451,10 +451,18 @@ export default function App() {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+  const handleUpdateOrderStatus = async (
+    orderId: string, 
+    status: Order['status'],
+    cancelledBy?: 'customer' | 'restaurant' | 'admin',
+    cancellationReason?: string
+  ) => {
     const now = Date.now();
     let updatedConfirmedAt: number | undefined;
     let updatedTargetEta: number | undefined;
+
+    const existingOrder = orders.find((o) => o.id === orderId) || (activeTrackingOrder?.id === orderId ? activeTrackingOrder : null);
+    const spotName = existingOrder?.restaurantName || 'The restaurant';
 
     setOrders((prev) =>
       prev.map((o) => {
@@ -467,6 +475,10 @@ export default function App() {
           status,
           confirmedAtTimestamp: updatedConfirmedAt,
           targetEtaTimestamp: updatedTargetEta,
+          ...(status === 'cancelled' ? { 
+            cancelledBy: cancelledBy || o.cancelledBy || 'customer', 
+            cancellationReason: cancellationReason || o.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
+          } : {}),
         };
       })
     );
@@ -482,21 +494,51 @@ export default function App() {
           status,
           confirmedAtTimestamp: confAt,
           targetEtaTimestamp: etaAt,
+          ...(status === 'cancelled' ? { 
+            cancelledBy: cancelledBy || prev.cancelledBy || 'customer', 
+            cancellationReason: cancellationReason || prev.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
+          } : {}),
         };
       });
     }
 
-    // Trigger Browser Notification for Status Update
+    // Trigger Customized Browser Notification for Status Update
+    let statusTitle = `AURA Order Update #${orderId}`;
     let statusText = '';
-    if (status === 'preparing') statusText = '👨‍🍳 The kitchen has started cooking your order!';
-    else if (status === 'plating') statusText = '🍲 Your meal is freshly packed in an insulated thermal carrier!';
-    else if (status === 'en-route') statusText = '🛵 Courier is on the way to your delivery address!';
-    else if (status === 'completed') statusText = '✅ Your order was delivered! Enjoy your Monrovia meal.';
-    else if (status === 'cancelled') statusText = '❌ Your order has been cancelled.';
+    let toastText = `Order status: ${status}`;
+
+    if (status === 'preparing') {
+      statusText = '👨‍🍳 The kitchen has accepted and started cooking your order!';
+      toastText = 'Order accepted! Cooking in progress.';
+    } else if (status === 'plating') {
+      statusText = '🍲 Your meal is freshly packed in an insulated thermal carrier!';
+      toastText = 'Order packed for dispatch.';
+    } else if (status === 'en-route') {
+      statusText = '🛵 Courier is on the way to your delivery address!';
+      toastText = 'Order en-route to customer.';
+    } else if (status === 'completed') {
+      statusText = '✅ Your order was delivered! Enjoy your Monrovia meal.';
+      toastText = 'Order delivered & completed!';
+    } else if (status === 'cancelled') {
+      if (cancelledBy === 'customer') {
+        statusTitle = `Order #${orderId} Cancelled by You`;
+        statusText = 'You cancelled this order before kitchen confirmation. No charges were made.';
+        toastText = 'Order cancelled by you.';
+      } else if (cancelledBy === 'restaurant') {
+        statusTitle = `Order #${orderId} Declined by ${spotName}`;
+        const reasonStr = cancellationReason ? ` Reason: "${cancellationReason}".` : '';
+        statusText = `⚠️ ${spotName} was unable to fulfill your order.${reasonStr} We apologize for the inconvenience.`;
+        toastText = `Order declined by ${spotName}.`;
+      } else {
+        statusTitle = `Order #${orderId} Cancelled`;
+        statusText = `Order was cancelled by dispatch (${cancellationReason || 'Admin'}).`;
+        toastText = 'Order cancelled by dispatch.';
+      }
+    }
 
     if (statusText) {
       sendBrowserNotification({
-        title: `AURA Order Update #${orderId}`,
+        title: statusTitle,
         body: statusText,
         tag: `status-${orderId}`,
       });
@@ -504,13 +546,19 @@ export default function App() {
 
     // Sync in realtime to Firestore
     try {
-      const updatePayload: Record<string, any> = { status };
+      const updatePayload: Record<string, any> = { 
+        status,
+        ...(status === 'cancelled' ? { 
+          cancelledBy: cancelledBy || 'customer', 
+          cancellationReason: cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Customer cancellation request') 
+        } : {})
+      };
       if (status !== 'received') {
         if (updatedConfirmedAt) updatePayload.confirmedAtTimestamp = updatedConfirmedAt;
         if (updatedTargetEta) updatePayload.targetEtaTimestamp = updatedTargetEta;
       }
       await updateDoc(doc(db, 'orders', orderId), updatePayload);
-      showToast(`Order status updated to: ${status}`);
+      showToast(toastText);
     } catch (e) {
       console.warn('Firestore order status sync notice:', e);
     }

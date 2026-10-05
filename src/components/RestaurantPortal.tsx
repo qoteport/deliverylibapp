@@ -14,7 +14,12 @@ interface RestaurantPortalProps {
   menuItems: MenuItem[];
   orders: Order[];
   onExitPortal: () => void;
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onUpdateOrderStatus: (
+    orderId: string, 
+    status: Order['status'], 
+    cancelledBy?: 'customer' | 'restaurant' | 'admin', 
+    cancellationReason?: string
+  ) => void;
   onAddMenuItem: (item: MenuItem) => void;
   onToggleItemAvailability: (itemId: string) => void;
   currency: Currency;
@@ -43,6 +48,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
 }) => {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'profile'>('orders');
+  const [decliningOrderId, setDecliningOrderId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState<string>('Kitchen at capacity / Items out of stock');
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
 
@@ -582,47 +589,128 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                         </div>
                       </div>
 
-                      {/* Order Action Progression Buttons */}
-                      {!isDone && (
-                        <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                      {/* Order Action Progression & Decline Buttons */}
+                      {!isDone && order.status !== 'cancelled' && (
+                        <div className="pt-2 border-t border-gray-100 space-y-2">
                           {order.status === 'received' && (
-                            <button
-                              onClick={() => onUpdateOrderStatus(order.id, 'preparing')}
-                              className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
-                            >
-                              <Flame className="w-3.5 h-3.5 fill-white" />
-                              <span>Accept & Start Cooking</span>
-                            </button>
+                            <div className="space-y-2">
+                              {decliningOrderId === order.id ? (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-2xl space-y-2 animate-in fade-in">
+                                  <div className="text-xs font-bold text-red-900 flex items-center justify-between">
+                                    <span>Select Reason to Decline Order:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDecliningOrderId(null)}
+                                      className="text-[10px] text-gray-500 hover:text-black font-semibold cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                  <select
+                                    value={declineReason}
+                                    onChange={(e) => setDeclineReason(e.target.value)}
+                                    className="w-full px-3 py-1.5 bg-white border border-red-300 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-red-500"
+                                  >
+                                    <option value="Items out of stock">Items out of stock</option>
+                                    <option value="Kitchen at full capacity">Kitchen at full capacity</option>
+                                    <option value="Kitchen closing soon">Kitchen closing soon</option>
+                                    <option value="Delivery address outside operational zone">Delivery address outside operational zone</option>
+                                  </select>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onUpdateOrderStatus(order.id, 'cancelled', 'restaurant', declineReason);
+                                        setDecliningOrderId(null);
+                                      }}
+                                      className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                    >
+                                      Confirm Decline Order
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDecliningOrderId(null)}
+                                      className="py-2 px-3 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                    >
+                                      Back
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => onUpdateOrderStatus(order.id, 'preparing')}
+                                    className="flex-1 py-2.5 px-3 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                                  >
+                                    <Flame className="w-3.5 h-3.5 fill-white" />
+                                    <span>Accept & Start Cooking</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setDecliningOrderId(order.id)}
+                                    className="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Decline</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           )}
 
                           {order.status === 'preparing' && (
                             <button
                               onClick={() => onUpdateOrderStatus(order.id, 'plating')}
-                              className="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                              className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                             >
-                              <span>Pack in Thermal Bag</span>
+                              <span>Pack in Thermal Bag &rarr;</span>
                             </button>
                           )}
 
                           {order.status === 'plating' && (
                             <button
                               onClick={() => onUpdateOrderStatus(order.id, 'en-route')}
-                              className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                              className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                             >
                               <Bike className="w-3.5 h-3.5" />
-                              <span>Hand to Courier / Serve</span>
+                              <span>Hand to Courier / Serve &rarr;</span>
                             </button>
                           )}
 
                           {order.status === 'en-route' && (
                             <button
                               onClick={() => onUpdateOrderStatus(order.id, 'completed')}
-                              className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                              className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Mark Delivered & Paid</span>
+                              <span>Mark Delivered & Paid &rarr;</span>
                             </button>
                           )}
+                        </div>
+                      )}
+
+                      {order.status === 'cancelled' && (
+                        <div className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                          order.cancelledBy === 'customer'
+                            ? 'bg-amber-50 border-amber-200 text-amber-900'
+                            : 'bg-red-50 border-red-200 text-red-900'
+                        }`}>
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <div>
+                            <div>
+                              {order.cancelledBy === 'customer'
+                                ? '⚠️ Customer Cancelled Order'
+                                : order.cancelledBy === 'restaurant'
+                                  ? '❌ Declined by Kitchen'
+                                  : '❌ Order Cancelled by Admin'}
+                            </div>
+                            <div className="text-[10px] font-normal mt-0.5">
+                              {order.cancelledBy === 'customer'
+                                ? 'The customer cancelled this order prior to cooking start.'
+                                : (order.cancellationReason ? `Reason: "${order.cancellationReason}"` : 'Order was declined.')}
+                            </div>
+                          </div>
                         </div>
                       )}
 

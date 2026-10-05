@@ -180,4 +180,7 @@ export interface Order {
   driverLocation?: LocationCoords;
   delegationStatus?: 'unassigned' | 'offered' | 'accepted' | 'rejected' | 'heading_to_restaurant' | 'at_restaurant' | 'out_for_delivery' | 'delivered';
   rejectedDriverIds?: string[];
+  // Cancellation Fields
+  cancelledBy?: 'customer' | 'restaurant' | 'admin';
+  cancellationReason?: string;
 }

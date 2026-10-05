@@ -45,7 +45,12 @@ interface AdminPortalProps {
   onOpenRestaurantPortal: (restaurantId: string) => void;
   onToggleRestaurantStatus: (restaurantId: string) => void;
   onDeleteRestaurant: (restaurantId: string) => void;
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
+  onUpdateOrderStatus: (
+    orderId: string, 
+    status: Order['status'], 
+    cancelledBy?: 'customer' | 'restaurant' | 'admin', 
+    cancellationReason?: string
+  ) => void;
   onUpdateDriver: (driver: DeliveryDriver) => void;
   onPurgeDemoData?: () => void;
   currency: Currency;
@@ -919,9 +924,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       {/* Quick Status Control Buttons */}
                       <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100">
                         <div className="text-[11px] text-gray-500 font-semibold">
-                          Advance Status in Realtime:
+                          {o.status === 'cancelled' ? 'Order Status:' : 'Advance Status in Realtime:'}
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {o.status === 'cancelled' && (
+                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border ${
+                              o.cancelledBy === 'restaurant'
+                                ? 'bg-amber-50 text-amber-900 border-amber-200'
+                                : 'bg-red-50 text-red-900 border-red-200'
+                            }`}>
+                              {o.cancelledBy === 'customer'
+                                ? 'Cancelled by Customer'
+                                : o.cancelledBy === 'restaurant'
+                                  ? `Declined by Kitchen (${o.cancellationReason || 'Unavailable'})`
+                                  : `Cancelled by Admin (${o.cancellationReason || 'Admin'})`}
+                            </span>
+                          )}
+
                           {o.status === 'received' && (
                             <button
                               type="button"
@@ -949,15 +968,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               🛵 Dispatch En-Route
                             </button>
                           )}
-                          {o.status !== 'completed' && (
-                            <button
-                              type="button"
-                              onClick={() => onUpdateOrderStatus(o.id, 'completed')}
-                              className="px-3.5 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white text-xs font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              <span>Mark Delivered</span>
-                            </button>
+                          {o.status !== 'completed' && o.status !== 'cancelled' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateOrderStatus(o.id, 'completed')}
+                                className="px-3.5 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white text-xs font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>Mark Delivered</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const reason = window.prompt('Enter cancellation reason (e.g. Customer requested, kitchen issue, or unfulfillable):', 'Admin cancellation');
+                                  if (reason) {
+                                    onUpdateOrderStatus(o.id, 'cancelled', 'admin', reason);
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl border border-red-200 transition-colors cursor-pointer"
+                              >
+                                Cancel Order
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
