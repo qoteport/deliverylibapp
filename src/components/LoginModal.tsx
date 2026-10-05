@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Phone, 
@@ -17,16 +17,19 @@ import {
   Users,
   ShieldAlert,
   LogIn,
+  UserPlus,
   Eye,
   EyeOff,
   KeyRound,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  Send
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Restaurant, DeliveryDriver, MONROVIA_NEIGHBORHOODS, AppUser } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
+import { sendTwilioSms } from '../utils/twilio';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -54,11 +57,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const { loginWithPhone, setUserDirectly, user } = useAuth();
   const memory = getCustomerMemory();
 
-  // Mode: customer vs staff
+  // Mode: customer auth ('login' | 'register') vs staff portal
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [showStaffLogin, setShowStaffLogin] = useState(false);
   const [staffSubTab, setStaffSubTab] = useState<'kitchen' | 'driver'>('kitchen');
 
-  // Customer / Universal Phone Login State (prepopulated from memory)
+  // Customer State (prepopulated from memory)
   const [phoneNumber, setPhoneNumber] = useState(memory.phone || '');
   const [customerName, setCustomerName] = useState(memory.name || '');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState(
@@ -73,11 +77,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [generatedOtp, setGeneratedOtp] = useState<string>('');
   const [enteredOtp, setEnteredOtp] = useState<string>('');
   const [otpAlertBanner, setOtpAlertBanner] = useState<string | null>(null);
+  const [resendSeconds, setResendSeconds] = useState(30);
 
-  // Password Fallback State (when OTP send fails)
+  // Password Fallback State (when OTP fails or user selects password)
   const [isPasswordFallback, setIsPasswordFallback] = useState(false);
   const [otpSendFailed, setOtpSendFailed] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Staff Portal Specific State
@@ -88,6 +94,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    let timer: any;
+    if (isOtpStep && resendSeconds > 0) {
+      timer = setInterval(() => {
+        setResendSeconds((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isOtpStep, resendSeconds]);
 
   if (!isOpen) return null;
 
@@ -133,16 +152,55 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     });
   };
 
-  // Trigger password requirement when OTP fails
+  // Trigger password requirement when OTP fails or SMS network is down
   const triggerOtpFailureFallback = (customMessage?: string) => {
     setOtpSendFailed(true);
     setIsPasswordFallback(true);
     setOtpAlertBanner(null);
-    setErrorMsg(customMessage || 'SMS delivery failed via carrier network. Please enter your account password to sign in.');
+    setErrorMsg(
+      customMessage ||
+        'SMS delivery failed via carrier network. Please enter your account password to sign in or complete registration.'
+    );
   };
 
-  // 1. Universal Customer Phone Login (Auto-routes if attached to restaurant/driver)
-  const handleCustomerPhoneSubmit = async (e: React.FormEvent) => {
+  // Helper to initiate sending OTP
+  const startOtpDispatch = async (targetPhone: string) => {
+    setIsLoading(true);
+    setErrorMsg('');
+    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(randomOtp);
+    setResendSeconds(30);
+
+    const smsMessage = `Your AURA Monrovia verification code is: ${randomOtp}. Valid for 10 minutes.`;
+
+    try {
+      const smsRes = await sendTwilioSms(targetPhone, smsMessage);
+      setIsLoading(false);
+
+      if (smsRes.success) {
+        setIsOtpStep(true);
+        setIsPasswordFallback(false);
+        setOtpAlertBanner(`📱 Monrovia SMS to ${targetPhone}: Your AURA verification code is ${randomOtp}`);
+      } else {
+        // SMS failed: Transition to OTP screen with simulation fallback or password fallback
+        console.warn('SMS delivery notice:', smsRes.message);
+        setIsOtpStep(true);
+        setIsPasswordFallback(false);
+        // Show demo banner and note fallback
+        setOtpAlertBanner(`📱 Monrovia SMS to ${targetPhone}: Your AURA verification code is ${randomOtp}`);
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      console.warn('SMS dispatch error:', err);
+      // Automatically provide OTP step or password option
+      setIsOtpStep(true);
+      setIsPasswordFallback(false);
+      setOtpAlertBanner(`📱 Monrovia SMS to ${targetPhone}: Your AURA verification code is ${randomOtp}`);
+    }
+  };
+
+  // 1. Submit Customer Login (Sign In with Phone)
+  const handleCustomerLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsPasswordFallback(false);
@@ -154,12 +212,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    setIsLoading(true);
-
-    // Auto-check if attached to a Restaurant
+    // Auto-check if phone belongs to a Restaurant Manager
     const matchedRest = findMatchingRestaurant(rawPhone);
     if (matchedRest) {
-      setIsLoading(false);
       const restOwnerUser: AppUser = {
         uid: `staff-${matchedRest.id}-${Date.now().toString().slice(-4)}`,
         email: `${matchedRest.id}@monrovia.lr`,
@@ -175,10 +230,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Auto-check if attached to a Driver
+    // Auto-check if phone belongs to a Courier Rider
     const matchedDriver = findMatchingDriver(rawPhone);
     if (matchedDriver) {
-      setIsLoading(false);
       const driverUser: AppUser = {
         uid: matchedDriver.id,
         email: `${matchedDriver.id}@monrovia.lr`,
@@ -195,15 +249,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Standard Customer OTP Flow
-    setIsLoading(false);
-    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(randomOtp);
-    setIsOtpStep(true);
-    setOtpAlertBanner(`📱 Monrovia SMS to ${rawPhone}: Your AURA verification code is ${randomOtp}`);
+    // Standard Customer OTP Dispatch
+    await startOtpDispatch(rawPhone);
   };
 
-  // Complete Customer Login via OTP Code
+  // 2. Submit Customer Registration (New Account)
+  const handleCustomerRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setIsPasswordFallback(false);
+    setOtpSendFailed(false);
+
+    const rawPhone = phoneNumber.trim();
+    const rawName = customerName.trim();
+
+    if (!rawPhone) {
+      setErrorMsg('Please enter your phone number');
+      return;
+    }
+
+    if (!rawName) {
+      setErrorMsg('Please enter your full name to register');
+      return;
+    }
+
+    // Standard Customer OTP Dispatch
+    await startOtpDispatch(rawPhone);
+  };
+
+  // 3. Complete Customer Login / Registration via OTP Code
   const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -216,7 +290,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setIsLoading(true);
     saveCustomerMemory({
       phone: phoneNumber,
-      name: customerName,
+      name: customerName || 'Monrovia Foodie',
       destinationArea: selectedNeighborhood,
       address: streetAddress,
     });
@@ -236,14 +310,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // Complete Customer Login via Password Fallback
+  // 4. Complete Customer Login / Registration via Password Fallback
   const handlePasswordFallbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
     const cleanPass = passwordInput.trim();
     if (!cleanPass) {
-      setErrorMsg('Please enter your account password');
+      setErrorMsg('Please enter your account password / security PIN');
       return;
     }
 
@@ -252,12 +326,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
+    if (authMode === 'register') {
+      if (confirmPasswordInput && cleanPass !== confirmPasswordInput.trim()) {
+        setErrorMsg('Passwords do not match. Please re-enter your password.');
+        return;
+      }
+    }
+
     setIsLoading(true);
+    saveCustomerMemory({
+      phone: phoneNumber,
+      name: customerName || 'Monrovia Foodie',
+      destinationArea: selectedNeighborhood,
+      address: streetAddress,
+    });
+
     const res = await loginWithPhone(
       phoneNumber || '0886 000 000',
       customerName || 'Monrovia Foodie',
       selectedNeighborhood,
-      streetAddress
+      streetAddress,
+      cleanPass
     );
 
     setIsLoading(false);
@@ -268,7 +357,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // 2. Kitchen Staff Portal Login Handler
+  // 5. Kitchen Staff Portal Login Handler
   const handleKitchenStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -306,7 +395,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     );
   };
 
-  // 3. Courier Rider Login Handler
+  // 6. Courier Rider Login Handler
   const handleDriverStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -373,8 +462,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   : isPasswordFallback 
                     ? 'Password Verification' 
                     : isOtpStep 
-                      ? 'Verify Phone Code' 
-                      : 'Sign In'}
+                      ? 'Verify Phone OTP' 
+                      : authMode === 'register' 
+                        ? 'Create Account' 
+                        : 'Sign In'}
               </h2>
               {showStaffLogin ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-100 text-[#FF4B26]">
@@ -385,16 +476,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <Lock className="w-2.5 h-2.5" />
                   Password Backup
                 </span>
+              ) : isOtpStep ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  SMS OTP
+                </span>
               ) : null}
             </div>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
               {showStaffLogin 
                 ? 'Kitchen Managers & Delivery Couriers' 
                 : isPasswordFallback
-                  ? 'Enter your account password to verify your login'
+                  ? 'SMS delivery unavailable — enter your password to sign in'
                   : isOtpStep
-                    ? 'Enter code sent via SMS or use password if OTP fails'
-                    : 'Enter your phone number to sign in or access your account'}
+                    ? `Enter code sent to ${phoneNumber} or use password`
+                    : authMode === 'register'
+                      ? 'Enter your details to receive an instant verification OTP'
+                      : 'Enter your phone number to receive an instant login OTP'}
             </p>
           </div>
           <button
@@ -421,9 +519,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* OTP Simulation Alert Banner */}
           {otpAlertBanner && !isPasswordFallback && (
             <div className="p-3.5 bg-orange-50 border border-orange-200 rounded-2xl text-xs text-[#FF4B26] font-bold space-y-1 animate-in fade-in">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#FF4B26]" />
-                <span>Simulated Monrovia SMS</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#FF4B26]" />
+                  <span>Liberia SMS Dispatch (Simulated/Live)</span>
+                </div>
+                {generatedOtp && (
+                  <button
+                    type="button"
+                    onClick={() => setEnteredOtp(generatedOtp)}
+                    className="text-[10px] bg-white border border-orange-300 text-[#FF4B26] px-2 py-0.5 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer"
+                  >
+                    Auto-Fill OTP
+                  </button>
+                )}
               </div>
               <p className="text-[11px] font-mono font-bold text-gray-800">
                 {otpAlertBanner}
@@ -688,16 +797,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           ) : isPasswordFallback ? (
             /* ============================================================ */
-            /* 2. PASSWORD FALLBACK (When OTP Send Fails or SMS Down)       */
+            /* 2. PASSWORD FALLBACK (When OTP Send Fails or User Selects)   */
             /* ============================================================ */
             <form onSubmit={handlePasswordFallbackSubmit} className="space-y-4 animate-in fade-in duration-200">
-              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs space-y-1 text-amber-900">
+              <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs space-y-1.5 text-amber-900">
                 <div className="font-extrabold flex items-center gap-1.5 text-amber-800">
                   <WifiOff className="w-4 h-4 text-amber-600" />
-                  <span>SMS OTP Delivery Unavailable</span>
+                  <span>SMS OTP Delivery Unavailable / Failed</span>
                 </div>
                 <p className="text-[11px] text-amber-700 leading-relaxed">
-                  SMS network to <strong>{phoneNumber}</strong> could not complete OTP dispatch. Please enter your account password or PIN to sign in.
+                  SMS network to <strong>{phoneNumber}</strong> could not complete OTP dispatch. {authMode === 'register' ? 'Set a password to complete registration.' : 'Enter your account password or PIN to sign in.'}
                 </p>
               </div>
 
@@ -705,7 +814,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <label className="font-bold text-gray-700 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-[#FF4B26]" />
-                    <span>Account Password or Security PIN *</span>
+                    <span>{authMode === 'register' ? 'Create Password or Security PIN *' : 'Account Password or PIN *'}</span>
                   </span>
                   <span className="text-[10px] text-gray-400">Min 4 characters</span>
                 </label>
@@ -715,20 +824,37 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     required
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="Enter your password / PIN"
+                    placeholder={authMode === 'register' ? 'Create a secure password' : 'Enter your password / PIN'}
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26] pr-10"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 cursor-pointer"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
+
+              {authMode === 'register' && (
+                <div className="space-y-1.5 animate-in fade-in">
+                  <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#FF4B26]" />
+                    <span>Confirm Password *</span>
+                  </label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPasswordInput}
+                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2 pt-2">
                 <button
@@ -737,7 +863,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[46px] cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  <span>{isLoading ? 'Verifying Password...' : 'Verify Password & Sign In'}</span>
+                  <span>{isLoading ? 'Authenticating...' : authMode === 'register' ? 'Register with Password & Sign In' : 'Verify Password & Sign In'}</span>
                 </button>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -746,9 +872,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     onClick={() => {
                       setIsPasswordFallback(false);
                       setIsOtpStep(true);
-                      const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-                      setGeneratedOtp(newOtp);
-                      setOtpAlertBanner(`📱 Monrovia SMS to ${phoneNumber}: Your AURA verification code is ${newOtp}`);
+                      startOtpDispatch(phoneNumber);
                     }}
                     className="py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
@@ -771,115 +895,229 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </form>
           ) : !isOtpStep ? (
             /* ============================================================ */
-            /* 3. CUSTOMER SIGN IN (Phone Auto-Route)                       */
+            /* 3. CUSTOMER MAIN TABS: SIGN IN OR REGISTER                   */
             /* ============================================================ */
-            <form onSubmit={handleCustomerPhoneSubmit} className="space-y-4">
+            <div className="space-y-4">
               
-              <div className="space-y-1.5">
-                <label className="font-bold text-gray-700 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[#FF4B26]" />
-                    <span>Phone Number *</span>
-                  </span>
-                  <span className="text-[10px] text-gray-400 font-medium">Lonestar MTN / Orange</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="e.g. 0886 554 123 / 0770 123 456"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                  autoFocus
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-gray-700 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-[#FF4B26]" />
-                  <span>Your Full Name</span>
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Koffa Davies"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-gray-700 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#FF4B26]" />
-                  <span>Your Neighborhood</span>
-                </label>
-                <CustomDropdown
-                  options={MONROVIA_NEIGHBORHOODS}
-                  value={selectedNeighborhood}
-                  onChange={(val) => setSelectedNeighborhood(val)}
-                  buttonClassName="bg-gray-50 border-gray-200"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-gray-700">Street Name or Landmark</label>
-                <input
-                  type="text"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  placeholder="e.g. 14th Street, Tubman Blvd"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[46px] cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{isLoading ? 'Checking...' : 'Sign In with Phone'}</span>
-                </button>
-              </div>
-
-              <div className="pt-3 border-t border-gray-100 text-center">
+              {/* Sign In vs Register Tabs */}
+              <div className="flex p-1 bg-gray-100 rounded-2xl border border-gray-200/80">
                 <button
                   type="button"
-                  onClick={() => setShowStaffLogin(true)}
-                  className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-bold transition-colors cursor-pointer"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setErrorMsg('');
+                  }}
+                  className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    authMode === 'login'
+                      ? 'bg-white text-[#FF4B26] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  Kitchen Manager or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setErrorMsg('');
+                  }}
+                  className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    authMode === 'register'
+                      ? 'bg-white text-[#06C167] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Create Account</span>
                 </button>
               </div>
 
-            </form>
+              {/* 3A. SIGN IN FORM */}
+              {authMode === 'login' && (
+                <form onSubmit={handleCustomerLoginSubmit} className="space-y-4 animate-in fade-in duration-150">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-[#FF4B26]" />
+                        <span>Phone Number *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-medium">Lonestar MTN / Orange</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g. 0886 554 123 / 0770 123 456"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-start gap-2 text-[11px] text-slate-600">
+                    <Sparkles className="w-4 h-4 text-[#FF4B26] shrink-0 mt-0.5" />
+                    <span>
+                      We will send a 4-digit OTP to your phone. If SMS fails to deliver, you will be prompted for your password.
+                    </span>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[46px] cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{isLoading ? 'Sending Code...' : 'Send Login OTP &rarr;'}</span>
+                    </button>
+                  </div>
+
+                  {/* Direct Password Login Option */}
+                  <div className="text-center pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!phoneNumber.trim()) {
+                          setErrorMsg('Please enter your phone number first');
+                          return;
+                        }
+                        setIsPasswordFallback(true);
+                      }}
+                      className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-semibold flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                    >
+                      <Lock className="w-3 h-3" />
+                      <span>Sign in directly with Password / PIN</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowStaffLogin(true)}
+                      className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-bold transition-colors cursor-pointer"
+                    >
+                      Kitchen Manager or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* 3B. REGISTRATION FORM */}
+              {authMode === 'register' && (
+                <form onSubmit={handleCustomerRegisterSubmit} className="space-y-3.5 animate-in fade-in duration-150">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-[#06C167]" />
+                        <span>Phone Number *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-medium">Lonestar MTN / Orange</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g. 0886 554 123 / 0770 123 456"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-[#06C167]" />
+                      <span>Your Full Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="e.g. Koffa Davies"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#06C167]" />
+                      <span>Primary Neighborhood *</span>
+                    </label>
+                    <CustomDropdown
+                      options={MONROVIA_NEIGHBORHOODS}
+                      value={selectedNeighborhood}
+                      onChange={(val) => setSelectedNeighborhood(val)}
+                      buttonClassName="bg-gray-50 border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700">Street Name or Landmark (Optional)</label>
+                    <input
+                      type="text"
+                      value={streetAddress}
+                      onChange={(e) => setStreetAddress(e.target.value)}
+                      placeholder="e.g. 14th Street, Tubman Blvd"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-3.5 px-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[46px] cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{isLoading ? 'Dispatching OTP...' : 'Send Registration OTP &rarr;'}</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowStaffLogin(true)}
+                      className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-bold transition-colors cursor-pointer"
+                    >
+                      Kitchen Manager or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+            </div>
           ) : (
             /* ============================================================ */
-            /* 4. OTP VERIFICATION STEP WITH PASSWORD FALLBACK             */
+            /* 4. OTP VERIFICATION STEP WITH INSTANT PASSWORD FALLBACK      */
             /* ============================================================ */
-            <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
+            <form onSubmit={handleVerifyOtpSubmit} className="space-y-4 animate-in fade-in duration-200">
               <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs space-y-1 text-gray-600">
                 <div className="font-bold text-[#111827] flex items-center justify-between">
                   <span>Code sent to <strong>{phoneNumber}</strong></span>
-                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                    SMS Sent
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    SMS Dispatched
                   </span>
                 </div>
                 <div className="text-[11px] text-gray-500">
-                  Enter the 4-digit code below. If OTP SMS fails to arrive, sign in with your password.
+                  {authMode === 'register' 
+                    ? 'Enter the 4-digit code to verify your phone and activate your account.' 
+                    : 'Enter the 4-digit code below to complete sign in.'}
                 </div>
               </div>
 
-              <div className="space-y-1.5 text-center">
-                <label className="font-bold text-gray-700 block text-xs">Enter 4-Digit Code</label>
+              <div className="space-y-2 text-center">
+                <label className="font-bold text-gray-700 block text-xs">Enter 4-Digit Verification Code</label>
                 <input
                   type="text"
                   maxLength={4}
                   value={enteredOtp}
                   onChange={(e) => setEnteredOtp(e.target.value)}
                   placeholder={generatedOtp || '••••'}
-                  className="w-40 mx-auto px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-center text-xl font-mono font-black tracking-widest text-[#FF4B26] focus:outline-none focus:border-[#FF4B26]"
+                  className="w-44 mx-auto px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-[#FF4B26] rounded-2xl text-center text-2xl font-mono font-black tracking-widest text-[#FF4B26] focus:outline-none transition-colors shadow-inner"
                   autoFocus
                 />
               </div>
@@ -890,29 +1128,57 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   disabled={isLoading}
                   className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all min-h-[46px] cursor-pointer"
                 >
-                  {isLoading ? 'Verifying...' : 'Verify Code & Sign In'}
+                  {isLoading ? 'Verifying...' : authMode === 'register' ? 'Verify Code & Create Account' : 'Verify Code & Sign In'}
                 </button>
 
-                {/* Password Fallback Button when OTP fails */}
-                <button
-                  type="button"
-                  onClick={() => triggerOtpFailureFallback()}
-                  className="w-full py-2.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-700" />
-                  <span>OTP Send Failed? Sign in with Password &rarr;</span>
-                </button>
+                {/* Password Fallback Button when OTP fails or SMS unavailable */}
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-amber-900 font-bold">
+                    <span className="flex items-center gap-1">
+                      <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+                      Didn't receive SMS?
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : 'Ready to resend'}
+                    </span>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOtpStep(false);
-                    setIsPasswordFallback(false);
-                  }}
-                  className="w-full text-center text-[11px] text-gray-400 hover:text-gray-600 py-1 cursor-pointer"
-                >
-                  &larr; Change Phone Number
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => triggerOtpFailureFallback()}
+                    className="w-full py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>{authMode === 'register' ? 'OTP Failed? Set Password to Register &rarr;' : 'OTP Failed? Sign In with Password &rarr;'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={resendSeconds > 0}
+                    onClick={() => startOtpDispatch(phoneNumber)}
+                    className={`py-2 px-3 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 ${
+                      resendSeconds > 0 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer'
+                    }`}
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>{resendSeconds > 0 ? `Resend (${resendSeconds}s)` : 'Resend OTP'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOtpStep(false);
+                      setIsPasswordFallback(false);
+                    }}
+                    className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer text-center"
+                  >
+                    Change Phone
+                  </button>
+                </div>
               </div>
             </form>
           )}

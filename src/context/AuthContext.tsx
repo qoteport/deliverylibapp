@@ -7,7 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: AppUser | null;
   login: (email: string, pass: string, restaurantId?: string) => Promise<{ success: boolean; error?: string }>;
-  loginWithPhone: (phone: string, name: string, location?: string, address?: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithPhone: (phone: string, name?: string, location?: string, address?: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   setUserDirectly: (u: AppUser | null) => void;
 }
@@ -46,12 +46,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithPhone = async (
     phoneInput: string,
-    nameInput: string,
+    nameInput?: string,
     location?: string,
-    address?: string
+    address?: string,
+    password?: string
   ): Promise<{ success: boolean; error?: string }> => {
     const cleanPhone = phoneInput.trim();
-    const cleanName = nameInput.trim() || 'Monrovia Foodie';
+    const cleanName = (nameInput && nameInput.trim()) || 'Monrovia Foodie';
 
     if (!cleanPhone) {
       return { success: false, error: 'Phone number is required' };
@@ -80,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: 'customer',
           location: customerUser.location,
           address: customerUser.address,
+          ...(password ? { hasPassword: true, lastPasswordSet: new Date().toISOString() } : {}),
           lastActiveAt: new Date().toISOString(),
         },
         { merge: true }

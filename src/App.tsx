@@ -664,23 +664,21 @@ export default function App() {
   if (currentRoute.name === 'admin') {
     return (
       <ErrorBoundary>
-        <React.Suspense fallback={LoadingFallback}>
-          <AdminPortal
-            restaurants={restaurants}
-            orders={orders}
-            drivers={drivers}
-            onOpenOnboarding={() => setIsOnboardingOpen(true)}
-            onExitAdmin={() => navigateTo({ name: 'home' })}
-            onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
-            onToggleRestaurantStatus={handleToggleRestaurantStatus}
-            onDeleteRestaurant={handleDeleteRestaurant}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-            onUpdateDriver={handleUpdateDriver}
-            onPurgeDemoData={handlePurgeAllDemoData}
-            currency={currency}
-            onToggleCurrency={handleToggleCurrency}
-          />
-        </React.Suspense>
+        <AdminPortal
+          restaurants={restaurants}
+          orders={orders}
+          drivers={drivers}
+          onOpenOnboarding={() => setIsOnboardingOpen(true)}
+          onExitAdmin={() => navigateTo({ name: 'home' })}
+          onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
+          onToggleRestaurantStatus={handleToggleRestaurantStatus}
+          onDeleteRestaurant={handleDeleteRestaurant}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onUpdateDriver={handleUpdateDriver}
+          onPurgeDemoData={handlePurgeAllDemoData}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
       </ErrorBoundary>
     );
   }
@@ -713,19 +711,17 @@ export default function App() {
 
     return (
       <ErrorBoundary>
-        <React.Suspense fallback={LoadingFallback}>
-          <RestaurantPortal
-            restaurant={currentRestaurant}
-            menuItems={restaurantDishes.length > 0 ? restaurantDishes : menuItems}
-            orders={orders}
-            onExitPortal={() => navigateTo({ name: 'home' })}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-            onAddMenuItem={handleAddMenuItem}
-            onToggleItemAvailability={handleToggleItemAvailability}
-            currency={currency}
-            onToggleCurrency={handleToggleCurrency}
-          />
-        </React.Suspense>
+        <RestaurantPortal
+          restaurant={currentRestaurant}
+          menuItems={restaurantDishes.length > 0 ? restaurantDishes : menuItems}
+          orders={orders}
+          onExitPortal={() => navigateTo({ name: 'home' })}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onAddMenuItem={handleAddMenuItem}
+          onToggleItemAvailability={handleToggleItemAvailability}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
       </ErrorBoundary>
     );
   }
@@ -741,19 +737,17 @@ export default function App() {
 
     return (
       <ErrorBoundary>
-        <React.Suspense fallback={LoadingFallback}>
-          <DriverPortal
-            driver={currentDriver}
-            orders={orders}
-            onExitPortal={() => navigateTo({ name: 'home' })}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-            onUpdateDriver={handleUpdateDriver}
-            onDriverRejectOrder={handleDriverRejectOrder}
-            currency={currency}
-            onToggleCurrency={handleToggleCurrency}
-            restaurants={restaurants}
-          />
-        </React.Suspense>
+        <DriverPortal
+          driver={currentDriver}
+          orders={orders}
+          onExitPortal={() => navigateTo({ name: 'home' })}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+          onUpdateDriver={handleUpdateDriver}
+          onDriverRejectOrder={handleDriverRejectOrder}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+          restaurants={restaurants}
+        />
       </ErrorBoundary>
     );
   }
@@ -894,14 +888,12 @@ export default function App() {
 
       {/* Driver Onboarding & Registration Modal */}
       {isDriverJoinOpen && (
-        <React.Suspense fallback={null}>
-          <DriverJoinModal
-            isOpen={isDriverJoinOpen}
-            onClose={() => setIsDriverJoinOpen(false)}
-            onDriverRegistered={handleDriverRegistered}
-            onOpenDriverPortal={(driverId) => navigateTo({ name: 'driver', driverId })}
-          />
-        </React.Suspense>
+        <DriverJoinModal
+          isOpen={isDriverJoinOpen}
+          onClose={() => setIsDriverJoinOpen(false)}
+          onDriverRegistered={handleDriverRegistered}
+          onOpenDriverPortal={(driverId) => navigateTo({ name: 'driver', driverId })}
+        />
       )}
 
       {/* Dish Customizer Modal with Multi-Image Gallery */}
@@ -983,15 +975,13 @@ export default function App() {
 
       {/* Full Restaurant Onboarding Modal */}
       {isOnboardingOpen && (
-        <React.Suspense fallback={null}>
-          <RestaurantOnboardingModal
-            isOpen={isOnboardingOpen}
-            onClose={() => setIsOnboardingOpen(false)}
-            onRestaurantCreated={handleRestaurantCreated}
-            onOpenKitchenPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
-            isSuperAdminMode={user?.role === 'super_admin'}
-          />
-        </React.Suspense>
+        <RestaurantOnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          onRestaurantCreated={handleRestaurantCreated}
+          onOpenKitchenPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
+          isSuperAdminMode={user?.role === 'super_admin'}
+        />
       )}
 
       </div>
