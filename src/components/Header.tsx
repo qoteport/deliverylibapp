@@ -7,12 +7,10 @@ import {
   Bike, 
   UtensilsCrossed, 
   User, 
-  UserPlus,
-  LogIn,
-  ShieldAlert, 
-  Store, 
+  UserPlus, 
+  LogIn, 
   LogOut, 
-  Utensils
+  Utensils 
 } from 'lucide-react';
 import { DiningMode, Currency, USD_TO_LRD_RATE } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -132,31 +130,14 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden sm:flex items-center gap-1.5">
             {user ? (
               <div className="flex items-center gap-1.5">
-                {user.role === 'super_admin' && (
-                  <button
-                    onClick={onOpenAdminPortal}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-[#111827] text-white hover:bg-[#06C167] rounded-xl text-xs font-bold transition-all shadow-xs"
-                    title="Super Admin Dashboard"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 text-[#06C167]" />
-                    <span>Admin</span>
-                  </button>
-                )}
-
-                {user.role === 'restaurant_owner' && (
-                  <button
-                    onClick={() => onOpenRestaurantPortal(user.restaurantId || 'aura-sinkor')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-                    title="Kitchen Orders Portal"
-                  >
-                    <Store className="w-3.5 h-3.5" />
-                    <span>Kitchen</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827]">
+                  <User className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span className="truncate max-w-[110px]">{user.name || user.phone || 'My Account'}</span>
+                </div>
 
                 <button
                   onClick={logout}
-                  className="p-1.5 text-gray-500 hover:text-red-600 rounded-xl hover:bg-red-50 transition-colors"
+                  className="p-1.5 text-gray-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-colors cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
