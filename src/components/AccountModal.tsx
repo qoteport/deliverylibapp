@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, MapPin, Navigation, LogOut, Check, Edit2, Save, ShoppingBag, Heart, AlertCircle } from 'lucide-react';
+import { X, User, Phone, MapPin, Navigation, LogOut, Check, Edit2, Save, ShoppingBag, Heart, AlertCircle, Headphones, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, LocationCoords } from '../types';
 import { db } from '../firebase/config';
@@ -299,8 +299,58 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             )}
           </div>
 
+          {/* Customer Support & Help Center */}
+          <div className="p-4 bg-gradient-to-br from-emerald-50/80 via-white to-gray-50 rounded-2xl border border-emerald-100/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
+                  <Headphones className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-[#111827] text-xs">Customer Support &amp; Help</h4>
+                  <p className="text-[10px] text-gray-500 font-medium">Monrovia Dispatch &amp; Order Assistance</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                Active 24/7
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <a
+                href="tel:+2310770400338"
+                className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50/60 rounded-xl border border-gray-200/80 hover:border-emerald-300 transition-all text-gray-800 group"
+              >
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-[#06C167] group-hover:bg-[#06C167] group-hover:text-white flex items-center justify-center transition-colors">
+                  <Phone className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Call / WhatsApp</span>
+                  <span className="text-xs font-mono font-bold text-gray-900 group-hover:text-[#048747] truncate block">
+                    +2310770400338
+                  </span>
+                </div>
+              </a>
+
+              <a
+                href="mailto:sethantanah@gmail.com"
+                className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50/60 rounded-xl border border-gray-200/80 hover:border-emerald-300 transition-all text-gray-800 group"
+              >
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-[#06C167] group-hover:bg-[#06C167] group-hover:text-white flex items-center justify-center transition-colors">
+                  <Mail className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Email Support</span>
+                  <span className="text-xs font-medium text-gray-900 group-hover:text-[#048747] truncate block" title="sethantanah@gmail.com">
+                    sethantanah@gmail.com
+                  </span>
+                </div>
+              </a>
+            </div>
+          </div>
+
           {/* Sign Out Button */}
-          <div className="pt-3 border-t border-gray-100">
+          <div className="pt-2 border-t border-gray-100">
             <button
               type="button"
               onClick={handleLogout}
