@@ -66,6 +66,7 @@ export interface DeliveryDriver {
   totalDeliveries: number;
   earningsTodayUsd: number;
   activeOrderId?: string;
+  driverPin?: string; // 4 to 6 digit security PIN for login
   createdAt: string;
 }
 

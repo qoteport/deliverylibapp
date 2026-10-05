@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Bike, Phone, User, MapPin, DollarSign, ShieldCheck, CheckCircle2, Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { X, Bike, Phone, User, MapPin, DollarSign, ShieldCheck, CheckCircle2, Sparkles, Clock, ArrowRight, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 import { db } from '../firebase/config';
@@ -20,6 +20,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [vehicleType, setVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [plateNumber, setPlateNumber] = useState('');
   const [momoNumber, setMomoNumber] = useState('');
@@ -33,10 +35,47 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Auto detect Liberia MoMo Provider from prefix
+  const detectMomoNetwork = (num: string): DeliveryDriver['momoProvider'] => {
+    const clean = num.replace(/\D/g, '');
+    if (
+      clean.startsWith('23188') ||
+      clean.startsWith('23155') ||
+      clean.startsWith('088') ||
+      clean.startsWith('055') ||
+      clean.startsWith('88') ||
+      clean.startsWith('55')
+    ) {
+      return 'mtn';
+    }
+    if (
+      clean.startsWith('23177') ||
+      clean.startsWith('077') ||
+      clean.startsWith('77')
+    ) {
+      return 'orange';
+    }
+    return 'mtn';
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    if (!momoNumber || momoNumber === phone) {
+      setMomoNumber(val);
+    }
+    const detected = detectMomoNetwork(val);
+    setMomoProvider(detected);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       setErrorMsg('Please enter your name and contact phone number');
+      return;
+    }
+
+    if (!pin.trim() || pin.trim().length < 4 || !/^\d{4,6}$/.test(pin.trim())) {
+      setErrorMsg('Please set a 4 to 6 digit Security PIN (numbers only)');
       return;
     }
 
@@ -63,6 +102,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
       rating: 5.0,
       totalDeliveries: 0,
       earningsTodayUsd: 0,
+      driverPin: pin.trim(),
       createdAt: new Date().toISOString(),
     };
 
@@ -125,10 +165,10 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left text-xs space-y-1.5 max-w-sm mx-auto">
               <div className="font-extrabold text-[#048747] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Verification Gate</span>
+                <span>Verification Gate &amp; Login PIN</span>
               </div>
               <p className="text-[11px] text-gray-700">
-                Your phone number (<strong>{registeredDriver.phone}</strong>) and payout details will be verified before you can go online and receive live delivery dispatch requests.
+                Your phone number (<strong>{registeredDriver.phone}</strong>) and security PIN (<strong>{registeredDriver.driverPin || '******'}</strong>) will be used to log into your driver dispatch portal.
               </p>
             </div>
 
@@ -184,10 +224,42 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 type="tel"
                 required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 placeholder="088... / 077..."
                 className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
+            </div>
+
+            {/* Security Login PIN */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-gray-700 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Security Login PIN (4 to 6 Digits) *</span>
+                </span>
+                <span className="text-[10px] text-gray-400 font-normal">Used if OTP fails</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  required
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter 4-6 digit PIN (e.g. 5582)"
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold tracking-widest text-[#111827] focus:outline-none focus:border-[#06C167]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 cursor-pointer"
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500">
+                You will use this PIN to log into the courier app if SMS verification is unavailable.
+              </p>
             </div>
 
             {/* Vehicle Type Selection */}
@@ -235,16 +307,56 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               />
             </div>
 
-            {/* MoMo Payout Number */}
-            <div className="space-y-1.5">
-              <label className="font-bold text-gray-700">MoMo / Orange Money Payout Number</label>
-              <input
-                type="text"
-                value={momoNumber}
-                onChange={(e) => setMomoNumber(e.target.value)}
-                placeholder="e.g. 0886991223 (same as phone if empty)"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827] focus:outline-none focus:border-[#06C167]"
-              />
+            {/* MoMo Payout Number & Network */}
+            <div className="space-y-2">
+              <div className="space-y-1.5">
+                <label className="font-bold text-gray-700 flex items-center justify-between">
+                  <span>Mobile Money Payout Number *</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Auto-filled from phone</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={momoNumber}
+                  onChange={(e) => setMomoNumber(e.target.value)}
+                  placeholder="e.g. 0886991223"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#06C167] focus:outline-none focus:border-[#06C167]"
+                />
+              </div>
+
+              {/* Supported MoMo Network */}
+              <div className="space-y-1 mt-2">
+                <label className="font-bold text-gray-700 text-[11px] block">
+                  Supported MoMo Network
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMomoProvider('mtn')}
+                    className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      momoProvider === 'mtn'
+                        ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-xs'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>Lonestar MTN (088 / 055)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMomoProvider('orange')}
+                    className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      momoProvider === 'orange'
+                        ? 'border-orange-500 bg-orange-50 text-orange-900 shadow-xs'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#FF7A00]" />
+                    <span>Orange Money (077)</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Submit Button */}

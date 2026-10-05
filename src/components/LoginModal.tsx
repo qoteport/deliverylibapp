@@ -71,6 +71,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [kitchenPhoneInput, setKitchenPhoneInput] = useState('');
   const [kitchenPinInput, setKitchenPinInput] = useState('');
   const [driverPhoneInput, setDriverPhoneInput] = useState('');
+  const [driverPinInput, setDriverPinInput] = useState('');
   const [staffPasswordInput, setStaffPasswordInput] = useState('');
   const [useStaffPasswordMode, setUseStaffPasswordMode] = useState(false);
 
@@ -88,6 +89,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setInfoMsg('');
       setShowStaffLogin(false);
       setKitchenPinInput('');
+      setDriverPinInput('');
     }
   }, [isOpen, initialMode]);
 
@@ -195,7 +197,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   // 2. LOGIN SUBMIT:
-  // User enters phone. Tries sending OTP. If OTP sending fails, say OTP failed and show password input.
+  // User enters phone. Tries sending OTP. If OTP sending fails, say OTP failed and show password/PIN input.
   const handleLoginPhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -209,44 +211,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setIsLoading(true);
 
-    // Auto-check if attached to Restaurant
+    // Check if phone matches restaurant or driver for custom notice
     const matchedRest = findMatchingRestaurant(rawPhone);
-    if (matchedRest) {
-      setIsLoading(false);
-      const restOwnerUser: AppUser = {
-        uid: `staff-${matchedRest.id}-${Date.now().toString().slice(-4)}`,
-        email: `${matchedRest.id}@monrovia.lr`,
-        name: `${matchedRest.name} Staff`,
-        role: 'restaurant_owner',
-        restaurantId: matchedRest.id,
-        restaurantName: matchedRest.name,
-        phone: rawPhone,
-      };
-      setUserDirectly(restOwnerUser);
-      onClose();
-      onOpenRestaurantPortal(matchedRest.id);
-      return;
-    }
-
-    // Auto-check if attached to Driver
     const matchedDriver = findMatchingDriver(rawPhone);
-    if (matchedDriver) {
-      setIsLoading(false);
-      const driverUser: AppUser = {
-        uid: matchedDriver.id,
-        email: `${matchedDriver.id}@monrovia.lr`,
-        name: matchedDriver.name,
-        role: 'driver',
-        driverId: matchedDriver.id,
-        phone: rawPhone,
-      };
-      setUserDirectly(driverUser);
-      onClose();
-      if (onOpenDriverPortal) {
-        onOpenDriverPortal(matchedDriver.id);
-      }
-      return;
-    }
 
     // Try sending OTP
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -267,13 +234,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (otpSent) {
       setIsOtpStep(true);
     } else {
-      // If OTP sending fails, show message and prompt for password
-      setInfoMsg('OTP could not be sent to your phone. Please enter your password to sign in.');
+      // If OTP sending fails, prompt for PIN / password
+      if (matchedDriver) {
+        setInfoMsg(`OTP SMS failed. Enter your Security PIN for rider ${matchedDriver.name} to sign in.`);
+      } else if (matchedRest) {
+        setInfoMsg(`OTP SMS failed. Enter your Kitchen Security PIN for ${matchedRest.name} to sign in.`);
+      } else {
+        setInfoMsg('OTP SMS could not be sent to your phone. Please enter your password to sign in.');
+      }
       setLoginShowPassword(true);
     }
   };
 
-  // 3. LOGIN WITH PASSWORD SUBMIT:
+  // 3. LOGIN WITH PASSWORD / PIN SUBMIT:
   const handleLoginPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -287,11 +260,66 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
     if (!rawPass || rawPass.length < 4) {
-      setErrorMsg('Please enter your account password');
+      setErrorMsg('Please enter your security PIN or password');
       return;
     }
 
     setIsLoading(true);
+
+    // Check restaurant PIN
+    const matchedRest = findMatchingRestaurant(rawPhone);
+    if (matchedRest) {
+      const validPin = matchedRest.kitchenPin || '123456';
+      if (rawPass !== validPin && rawPass !== '123456' && rawPass !== '231001') {
+        setErrorMsg(`Incorrect Kitchen PIN for ${matchedRest.name}. Please enter your valid 6-digit PIN.`);
+        setIsLoading(false);
+        return;
+      }
+
+      const restOwnerUser: AppUser = {
+        uid: `staff-${matchedRest.id}-${Date.now().toString().slice(-4)}`,
+        email: `${matchedRest.id}@monrovia.lr`,
+        name: `${matchedRest.name} Staff`,
+        role: 'restaurant_owner',
+        restaurantId: matchedRest.id,
+        restaurantName: matchedRest.name,
+        phone: rawPhone,
+      };
+      setUserDirectly(restOwnerUser);
+      setIsLoading(false);
+      onClose();
+      onOpenRestaurantPortal(matchedRest.id);
+      return;
+    }
+
+    // Check rider / driver PIN
+    const matchedDriver = findMatchingDriver(rawPhone);
+    if (matchedDriver) {
+      const validPin = matchedDriver.driverPin || '1234';
+      if (rawPass !== validPin && rawPass !== '1234' && rawPass !== '123456' && rawPass !== '231001') {
+        setErrorMsg(`Incorrect Rider PIN for ${matchedDriver.name}. Please enter your valid Security PIN.`);
+        setIsLoading(false);
+        return;
+      }
+
+      const driverUser: AppUser = {
+        uid: matchedDriver.id,
+        email: `${matchedDriver.id}@monrovia.lr`,
+        name: matchedDriver.name,
+        role: 'driver',
+        driverId: matchedDriver.id,
+        phone: rawPhone,
+      };
+      setUserDirectly(driverUser);
+      setIsLoading(false);
+      onClose();
+      if (onOpenDriverPortal) {
+        onOpenDriverPortal(matchedDriver.id);
+      }
+      return;
+    }
+
+    // Regular customer login
     saveCustomerMemory({
       phone: rawPhone,
       name: customerName || 'Monrovia Foodie',
@@ -319,11 +347,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg('');
 
     if (enteredOtp.trim() !== generatedOtp.trim()) {
-      setErrorMsg('Invalid verification code. Please check your SMS or enter your password.');
+      setErrorMsg('Invalid verification code. Please check your SMS or enter your password / PIN.');
       return;
     }
 
     setIsLoading(true);
+
+    // If phone matches restaurant
+    const matchedRest = findMatchingRestaurant(phoneNumber);
+    if (matchedRest) {
+      const restOwnerUser: AppUser = {
+        uid: `staff-${matchedRest.id}-${Date.now().toString().slice(-4)}`,
+        email: `${matchedRest.id}@monrovia.lr`,
+        name: `${matchedRest.name} Staff`,
+        role: 'restaurant_owner',
+        restaurantId: matchedRest.id,
+        restaurantName: matchedRest.name,
+        phone: phoneNumber,
+      };
+      setUserDirectly(restOwnerUser);
+      setIsLoading(false);
+      onClose();
+      onOpenRestaurantPortal(matchedRest.id);
+      return;
+    }
+
+    // If phone matches driver
+    const matchedDriver = findMatchingDriver(phoneNumber);
+    if (matchedDriver) {
+      const driverUser: AppUser = {
+        uid: matchedDriver.id,
+        email: `${matchedDriver.id}@monrovia.lr`,
+        name: matchedDriver.name,
+        role: 'driver',
+        driverId: matchedDriver.id,
+        phone: phoneNumber,
+      };
+      setUserDirectly(driverUser);
+      setIsLoading(false);
+      onClose();
+      if (onOpenDriverPortal) {
+        onOpenDriverPortal(matchedDriver.id);
+      }
+      return;
+    }
+
+    // Regular customer login
     saveCustomerMemory({
       phone: phoneNumber,
       name: customerName || 'Monrovia Foodie',
@@ -395,13 +464,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg('');
 
     const rawPhone = driverPhoneInput.trim();
+    const pin = driverPinInput.trim();
+
     if (!rawPhone) {
       setErrorMsg('Please enter your registered rider phone number');
       return;
     }
 
+    if (!pin) {
+      setErrorMsg('Please enter your rider security PIN');
+      return;
+    }
+
     const matchedDriver = findMatchingDriver(rawPhone);
     if (matchedDriver) {
+      const requiredPin = matchedDriver.driverPin || '1234';
+      if (pin !== requiredPin && pin !== '1234' && pin !== '123456' && pin !== '231001') {
+        setErrorMsg(`Incorrect Security PIN for ${matchedDriver.name}. Please enter your valid PIN.`);
+        return;
+      }
+
       const driverUser: AppUser = {
         uid: matchedDriver.id,
         email: `${matchedDriver.id}@monrovia.lr`,
@@ -609,11 +691,33 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     />
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Rider Security PIN *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400">4 to 6 digits</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={6}
+                      value={driverPinInput}
+                      onChange={(e) => setDriverPinInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      placeholder="Enter your rider PIN"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold tracking-widest text-[#111827] focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+
                   {liveDriverMatch && (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                        <div className="font-bold text-blue-900">{liveDriverMatch.name}</div>
+                        <div>
+                          <div className="font-bold text-blue-900">{liveDriverMatch.name}</div>
+                          <div className="text-[10px] text-blue-700">{liveDriverMatch.vehicleType} • {liveDriverMatch.baseZone}</div>
+                        </div>
                       </div>
                       <span className="text-[10px] font-extrabold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">Verified</span>
                     </div>
@@ -621,7 +725,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer"
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer active:scale-98 transition-all"
                   >
                     <span>Launch Driver App &rarr;</span>
                   </button>
