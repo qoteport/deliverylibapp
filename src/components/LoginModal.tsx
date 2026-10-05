@@ -34,6 +34,7 @@ import { sendTwilioSms } from '../utils/twilio';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialMode?: 'login' | 'register';
   restaurants: Restaurant[];
   drivers?: DeliveryDriver[];
   onOpenRestaurantPortal: (restaurantId: string) => void;
@@ -46,6 +47,7 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
+  initialMode = 'login',
   restaurants,
   drivers = [],
   onOpenRestaurantPortal,
@@ -58,9 +60,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const memory = getCustomerMemory();
 
   // Mode: customer auth ('login' | 'register') vs staff portal
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
   const [showStaffLogin, setShowStaffLogin] = useState(false);
   const [staffSubTab, setStaffSubTab] = useState<'kitchen' | 'driver'>('kitchen');
+
+  // Sync authMode when initialMode changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setAuthMode(initialMode);
+      setIsOtpStep(false);
+      setIsPasswordFallback(false);
+      setErrorMsg('');
+      setShowStaffLogin(false);
+    }
+  }, [isOpen, initialMode]);
 
   // Customer State (prepopulated from memory)
   const [phoneNumber, setPhoneNumber] = useState(memory.phone || '');

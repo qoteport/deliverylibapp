@@ -1,4 +1,3 @@
-import React from 'react';
 import { 
   ShoppingBag, 
   Heart, 
@@ -8,6 +7,8 @@ import {
   Bike, 
   UtensilsCrossed, 
   User, 
+  UserPlus,
+  LogIn,
   ShieldAlert, 
   Store, 
   LogOut, 
@@ -29,6 +30,7 @@ interface HeaderProps {
   activeOrderCount: number;
   onOpenOrderTracker: () => void;
   onOpenLogin: () => void;
+  onOpenRegister?: () => void;
   onOpenAdminPortal: () => void;
   onOpenRestaurantPortal: (restaurantId: string) => void;
   onOpenDriverPortal: () => void;
@@ -48,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeOrderCount,
   onOpenOrderTracker,
   onOpenLogin,
+  onOpenRegister,
   onOpenAdminPortal,
   onOpenRestaurantPortal,
   onOpenDriverPortal,
@@ -160,13 +163,27 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             ) : (
-              <button
-                onClick={onOpenLogin}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#111827] rounded-xl text-xs font-bold transition-all shadow-xs"
-              >
-                <User className="w-3.5 h-3.5 text-[#06C167]" />
-                <span>Sign In</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#111827] rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  title="Sign In"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Log In</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onOpenRegister || onOpenLogin}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-[#06C167] to-[#048747] hover:from-[#05A357] hover:to-[#037039] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  title="Create New Account"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Register</span>
+                </button>
+              </div>
             )}
           </div>
 

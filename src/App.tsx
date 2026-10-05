@@ -50,6 +50,7 @@ export default function App() {
 
   // Modal Visibilities
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isDriverJoinOpen, setIsDriverJoinOpen] = useState(false);
   const [selectedDishForModal, setSelectedDishForModal] = useState<MenuItem | null>(null);
@@ -790,7 +791,14 @@ export default function App() {
             setIsFavoritesOpen(true);
           }
         }}
-        onOpenLogin={() => setIsLoginOpen(true)}
+        onOpenLogin={() => {
+          setAuthModalMode('login');
+          setIsLoginOpen(true);
+        }}
+        onOpenRegister={() => {
+          setAuthModalMode('register');
+          setIsLoginOpen(true);
+        }}
         onOpenAdminPortal={() => navigateTo({ name: 'admin' })}
         onOpenRestaurantPortal={(id) => navigateTo({ name: 'restaurant', restaurantId: id })}
         onOpenDriverPortal={() => navigateTo({ name: 'driver' })}
@@ -869,13 +877,17 @@ export default function App() {
         cartSubtotal={cartSubtotal}
         onOpenCart={() => setIsCartOpen(true)}
         onFocusSearch={handleFocusSearch}
-        onOpenLogin={() => setIsLoginOpen(true)}
+        onOpenLogin={() => {
+          setAuthModalMode('login');
+          setIsLoginOpen(true);
+        }}
         currency={currency}
       />
 
       {/* Login Modal for Restaurant Kitchen, Courier & Customer with Phone Auto-Routing */}
       <LoginModal
         isOpen={isLoginOpen}
+        initialMode={authModalMode}
         onClose={() => setIsLoginOpen(false)}
         restaurants={restaurants}
         drivers={drivers}
