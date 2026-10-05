@@ -82,11 +82,11 @@ export const Header: React.FC<HeaderProps> = ({
             href="/" 
             className="flex items-center gap-1.5 shrink-0 group"
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-md shadow-[#FF4B26]/20">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#06C167] flex items-center justify-center text-white shadow-md shadow-[#06C167]/25">
               <Utensils className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </div>
             <span className="font-extrabold text-lg sm:text-2xl tracking-tight text-[#111827]">
-              AURA<span className="text-[#FF4B26]">.</span>
+              AURA<span className="text-[#06C167]">.</span>
             </span>
           </a>
 
@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-full text-[11px] sm:text-xs text-[#1F2937] font-semibold transition-all shadow-xs"
             title="Choose Delivery Location"
           >
-            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF4B26] shrink-0" />
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#06C167] shrink-0" />
             <span className="truncate max-w-[85px] sm:max-w-[130px]">Monrovia</span>
             <ChevronDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400" />
           </button>
@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Dining Mode Quick Pill */}
           <button
             onClick={onOpenDiningModeSelect}
-            className="hidden xs:flex items-center gap-1 px-2.5 py-1 bg-[#FFF2EE] hover:bg-[#FFE6DF] text-[#FF4B26] font-bold rounded-full text-[11px] transition-colors"
+            className="hidden xs:flex items-center gap-1 px-2.5 py-1 bg-[#E8F8EE] hover:bg-[#D4F4E0] text-[#06C167] font-bold rounded-full text-[11px] transition-colors"
             title="Change Dining Preference"
           >
             <ModeIcon className="w-3 h-3 stroke-[2.5]" />
@@ -121,7 +121,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#374151] rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center gap-0.5 sm:gap-1"
             title="Toggle USD / LRD"
           >
-            <span className="text-[#FF4B26] font-mono">{currency === 'USD' ? '$' : 'L$'}</span>
+            <span className="text-[#06C167] font-mono font-bold">{currency === 'USD' ? '$' : 'L$'}</span>
             <span>{currency}</span>
           </button>
 
@@ -132,10 +132,10 @@ export const Header: React.FC<HeaderProps> = ({
                 {user.role === 'super_admin' && (
                   <button
                     onClick={onOpenAdminPortal}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-[#111827] text-white hover:bg-[#FF4B26] rounded-xl text-xs font-bold transition-all shadow-xs"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-[#111827] text-white hover:bg-[#06C167] rounded-xl text-xs font-bold transition-all shadow-xs"
                     title="Super Admin Dashboard"
                   >
-                    <ShieldAlert className="w-3.5 h-3.5 text-[#FF7A00]" />
+                    <ShieldAlert className="w-3.5 h-3.5 text-[#06C167]" />
                     <span>Admin</span>
                   </button>
                 )}
@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {user.role === 'restaurant_owner' && (
                   <button
                     onClick={() => onOpenRestaurantPortal(user.restaurantId || 'aura-sinkor')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
                     title="Kitchen Orders Portal"
                   >
                     <Store className="w-3.5 h-3.5" />
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onOpenLogin}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#111827] rounded-xl text-xs font-bold transition-all shadow-xs"
               >
-                <User className="w-3.5 h-3.5 text-[#FF4B26]" />
+                <User className="w-3.5 h-3.5 text-[#06C167]" />
                 <span>Sign In</span>
               </button>
             )}
@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
           {activeOrderCount > 0 && (
             <button
               onClick={onOpenOrderTracker}
-              className="flex items-center gap-1 px-2 py-1 bg-[#ECFDF5] border border-[#A7F3D0] text-[#059669] text-[11px] font-bold rounded-xl transition-all animate-pulse"
+              className="flex items-center gap-1 px-2 py-1 bg-[#E8F8EE] border border-[#A7F3D0] text-[#059669] text-[11px] font-bold rounded-xl transition-all animate-pulse"
               title="Track Active Order"
             >
               <Clock className="w-3.5 h-3.5" />
@@ -185,12 +185,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Saved / Favorites (Desktop/Tablet) */}
           <button
             onClick={onOpenFavorites}
-            className="hidden sm:flex items-center gap-1 p-2 text-gray-600 hover:text-[#FF4B26] hover:bg-orange-50 rounded-xl transition-colors relative"
+            className="hidden sm:flex items-center gap-1 p-2 text-gray-600 hover:text-[#06C167] hover:bg-green-50 rounded-xl transition-colors relative"
             title="Saved Favorites"
           >
             <Heart className="w-4 h-4" />
             {favoritesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF4B26] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#06C167] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                 {favoritesCount}
               </span>
             )}
@@ -199,13 +199,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Modern Cart Button */}
           <button
             onClick={onOpenCart}
-            className="flex items-center gap-1.5 py-1.5 px-2.5 sm:py-2 sm:px-3.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-[#FF4B26]/20 hover:shadow-lg active:scale-95"
+            className="flex items-center gap-1.5 py-1.5 px-2.5 sm:py-2 sm:px-3.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-[#06C167]/25 hover:shadow-lg active:scale-95"
             title="Shopping Basket"
           >
             <div className="relative">
               <ShoppingBag className="w-4 h-4" />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-white text-[#FF4B26] text-[10px] font-black rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-white text-[#06C167] text-[10px] font-black rounded-full flex items-center justify-center shadow-xs">
                   {cartCount}
                 </span>
               )}

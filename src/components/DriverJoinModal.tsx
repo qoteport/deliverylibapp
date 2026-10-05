@@ -89,7 +89,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
         {/* Modal Header */}
         <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shadow-md shadow-[#FF4B26]/20">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-md shadow-[#06C167]/20">
               <Bike className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
@@ -112,7 +112,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
         {/* Success / Pending Verification View */}
         {isSuccess && registeredDriver ? (
           <div className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
               <Clock className="w-8 h-8 stroke-[2.5] animate-pulse" />
             </div>
             <h3 className="text-xl font-extrabold text-[#111827]">
@@ -122,8 +122,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               Welcome <strong>{registeredDriver.name}</strong>. Your courier profile has been submitted and is currently <strong>Pending Verification</strong>.
             </p>
 
-            <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl text-left text-xs space-y-1.5 max-w-sm mx-auto">
-              <div className="font-extrabold text-[#FF4B26] flex items-center gap-1.5">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left text-xs space-y-1.5 max-w-sm mx-auto">
+              <div className="font-extrabold text-[#048747] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Verification Gate</span>
               </div>
@@ -140,7 +140,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                     onClose();
                     onOpenDriverPortal(registeredDriver.id);
                   }}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl transition-all cursor-pointer"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl transition-all cursor-pointer"
                 >
                   Preview Driver Portal &rarr;
                 </button>
@@ -172,8 +172,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Tambay Kollie"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                placeholder="e.g. Courier Full Name"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
 
@@ -185,8 +185,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="0886 991 223 / 0777 445 119"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                placeholder="088... / 077..."
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
 
@@ -201,7 +201,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                     onClick={() => setVehicleType(vt)}
                     className={`p-2.5 border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       vehicleType === vt
-                        ? 'border-[#FF4B26] bg-orange-50 text-[#FF4B26] shadow-xs'
+                        ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                     }`}
                   >
@@ -220,7 +220,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 value={plateNumber}
                 onChange={(e) => setPlateNumber(e.target.value)}
                 placeholder="e.g. RL-MB-4821"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
 
@@ -243,7 +243,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 value={momoNumber}
                 onChange={(e) => setMomoNumber(e.target.value)}
                 placeholder="e.g. 0886991223 (same as phone if empty)"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
 
@@ -252,7 +252,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all min-h-[46px] cursor-pointer"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all min-h-[46px] cursor-pointer"
               >
                 {isLoading ? 'Submitting Application...' : 'Submit Rider Application'}
               </button>

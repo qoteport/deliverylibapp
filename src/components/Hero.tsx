@@ -40,13 +40,13 @@ export const Hero: React.FC<HeroProps> = ({
         
         {/* Search Bar */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF4B26] absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[#06C167] absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search dishes, restaurants, Monrovia specials..."
-            className="w-full pl-10 sm:pl-11 pr-10 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-2xl text-xs sm:text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#FF4B26] focus:ring-4 focus:ring-[#FF4B26]/10 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all min-h-[44px] sm:min-h-[48px]"
+            className="w-full pl-10 sm:pl-11 pr-10 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-2xl text-xs sm:text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#06C167] focus:ring-4 focus:ring-[#06C167]/10 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all min-h-[44px] sm:min-h-[48px]"
           />
           {searchQuery && (
             <button
@@ -65,7 +65,7 @@ export const Hero: React.FC<HeroProps> = ({
             onClick={() => onSelectDiningMode('delivery')}
             className={`flex items-center gap-1.5 py-1.5 sm:py-2 px-3 sm:px-3.5 rounded-xl font-bold text-xs transition-all ${
               diningMode === 'delivery'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF6B00] text-white shadow-sm'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-sm'
                 : 'text-gray-600 hover:text-[#111827]'
             }`}
           >
@@ -78,7 +78,7 @@ export const Hero: React.FC<HeroProps> = ({
             onClick={() => onSelectDiningMode('pickup')}
             className={`flex items-center gap-1.5 py-1.5 sm:py-2 px-3 sm:px-3.5 rounded-xl font-bold text-xs transition-all ${
               diningMode === 'pickup'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF6B00] text-white shadow-sm'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-sm'
                 : 'text-gray-600 hover:text-[#111827]'
             }`}
           >
@@ -91,7 +91,7 @@ export const Hero: React.FC<HeroProps> = ({
             onClick={() => onSelectDiningMode('dine-in')}
             className={`flex items-center gap-1.5 py-1.5 sm:py-2 px-3 sm:px-3.5 rounded-xl font-bold text-xs transition-all ${
               diningMode === 'dine-in'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF6B00] text-white shadow-sm'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-sm'
                 : 'text-gray-600 hover:text-[#111827]'
             }`}
           >
@@ -114,7 +114,7 @@ export const Hero: React.FC<HeroProps> = ({
             onClick={() => onSearchChange(tag)}
             className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
               searchQuery === tag
-                ? 'bg-[#FF4B26] border-[#FF4B26] text-white'
+                ? 'bg-[#06C167] border-[#06C167] text-white shadow-xs'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-[#111827]'
             }`}
           >
@@ -127,7 +127,7 @@ export const Hero: React.FC<HeroProps> = ({
       {featuredDish ? (
         <div 
           onClick={onQuickViewSpecial}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white p-4 sm:p-6 shadow-lg shadow-[#FF4B26]/15 cursor-pointer active:scale-[0.99] transition-all group"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white p-4 sm:p-6 shadow-lg shadow-[#06C167]/20 cursor-pointer active:scale-[0.99] transition-all group"
         >
           <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
@@ -150,10 +150,10 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[11px] font-semibold text-white/95">
                 <span className="flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-md">
                   <Zap className="w-3 h-3 text-yellow-300 fill-yellow-300" />
-                  {featuredDish.prepTimeMinutes}m prep
+                  Ready in ~{featuredDish.prepTimeMinutes} mins
                 </span>
                 <span className="flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-md">
-                  <ShieldCheck className="w-3 h-3 text-emerald-300" />
+                  <ShieldCheck className="w-3 h-3 text-emerald-200" />
                   MTN MoMo &amp; Orange Money
                 </span>
               </div>
@@ -169,7 +169,7 @@ export const Hero: React.FC<HeroProps> = ({
 
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 bg-white text-[#FF4722] hover:bg-orange-50 font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md group-hover:shadow-lg"
+                className="flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 bg-white text-[#048747] hover:bg-emerald-50 font-extrabold rounded-2xl text-xs uppercase tracking-wider transition-all shadow-md group-hover:shadow-lg"
               >
                 <span>Order Now</span>
                 <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
@@ -179,7 +179,7 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white p-5 sm:p-6 shadow-lg shadow-[#FF4B26]/15">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white p-5 sm:p-6 shadow-lg shadow-[#06C167]/20">
           <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -1,4 +1,6 @@
 import { Restaurant, MenuItem, Category } from '../types';
+import { INITIAL_RESTAURANTS } from './demoRestaurants';
+import { MENU_ITEMS } from './menuData';
 
 export const MONROVIA_NEIGHBORHOODS = [
   'Sinkor (Tubman Blvd)',
@@ -10,9 +12,8 @@ export const MONROVIA_NEIGHBORHOODS = [
   'Airfield & Lakpazee',
 ];
 
-export const INITIAL_RESTAURANTS: Restaurant[] = [];
-
-export const INITIAL_MENU_ITEMS: MenuItem[] = [];
+export { INITIAL_RESTAURANTS };
+export const INITIAL_MENU_ITEMS: MenuItem[] = MENU_ITEMS;
 
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: 'liberian-favorites', label: 'Liberian Classics' },

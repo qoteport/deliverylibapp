@@ -192,14 +192,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-xs">
                 <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
               </div>
               <span className="text-lg font-extrabold tracking-tight text-[#111827]">
                 Super Admin Console
               </span>
             </div>
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#FF4B26] text-[10px] font-extrabold uppercase tracking-wider">
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-[#E8F8EE] border border-emerald-200 text-[#048747] text-[10px] font-extrabold uppercase tracking-wider">
               Super User
             </span>
           </div>
@@ -278,7 +278,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <div className="text-3xl font-black text-[#111827] mt-1 tracking-tight">
               {orders.length}
             </div>
-            <div className="text-xs text-[#FF4B26] font-bold mt-1">
+            <div className="text-xs text-[#06C167] font-bold mt-1">
               {activeOrdersCount} in progress
             </div>
           </div>
@@ -299,13 +299,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             onClick={() => setActiveTab('restaurants')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'restaurants'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
             Kitchens &amp; Verification ({restaurants.length})
             {pendingRestaurantsCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#FF4B26] text-[10px] font-black">
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
                 {pendingRestaurantsCount}
               </span>
             )}
@@ -315,13 +315,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             onClick={() => setActiveTab('drivers')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'drivers'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
             Delivery Fleet ({drivers.length})
             {pendingDriversCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#FF4B26] text-[10px] font-black">
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
                 {pendingDriversCount}
               </span>
             )}
@@ -331,7 +331,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             onClick={() => setActiveTab('orders')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'orders'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -342,7 +342,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             onClick={() => setActiveTab('system')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'system'
-                ? 'bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white shadow-md shadow-[#FF4B26]/20'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -364,7 +364,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   value={searchRestaurant}
                   onChange={(e) => setSearchRestaurant(e.target.value)}
                   placeholder="Filter kitchens..."
-                  className="w-full sm:w-64 px-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  className="w-full sm:w-64 px-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
                 />
 
                 {/* Sub-Filter: Verification Status */}
@@ -391,7 +391,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     type="button"
                     onClick={() => setRestaurantFilter('verified')}
                     className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      restaurantFilter === 'verified' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-700 hover:text-emerald-900'
+                      restaurantFilter === 'verified' ? 'bg-[#06C167] text-white shadow-xs' : 'text-emerald-700 hover:text-emerald-900'
                     }`}
                   >
                     Verified ({restaurants.length - pendingRestaurantsCount})
@@ -401,7 +401,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
               <button
                 onClick={onOpenOnboarding}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-2xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                className="px-5 py-2.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white rounded-2xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
                 <span>Onboard &amp; Verify Kitchen</span>
@@ -453,7 +453,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               )}
                             </div>
                             <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                              <MapPin className="w-3.5 h-3.5 text-[#FF4B26]" />
+                              <MapPin className="w-3.5 h-3.5 text-[#06C167]" />
                               <span>{restaurant.neighborhood}</span>
                             </div>
                           </div>
@@ -480,7 +480,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <div className="p-3 bg-gray-50/80 rounded-2xl border border-gray-200/80 space-y-2 text-xs">
                           <div className="flex items-center justify-between">
                             <span className="font-extrabold text-gray-800 flex items-center gap-1.5">
-                              <Users className="w-3.5 h-3.5 text-[#FF4B26]" />
+                              <Users className="w-3.5 h-3.5 text-[#06C167]" />
                               <span>Authorized Staff Phone Numbers:</span>
                             </span>
                             {!isEditingPhones && (
@@ -490,7 +490,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                   setEditingPhoneRestId(restaurant.id);
                                   setEditingPhoneInput(allowedPhones.join(', '));
                                 }}
-                                className="text-[11px] text-[#FF4B26] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                                className="text-[11px] text-[#06C167] hover:underline font-bold flex items-center gap-1 cursor-pointer"
                               >
                                 <Edit2 className="w-3 h-3" />
                                 <span>Edit Phones</span>
@@ -505,7 +505,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                 value={editingPhoneInput}
                                 onChange={(e) => setEditingPhoneInput(e.target.value)}
                                 placeholder="0886 554 321, 0777 990 123"
-                                className="w-full px-3 py-2 bg-white border border-[#FF4B26] rounded-xl text-xs font-mono text-gray-900"
+                                className="w-full px-3 py-2 bg-white border border-[#06C167] rounded-xl text-xs font-mono text-gray-900"
                               />
                               <div className="flex items-center gap-2">
                                 <button
@@ -737,76 +737,193 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         {/* ============================================================ */}
         {/* TAB 3: LIVE ORDERS FEED                                      */}
         {/* ============================================================ */}
+        {/* ============================================================ */}
+        {/* TAB 3: LIVE ORDERS FEED (REALTIME SYNC)                      */}
+        {/* ============================================================ */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs font-bold">
-              {['all', 'received', 'preparing', 'plating', 'en-route', 'completed'].map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl capitalize transition-all cursor-pointer ${
-                    statusFilter === st
-                      ? 'bg-gray-900 text-white shadow-xs'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {st.replace('-', ' ')}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-xs">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-bold">
+                {['all', 'received', 'preparing', 'plating', 'en-route', 'completed'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`px-3 py-1.5 rounded-xl capitalize transition-all cursor-pointer ${
+                      statusFilter === st
+                        ? 'bg-[#06C167] text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200'
+                    }`}
+                  >
+                    {st.replace('-', ' ')}
+                    {st === 'all' ? ` (${orders.length})` : ` (${orders.filter((o) => o.status === st).length})`}
+                  </button>
+                ))}
+              </div>
 
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
-                    <tr>
-                      <th className="p-3 sm:p-4">Order ID</th>
-                      <th className="p-3 sm:p-4">Customer</th>
-                      <th className="p-3 sm:p-4">Kitchen</th>
-                      <th className="p-3 sm:p-4">Total</th>
-                      <th className="p-3 sm:p-4">Status</th>
-                      <th className="p-3 sm:p-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                    {filteredOrders.map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-3 sm:p-4 font-mono font-bold text-[#111827]">
-                          #{o.id}
-                        </td>
-                        <td className="p-3 sm:p-4">
-                          <div className="font-bold text-[#111827]">{o.customerName}</div>
-                          <div className="text-[11px] text-gray-400 font-mono">{o.customerPhone}</div>
-                        </td>
-                        <td className="p-3 sm:p-4 font-semibold">
-                          {o.restaurantName || 'Kitchen'}
-                        </td>
-                        <td className="p-3 sm:p-4 font-mono font-bold text-[#FF4B26]">
-                          {formatPrice(o.total)}
-                        </td>
-                        <td className="p-3 sm:p-4">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-orange-50 text-[#FF4B26] border border-orange-200">
-                            {o.status}
-                          </span>
-                        </td>
-                        <td className="p-3 sm:p-4">
-                          <div className="flex items-center gap-1">
-                            {o.status !== 'completed' && (
-                              <button
-                                onClick={() => onUpdateOrderStatus(o.id, 'completed')}
-                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs cursor-pointer"
-                              >
-                                Complete
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#06C167] animate-ping" />
+                <span>Live Firestore Feed: {orders.length} orders loaded</span>
               </div>
             </div>
+
+            {filteredOrders.length === 0 ? (
+              <div className="bg-white p-16 text-center rounded-3xl border border-gray-100 shadow-xs space-y-3">
+                <div className="w-14 h-14 rounded-full bg-[#E8F8EE] text-[#048747] flex items-center justify-center mx-auto">
+                  <ShoppingBag className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-extrabold text-[#111827]">
+                  {statusFilter === 'all' ? 'No orders placed yet' : `No orders with status "${statusFilter}"`}
+                </h3>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                  When a customer places an order anywhere in Monrovia, it will appear here in real-time without needing to refresh the page.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredOrders.map((o) => {
+                  const isDone = o.status === 'completed';
+
+                  return (
+                    <div
+                      key={o.id}
+                      className={`p-5 rounded-3xl border transition-all space-y-3.5 ${
+                        isDone
+                          ? 'bg-gray-50/70 border-gray-100'
+                          : 'bg-white border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)]'
+                      }`}
+                    >
+                      {/* Order Top Bar */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-mono text-xs font-black text-[#111827] bg-gray-100 px-2.5 py-1 rounded-lg">
+                            #{o.id}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-400">
+                            {o.createdAt}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E8F8EE] text-[#048747] border border-emerald-200">
+                            {o.status}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-600">
+                            {o.diningMode}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-base font-black text-[#111827]">
+                            {formatPrice(o.total)}
+                          </span>
+                          <span className="text-[11px] font-bold text-gray-500">
+                            ({o.paymentMethod})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Customer & Kitchen Info Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 block">Customer</span>
+                          <div className="font-extrabold text-gray-900">{o.customerName}</div>
+                          <a href={`tel:${o.customerPhone}`} className="text-[#048747] font-mono hover:underline block">
+                            📞 {o.customerPhone}
+                          </a>
+                        </div>
+
+                        <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 block">Kitchen &amp; Destination</span>
+                          <div className="font-bold text-gray-900">{o.restaurantName || 'Kitchen'}</div>
+                          <div className="text-gray-500 truncate">
+                            📍 {o.deliveryArea || o.deliveryAddress || 'Monrovia'}
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 block">Dispatched Courier</span>
+                          <div className="font-bold text-gray-900">
+                            {o.assignedDriverName || 'Auto-dispatching...'}
+                          </div>
+                          <div className="text-gray-500">
+                            {o.assignedDriverPhone ? `📞 ${o.assignedDriverPhone}` : 'Awaiting assignment'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ordered Items List */}
+                      <div className="bg-gray-50/60 p-3 rounded-2xl space-y-1 text-xs text-gray-700">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">
+                          Ordered Items ({o.items?.length || 0})
+                        </div>
+                        {o.items?.map((item) => (
+                          <div key={item.cartItemId} className="flex justify-between items-start">
+                            <div>
+                              <span className="font-black text-gray-900">{item.quantity}x</span> {item.menuItem?.name || 'Dish'}
+                              {item.selectedSpiceLevel && (
+                                <span className="ml-1 text-red-500 font-bold text-[10px]">
+                                  [{item.selectedSpiceLevel}]
+                                </span>
+                              )}
+                              {item.selectedAddons && item.selectedAddons.length > 0 && (
+                                <span className="text-gray-400 text-[10px] block pl-3">
+                                  +{item.selectedAddons.map((a) => a.name).join(', ')}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-mono font-semibold">{formatPrice(item.itemTotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Quick Status Control Buttons */}
+                      <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100">
+                        <div className="text-[11px] text-gray-500 font-semibold">
+                          Advance Status in Realtime:
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {o.status === 'received' && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(o.id, 'preparing')}
+                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl border border-amber-200 transition-colors cursor-pointer"
+                            >
+                              👨‍🍳 Start Cooking
+                            </button>
+                          )}
+                          {(o.status === 'received' || o.status === 'preparing') && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(o.id, 'plating')}
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold rounded-xl border border-blue-200 transition-colors cursor-pointer"
+                            >
+                              🍲 Pack Thermal Meal
+                            </button>
+                          )}
+                          {(o.status === 'received' || o.status === 'preparing' || o.status === 'plating') && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(o.id, 'en-route')}
+                              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+                            >
+                              🛵 Dispatch En-Route
+                            </button>
+                          )}
+                          {o.status !== 'completed' && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateOrderStatus(o.id, 'completed')}
+                              className="px-3.5 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white text-xs font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>Mark Delivered</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

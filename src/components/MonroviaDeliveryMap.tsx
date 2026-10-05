@@ -24,7 +24,7 @@ export const MonroviaDeliveryMap: React.FC<MonroviaDeliveryMapProps> = ({
   driverLocation,
   restaurantLocation = { lat: 6.2907, lng: -10.7818 }, // Default Sinkor
   customerLocation = { lat: 6.2690, lng: -10.7480 }, // Default Congotown
-  restaurantName = 'AURA Kitchen & Grill',
+  restaurantName = 'Sinkor Kitchen',
   customerAddress = 'Delivery Location',
   driverName = 'Delivery Rider',
   driverVehicle = 'Motorbike',
@@ -67,10 +67,10 @@ export const MonroviaDeliveryMap: React.FC<MonroviaDeliveryMapProps> = ({
             <AdvancedMarker position={restaurantLocation} title={restaurantName}>
               <div className="flex flex-col items-center group cursor-pointer">
                 <div className="px-2 py-0.5 bg-gray-900 text-white text-[10px] font-bold rounded-full shadow-md whitespace-nowrap mb-1 flex items-center gap-1 border border-white/20">
-                  <Store className="w-2.5 h-2.5 text-[#FF7A00]" />
+                  <Store className="w-2.5 h-2.5 text-[#06C167]" />
                   <span>{restaurantName.split(' ')[0]}</span>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shadow-lg ring-2 ring-white">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-lg ring-2 ring-white">
                   <Store className="w-4 h-4" />
                 </div>
               </div>

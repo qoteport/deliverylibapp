@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Check, Flame, Clock, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { MenuItem, SelectedAddon, CartItem, Currency, USD_TO_LRD_RATE, AddonOption } from '../types';
+import { X, Plus, Minus, Check, Flame, Clock, ChevronLeft, ChevronRight, Store } from 'lucide-react';
+import { MenuItem, SelectedAddon, CartItem, Currency, USD_TO_LRD_RATE, AddonOption, Restaurant } from '../types';
 import { DishIllustration } from './DishIllustration';
-import { CustomDropdown } from './CustomDropdown';
 
 interface DishModalProps {
   dish: MenuItem | null;
   onClose: () => void;
   onAddToCart: (item: Omit<CartItem, 'cartItemId' | 'itemTotal'>) => void;
   currency: Currency;
+  restaurants?: Restaurant[];
+  restaurantName?: string;
 }
 
 const DEFAULT_MONROVIA_ADDONS: AddonOption[] = [
@@ -26,7 +27,14 @@ const SPICE_OPTIONS = [
   { value: 'Extreme Pepper', label: 'Extreme Pepper (Extra Fire)', badge: '💥 Fire' },
 ];
 
-export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart, currency }) => {
+export const DishModal: React.FC<DishModalProps> = ({
+  dish,
+  onClose,
+  onAddToCart,
+  currency,
+  restaurants = [],
+  restaurantName,
+}) => {
   if (!dish) return null;
 
   const [quantity, setQuantity] = useState<number>(1);
@@ -39,6 +47,9 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
   );
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+
+  const targetRestaurant = restaurants.find((r) => r.id === dish.restaurantId);
+  const resolvedRestaurantName = restaurantName || targetRestaurant?.name || '';
 
   const availableAddonsList: AddonOption[] = (dish.availableAddons && dish.availableAddons.length > 0)
     ? dish.availableAddons
@@ -84,51 +95,64 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade">
       <div 
-        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
-
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white min-h-[38px] min-w-[38px] flex items-center justify-center transition-colors backdrop-blur-xs shadow-md"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {/* Visual Top Image Gallery / Illustration */}
-        <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden">
+        <div className="relative w-full h-64 sm:h-72 bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden">
+          {/* Mobile top pull indicator */}
+          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/70 rounded-full z-20 sm:hidden shadow-sm pointer-events-none" />
+
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors backdrop-blur-md shadow-md absolute top-3.5 right-3.5 z-20"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
           {allImages.length > 0 ? (
             <div className="relative w-full h-full">
               <img
                 src={allImages[activeImageIndex] || allImages[0]}
                 alt={dish.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
               
+              {/* Subtle bottom gradient to highlight image */}
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
               {allImages.length > 1 && (
                 <>
                   <button
-                    onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1))}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
+                    }}
+                    className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors z-10 min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md absolute left-3 top-1/2 -translate-y-1/2"
+                    aria-label="Previous image"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setActiveImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveImageIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
+                    }}
+                    className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors z-10 min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md absolute right-3 top-1/2 -translate-y-1/2"
+                    aria-label="Next image"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
-                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-xs px-3 py-1 rounded-full z-10">
                     {allImages.map((_, i) => (
                       <span
                         key={i}
-                        className={`w-1.5 h-1.5 rounded-full transition-all ${
-                          i === activeImageIndex ? 'bg-white w-3' : 'bg-white/50'
+                        className={`h-1.5 rounded-full transition-all ${
+                          i === activeImageIndex ? 'bg-white w-4' : 'bg-white/50 w-1.5'
                         }`}
                       />
                     ))}
@@ -152,7 +176,7 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
                   onClick={() => setActiveImageIndex(idx)}
                   className={`w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
                     idx === activeImageIndex
-                      ? 'border-[#FF4B26] ring-2 ring-[#FF4B26]/20'
+                      ? 'border-[#06C167] ring-2 ring-[#06C167]/20'
                       : 'border-gray-200 opacity-70 hover:opacity-100'
                   }`}
                 >
@@ -167,7 +191,7 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#111827]">
                 {dish.name}
               </h2>
-              <div className="font-mono text-xl font-black text-[#FF4B26] tabular-nums shrink-0">
+              <div className="font-mono text-xl font-black text-[#111827] tabular-nums shrink-0">
                 {formatPrice(dish.price)}
               </div>
             </div>
@@ -176,14 +200,16 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
               {dish.description}
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-gray-500 mt-2 font-medium">
-              <span className="flex items-center gap-1 bg-orange-50 text-[#FF4B26] font-bold px-2.5 py-1 rounded-lg">
+            {/* Ready in Time and Restaurant Name Badge */}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 mt-2.5 font-medium">
+              <span className="flex items-center gap-1 bg-[#E8F8EE] text-[#048747] font-bold px-2.5 py-1 rounded-lg border border-[#A7F3D0]">
                 <Clock className="w-3.5 h-3.5" />
-                {dish.prepTimeMinutes} mins preparation
+                Ready in ~{dish.prepTimeMinutes} mins
               </span>
-              {dish.provenance && (
-                <span className="text-gray-400">
-                  {dish.provenance}
+              {resolvedRestaurantName && (
+                <span className="flex items-center gap-1.5 bg-gray-100 text-gray-800 font-extrabold px-2.5 py-1 rounded-lg border border-gray-200">
+                  <Store className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>{resolvedRestaurantName}</span>
                 </span>
               )}
             </div>
@@ -193,10 +219,10 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
           <div className="space-y-2 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-[#FF4B26]" />
+                <Flame className="w-3.5 h-3.5 text-[#06C167]" />
                 <span>Spice Preference</span>
               </label>
-              <span className="text-[11px] font-bold text-[#FF4B26]">
+              <span className="text-[11px] font-bold text-[#06C167]">
                 {selectedSpiceLevel}
               </span>
             </div>
@@ -213,7 +239,7 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
                     onClick={() => setSelectedSpiceLevel(opt.value)}
                     className={`py-2 px-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
                       isSelected
-                        ? 'border-[#FF4B26] bg-[#FFF2EE] text-[#FF4B26] shadow-xs ring-1 ring-[#FF4B26]'
+                        ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs ring-1 ring-[#06C167]'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -225,52 +251,80 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
             </div>
           </div>
 
-          {/* POPULAR MONROVIA SIDES & ADD-ONS */}
+          {/* TEMPERATURE SELECTION (FOR MEATS / STEAKS) */}
+          {dish.cookingTemperatures && dish.cookingTemperatures.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#111827] uppercase tracking-wider">
+                  Cooking Temperature
+                </label>
+                <span className="text-[11px] font-bold text-[#06C167]">
+                  {selectedTemperature}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {dish.cookingTemperatures.map((temp) => {
+                  const isSelected = selectedTemperature === temp;
+                  return (
+                    <button
+                      key={temp}
+                      type="button"
+                      onClick={() => setSelectedTemperature(temp)}
+                      className={`py-2 px-2.5 rounded-2xl border text-center transition-all ${
+                        isSelected
+                          ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] font-bold shadow-xs'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 text-xs'
+                      }`}
+                    >
+                      <span className="text-xs">{temp}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* MONROVIA SIDES & ADD-ONS */}
           <div className="space-y-2 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider block">
-                Popular Monrovia Sides & Add-ons
+              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider">
+                Popular Sides &amp; Extras
               </label>
-              {selectedAddons.length > 0 && (
-                <span className="text-[11px] text-[#FF4B26] font-bold">
-                  {selectedAddons.length} added (+{formatPrice(addonsTotal)})
-                </span>
-              )}
+              <span className="text-[11px] text-gray-400 font-medium">Optional</span>
             </div>
 
             <div className="space-y-2">
               {availableAddonsList.map((addon) => {
-                const isChecked = selectedAddons.some((a) => a.id === addon.id);
+                const isSelected = selectedAddons.some((a) => a.id === addon.id);
 
                 return (
                   <div
                     key={addon.id}
                     onClick={() => toggleAddon(addon.id, addon.name, addon.price)}
                     className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                      isChecked
-                        ? 'border-[#FF4B26] bg-[#FFF2EE]/40 text-[#111827]'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                      isSelected
+                        ? 'border-[#06C167] bg-[#E8F8EE]/60 text-gray-900 shadow-xs'
+                        : 'border-gray-100 bg-gray-50/70 hover:bg-gray-50 text-gray-700'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
-                          isChecked
-                            ? 'border-[#FF4B26] bg-[#FF4B26] text-white'
-                            : 'border-gray-300 bg-white'
+                        className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
+                          isSelected
+                            ? 'bg-[#06C167] border-[#06C167] text-white'
+                            : 'border-gray-300 bg-white text-transparent'
                         }`}
                       >
-                        {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold truncate">{addon.name}</div>
+                      <div>
+                        <div className="text-xs font-bold text-gray-900">{addon.name}</div>
                         {addon.description && (
-                          <div className="text-[10px] text-gray-400 truncate">{addon.description}</div>
+                          <div className="text-[11px] text-gray-400">{addon.description}</div>
                         )}
                       </div>
                     </div>
-
-                    <span className="text-xs font-mono font-black text-gray-900 shrink-0 ml-2">
+                    <span className="font-mono text-xs font-bold text-gray-900 tabular-nums">
                       +{formatPrice(addon.price)}
                     </span>
                   </div>
@@ -279,54 +333,59 @@ export const DishModal: React.FC<DishModalProps> = ({ dish, onClose, onAddToCart
             </div>
           </div>
 
-          {/* Special Kitchen Instructions */}
+          {/* SPECIAL INSTRUCTIONS */}
           <div className="space-y-1.5 pt-3 border-t border-gray-100">
             <label className="text-xs font-bold text-[#111827] uppercase tracking-wider block">
-              Kitchen Instructions
+              Special Instructions
             </label>
             <input
               type="text"
               value={specialInstructions}
               onChange={(e) => setSpecialInstructions(e.target.value)}
-              placeholder="e.g. Extra pepper on the side, well done meat..."
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#FF4B26]"
+              placeholder="e.g. Extra pepper gravy, no onions, pack soup separately..."
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#06C167]"
             />
           </div>
 
         </div>
 
-        {/* Footer with Quantity Stepper & Add to Bag */}
-        <div className="p-4 sm:p-5 border-t border-gray-100 bg-white shrink-0 flex items-center justify-between gap-3 safe-bottom">
+        {/* Modal Bottom CTA Action */}
+        <div className="p-4 sm:p-5 border-t border-gray-100 bg-white flex items-center justify-between gap-3 shrink-0">
           
-          {/* Stepper */}
-          <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-2xl">
+          {/* Quantity Controls */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-2xl border border-gray-200">
             <button
+              type="button"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="w-8 h-8 rounded-xl bg-white hover:bg-gray-50 text-gray-800 shadow-xs flex items-center justify-center transition-colors disabled:opacity-40"
               disabled={quantity <= 1}
-              className="w-8 h-8 rounded-xl bg-white hover:bg-gray-50 disabled:opacity-40 text-gray-800 shadow-xs flex items-center justify-center transition-all"
               aria-label="Decrease quantity"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
             </button>
-            <span className="w-6 text-center font-bold text-sm text-gray-900">
+            <span className="font-mono text-sm font-extrabold px-2 tabular-nums text-gray-900">
               {quantity}
             </span>
             <button
+              type="button"
               onClick={() => setQuantity((q) => q + 1)}
-              className="w-8 h-8 rounded-xl bg-white hover:bg-gray-50 text-gray-800 shadow-xs flex items-center justify-center transition-all"
+              className="w-8 h-8 rounded-xl bg-white hover:bg-gray-50 text-gray-800 shadow-xs flex items-center justify-center transition-colors"
               aria-label="Increase quantity"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             </button>
           </div>
 
-          {/* Add to Bag CTA */}
+          {/* Add to Bag CTA Button */}
           <button
+            type="button"
             onClick={handleConfirm}
-            className="flex-1 py-3 px-5 bg-gradient-to-r from-[#FF4B26] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between min-h-[46px]"
+            className="flex-1 py-3.5 px-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between min-h-[46px] cursor-pointer"
           >
-            <span>Add to Basket</span>
-            <span className="font-mono text-sm font-black">{formatPrice(itemTotalUsd)}</span>
+            <span>Add to Bag</span>
+            <span className="font-mono text-sm font-black tabular-nums">
+              {formatPrice(itemTotalUsd)}
+            </span>
           </button>
 
         </div>

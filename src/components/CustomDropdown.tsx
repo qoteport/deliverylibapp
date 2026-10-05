@@ -58,7 +58,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3.5 py-2.5 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl text-xs font-semibold text-[#111827] flex items-center justify-between gap-2 shadow-xs transition-all focus:outline-none focus:border-[#FF4B26] focus:ring-2 focus:ring-[#FF4B26]/10 disabled:opacity-50 disabled:cursor-not-allowed ${buttonClassName}`}
+        className={`w-full px-3.5 py-2.5 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl text-xs font-semibold text-[#111827] flex items-center justify-between gap-2 shadow-xs transition-all focus:outline-none focus:border-[#06C167] focus:ring-2 focus:ring-[#06C167]/10 disabled:opacity-50 disabled:cursor-not-allowed ${buttonClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
           {icon && <span className="text-gray-500 shrink-0">{icon}</span>}
@@ -70,13 +70,13 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
         <div className="flex items-center gap-1 shrink-0">
           {selectedOption?.badge && (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-50 text-[#FF4B26] rounded-md">
+            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#E8F8EE] text-[#048747] rounded-md">
               {selectedOption.badge}
             </span>
           )}
           <ChevronDown
             className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-              isOpen ? 'rotate-180 text-[#FF4B26]' : ''
+              isOpen ? 'rotate-180 text-[#06C167]' : ''
             }`}
           />
         </div>
@@ -100,7 +100,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
                 }}
                 className={`w-full px-3 py-2 text-xs font-medium rounded-xl flex items-center justify-between gap-2 text-left transition-colors ${
                   isSelected
-                    ? 'bg-[#FFF2EE] text-[#FF4B26] font-bold'
+                    ? 'bg-[#E8F8EE] text-[#048747] font-bold'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-black'
                 }`}
               >
@@ -115,7 +115,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
                       {opt.badge}
                     </span>
                   )}
-                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-[#FF4B26]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-[#048747]" />}
                 </div>
               </button>
             );

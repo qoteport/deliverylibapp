@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Restaurant, DeliveryDriver, MONROVIA_NEIGHBORHOODS, AppUser } from '../types';
 import { CustomDropdown } from './CustomDropdown';
+import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -51,16 +52,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onOpenDriverJoin,
 }) => {
   const { loginWithPhone, setUserDirectly, user } = useAuth();
+  const memory = getCustomerMemory();
 
   // Mode: customer vs staff
   const [showStaffLogin, setShowStaffLogin] = useState(false);
   const [staffSubTab, setStaffSubTab] = useState<'kitchen' | 'driver'>('kitchen');
 
-  // Customer / Universal Phone Login State
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState(MONROVIA_NEIGHBORHOODS[0]);
-  const [streetAddress, setStreetAddress] = useState('');
+  // Customer / Universal Phone Login State (prepopulated from memory)
+  const [phoneNumber, setPhoneNumber] = useState(memory.phone || '');
+  const [customerName, setCustomerName] = useState(memory.name || '');
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState(
+    memory.destinationArea && MONROVIA_NEIGHBORHOODS.includes(memory.destinationArea)
+      ? memory.destinationArea
+      : MONROVIA_NEIGHBORHOODS[0]
+  );
+  const [streetAddress, setStreetAddress] = useState(memory.address || '');
 
   // OTP Verification State
   const [isOtpStep, setIsOtpStep] = useState(false);
@@ -208,6 +214,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     setIsLoading(true);
+    saveCustomerMemory({
+      phone: phoneNumber,
+      name: customerName,
+      destinationArea: selectedNeighborhood,
+      address: streetAddress,
+    });
+
     const res = await loginWithPhone(
       phoneNumber || '0886 000 000',
       customerName || 'Monrovia Foodie',
@@ -338,11 +351,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade"
       onClick={onClose}
     >
       <div 
-        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
         <div 

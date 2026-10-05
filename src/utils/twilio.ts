@@ -57,7 +57,10 @@ ${itemsText}
 }
 
 export function generateOrderSmsText(order: Order, restaurantName?: string): string {
-  return `AURA Food Order #${order.id} confirmed! Kitchen: ${restaurantName || 'AURA Monrovia'}. Total: $${order.total.toFixed(2)}. ETA: ${order.estimatedDeliveryTime || '25 mins'}. Delivery to: ${order.deliveryArea || 'Monrovia'}. Track live in app!`;
+  if (order.status === 'received') {
+    return `AURA Order #${order.id} received! Kitchen: ${restaurantName || 'AURA Monrovia'}. Total: $${order.total.toFixed(2)}. Transmitted to kitchen for preparation. Track live in app!`;
+  }
+  return `AURA Order #${order.id} is ${order.status}! Kitchen: ${restaurantName || 'AURA Monrovia'}. Total: $${order.total.toFixed(2)}. ETA: ${order.estimatedDeliveryTime || '25 mins'}. Track live in app!`;
 }
 
 export function getWhatsAppDispatchUrl(phoneNumber: string, order: Order, restaurantName?: string): string {

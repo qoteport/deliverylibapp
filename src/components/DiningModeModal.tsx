@@ -48,9 +48,9 @@ export const DiningModeModal: React.FC<DiningModeModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade" onClick={onClose}>
       <div 
-        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl p-5 sm:p-6 pb-[calc(1.5rem+var(--sab))] sm:pb-6 space-y-4"
+        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl p-5 sm:p-6 pb-[calc(1.5rem+var(--sab))] sm:pb-6 space-y-4 animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
         <div 

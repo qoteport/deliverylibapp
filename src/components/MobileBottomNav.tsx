@@ -42,10 +42,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={onOpenCart}
-            className="w-full pointer-events-auto bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white p-3.5 rounded-2xl shadow-xl shadow-[#FF4B26]/30 flex items-center justify-between font-bold active:scale-[0.98] transition-all"
+            className="w-full pointer-events-auto bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white p-3.5 rounded-2xl shadow-xl shadow-[#06C167]/30 flex items-center justify-between font-bold active:scale-[0.98] transition-all"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-white text-[#FF4722] text-xs flex items-center justify-center font-extrabold shadow-sm">
+              <div className="w-7 h-7 rounded-xl bg-white text-[#048747] text-xs flex items-center justify-center font-extrabold shadow-sm">
                 {cartCount}
               </div>
               <span className="text-sm">View Basket</span>
@@ -73,13 +73,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] transition-all relative ${
-            activeTab === 'menu' ? 'text-[#FF4B26]' : 'text-gray-400 hover:text-gray-700'
+            activeTab === 'menu' ? 'text-[#06C167]' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Utensils className={`w-5 h-5 ${activeTab === 'menu' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
           <span className="text-[10px] font-bold mt-1">Food</span>
           {activeTab === 'menu' && (
-            <span className="absolute top-0 w-8 h-1 bg-[#FF4B26] rounded-full" />
+            <span className="absolute top-0 w-8 h-1 bg-[#06C167] rounded-full" />
           )}
         </button>
 
@@ -96,16 +96,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           onClick={() => onSelectTab('favorites')}
           className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[44px] transition-all ${
-            activeTab === 'favorites' ? 'text-[#FF4B26]' : 'text-gray-400 hover:text-gray-700'
+            activeTab === 'favorites' ? 'text-[#06C167]' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Heart className={`w-5 h-5 ${activeTab === 'favorites' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
           {favoritesCount > 0 && (
-            <span className="absolute top-2 right-5 w-2 h-2 rounded-full bg-[#FF4B26]" />
+            <span className="absolute top-2 right-5 w-2 h-2 rounded-full bg-[#06C167]" />
           )}
           <span className="text-[10px] font-bold mt-1">Saved</span>
           {activeTab === 'favorites' && (
-            <span className="absolute top-0 w-8 h-1 bg-[#FF4B26] rounded-full" />
+            <span className="absolute top-0 w-8 h-1 bg-[#06C167] rounded-full" />
           )}
         </button>
 
@@ -113,16 +113,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           onClick={() => onSelectTab('orders')}
           className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[44px] transition-all ${
-            activeTab === 'orders' ? 'text-[#FF4B26]' : 'text-gray-400 hover:text-gray-700'
+            activeTab === 'orders' ? 'text-[#06C167]' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Clock className={`w-5 h-5 ${activeTab === 'orders' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
           {activeOrderCount > 0 && (
-            <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-[#FF4B26] animate-ping" />
+            <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-[#06C167] animate-ping" />
           )}
           <span className="text-[10px] font-bold mt-1">Orders</span>
           {activeTab === 'orders' && (
-            <span className="absolute top-0 w-8 h-1 bg-[#FF4B26] rounded-full" />
+            <span className="absolute top-0 w-8 h-1 bg-[#06C167] rounded-full" />
           )}
         </button>
 

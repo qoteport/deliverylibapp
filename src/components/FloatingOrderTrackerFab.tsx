@@ -57,19 +57,19 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
         return {
           label: 'Awaiting Kitchen Accept',
           icon: Clock,
-          color: 'from-amber-500 to-orange-500',
+          color: 'from-amber-500 to-emerald-600',
         };
       case 'preparing':
         return {
           label: 'Kitchen Cooking',
           icon: Flame,
-          color: 'from-[#FF4B26] to-[#FF7A00]',
+          color: 'from-[#06C167] to-[#048747]',
         };
       case 'plating':
         return {
           label: 'Packed for Delivery',
           icon: ChefHat,
-          color: 'from-orange-500 to-amber-600',
+          color: 'from-emerald-500 to-teal-600',
         };
       case 'en-route':
         return {
@@ -81,7 +81,7 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
         return {
           label: 'Order Active',
           icon: CheckCircle2,
-          color: 'from-[#FF4B26] to-[#FF7A00]',
+          color: 'from-[#06C167] to-[#048747]',
         };
     }
   };
@@ -92,7 +92,7 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
     <div className="fixed bottom-[calc(4.5rem+var(--sab))] sm:bottom-6 right-3 sm:right-6 z-40 animate-in slide-in-from-bottom-3 duration-200">
       <div 
         onClick={onOpenTracker}
-        className="group cursor-pointer flex items-center gap-2.5 p-2 pr-3.5 bg-[#111827]/95 hover:bg-black backdrop-blur-md text-white rounded-2xl shadow-xl hover:shadow-2xl border border-white/15 transition-all active:scale-95 ring-2 ring-[#FF4B26]/30 hover:ring-[#FF4B26]"
+        className="group cursor-pointer flex items-center gap-2.5 p-2 pr-3.5 bg-[#111827]/95 hover:bg-black backdrop-blur-md text-white rounded-2xl shadow-xl hover:shadow-2xl border border-white/15 transition-all active:scale-95 ring-2 ring-[#06C167]/30 hover:ring-[#06C167]"
         title="Click to expand live order tracker"
       >
         {/* Animated Status Icon */}
@@ -105,7 +105,7 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
         <div className="min-w-0 pr-1">
           <div className="flex items-center gap-1.5 text-[11px] font-black text-white truncate">
             <span>{label}</span>
-            <span className="font-mono text-[10px] text-orange-400 bg-white/10 px-1 rounded">
+            <span className="font-mono text-[10px] text-emerald-400 bg-white/10 px-1 rounded">
               #{order.id.slice(-4)}
             </span>
           </div>
@@ -116,7 +116,7 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
         </div>
 
         {/* Expand Indicator */}
-        <div className="p-1 bg-white/10 rounded-lg text-white group-hover:bg-[#FF4B26] transition-colors shrink-0">
+        <div className="p-1 bg-white/10 rounded-lg text-white group-hover:bg-[#06C167] transition-colors shrink-0">
           <ChevronUp className="w-3.5 h-3.5" />
         </div>
       </div>

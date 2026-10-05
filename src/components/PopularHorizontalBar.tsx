@@ -37,7 +37,7 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
       {/* Title Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs">
+          <div className="w-6 h-6 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-xs">
             <Flame className="w-3.5 h-3.5 fill-white" />
           </div>
           <h2 className="text-base sm:text-lg font-extrabold text-[#111827] tracking-tight">
@@ -58,7 +58,7 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
             <div
               key={dish.id}
               onClick={() => onOpenDishModal(dish)}
-              className="group cursor-pointer shrink-0 w-60 sm:w-68 md:w-72 rounded-3xl bg-white border border-gray-100/90 shadow-[0_3px_14px_rgba(0,0,0,0.05)] hover:shadow-xl hover:border-[#FF4B26]/30 transition-all duration-200 overflow-hidden flex flex-col active:scale-[0.98]"
+              className="group cursor-pointer shrink-0 w-60 sm:w-68 md:w-72 rounded-3xl bg-white border border-gray-100/90 shadow-[0_3px_14px_rgba(0,0,0,0.05)] hover:shadow-xl hover:border-[#06C167]/30 transition-all duration-200 overflow-hidden flex flex-col active:scale-[0.98]"
             >
               {/* Prominent Food Image Area */}
               <div className="relative aspect-[16/11] w-full bg-gradient-to-br from-[#1E1A17] via-[#2E241E] to-[#151210] overflow-hidden">
@@ -81,22 +81,22 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
                 </div>
 
                 {/* Floating Quick Action Button */}
-                <div className="absolute bottom-3 right-3 w-9 h-9 rounded-2xl bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                <div className="absolute bottom-3 right-3 w-9 h-9 rounded-2xl bg-gradient-to-r from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                   <Plus className="w-4 h-4 stroke-[3]" />
                 </div>
               </div>
 
               {/* Food Name (Clean & Prominent) */}
               <div className="p-3.5 flex-1 flex flex-col justify-between">
-                <h3 className="font-extrabold text-sm sm:text-base text-[#111827] group-hover:text-[#FF4B26] transition-colors line-clamp-1 leading-snug">
+                <h3 className="font-extrabold text-sm sm:text-base text-[#111827] group-hover:text-[#06C167] transition-colors line-clamp-1 leading-snug">
                   {dish.name}
                 </h3>
                 
                 <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
                   <span className="text-[11px] font-semibold text-gray-400 truncate max-w-[150px]">
-                    {dish.provenance || 'Monrovia Specialty'}
+                    {dish.spiceLevel ? `🌶️ ${dish.spiceLevel}` : 'Specialty'}
                   </span>
-                  <span className="text-[11px] text-[#FF4B26] font-bold flex items-center gap-0.5">
+                  <span className="text-[11px] text-[#06C167] font-bold flex items-center gap-0.5">
                     Order &rarr;
                   </span>
                 </div>

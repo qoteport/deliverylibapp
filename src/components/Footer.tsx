@@ -6,11 +6,11 @@ export const Footer: React.FC = () => {
     <footer className="bg-white text-gray-500 py-10 pb-28 sm:pb-10 border-t border-gray-100 text-center text-xs">
       <div className="max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 space-y-3">
         <div className="flex items-center justify-center gap-1.5">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white">
+          <div className="w-6 h-6 rounded-lg bg-[#06C167] flex items-center justify-center text-white shadow-xs">
             <Utensils className="w-3.5 h-3.5 stroke-[2.5]" />
           </div>
           <span className="font-extrabold text-base tracking-tight text-[#111827]">
-            AURA<span className="text-[#FF4B26]">.</span> Monrovia
+            AURA<span className="text-[#06C167]">.</span> Monrovia
           </span>
         </div>
 
@@ -34,7 +34,7 @@ export const Footer: React.FC = () => {
 
         <div className="text-[11px] text-gray-400 pt-2 flex items-center justify-center gap-1">
           <span>&copy; {new Date().getFullYear()} AURA Monrovia. Built for Liberia with</span>
-          <Heart className="w-3 h-3 text-[#FF4B26] fill-[#FF4B26]" />
+          <Heart className="w-3 h-3 text-[#06C167] fill-[#06C167]" />
         </div>
       </div>
     </footer>

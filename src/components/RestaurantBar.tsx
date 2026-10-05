@@ -67,7 +67,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
             onClick={() => onSelectNeighborhood(nh)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shadow-xs ${
               selectedNeighborhood === nh
-                ? 'bg-[#FF4B26] text-white border border-[#FF4B26]'
+                ? 'bg-[#06C167] text-white border border-[#06C167]'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-black'
             }`}
           >
@@ -78,34 +78,6 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
 
       {/* Modern Restaurant Showcase Carousel */}
       <div className="flex items-stretch gap-3 overflow-x-auto no-scrollbar pb-1.5">
-        
-        {/* All Kitchens Chip */}
-        <div
-          onClick={() => onSelectRestaurant('all')}
-          className={`p-3.5 rounded-2xl border cursor-pointer shrink-0 w-44 flex flex-col justify-between transition-all ${
-            selectedRestaurantId === 'all'
-              ? 'border-[#FF4B26] ring-2 ring-[#FF4B26]/15 bg-white shadow-md'
-              : 'border-gray-200 bg-white hover:border-gray-300 shadow-xs'
-          }`}
-        >
-          <div>
-            <div className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[#FF4B26] bg-orange-50 px-2 py-0.5 rounded-md">
-              <Sparkles className="w-2.5 h-2.5" />
-              <span>Full Menu</span>
-            </div>
-            <div className="font-extrabold text-sm text-[#111827] mt-1.5">
-              All Monrovia Spots
-            </div>
-            <p className="text-[11px] text-gray-500 font-medium mt-1 leading-snug">
-              Browse dishes from every kitchen
-            </p>
-          </div>
-          <div className="text-xs font-bold text-gray-900 mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-            <span>{restaurants.length} Kitchens</span>
-            <span className="text-[#FF4B26]">&rarr;</span>
-          </div>
-        </div>
-
         {/* Each Restaurant Card */}
         {filteredRestaurants.map((restaurant) => {
           const isSelected = selectedRestaurantId === restaurant.id;
@@ -114,10 +86,10 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
           return (
             <div
               key={restaurant.id}
-              onClick={() => onSelectRestaurant(restaurant.id)}
+              onClick={() => onSelectRestaurant(isSelected ? 'all' : restaurant.id)}
               className={`p-3.5 rounded-2xl border cursor-pointer shrink-0 w-60 sm:w-64 flex flex-col justify-between transition-all ${
                 isSelected
-                  ? 'border-[#FF4B26] ring-2 ring-[#FF4B26]/15 bg-white shadow-md'
+                  ? 'border-[#06C167] ring-2 ring-[#06C167]/20 bg-white shadow-md'
                   : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm shadow-xs'
               }`}
             >
@@ -142,18 +114,18 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
 
                 {/* Cuisine & Location */}
                 <div className="text-[11px] text-gray-500 truncate mt-0.5 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-[#FF4B26] shrink-0" />
+                  <MapPin className="w-3 h-3 text-[#06C167] shrink-0" />
                   <span className="truncate">{restaurant.neighborhood}</span>
                 </div>
               </div>
 
-              {/* Menu Item Tags & Delivery ETA (Replaced MoMo/Orange tags with Food Tags) */}
+              {/* Menu Item Tags & Delivery ETA */}
               <div className="pt-2.5 border-t border-gray-100 mt-2.5 flex items-center justify-between gap-1.5 text-[11px]">
                 <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
                   {dishTags.map((tag, idx) => (
                     <span
                       key={idx}
-                      className="px-2 py-0.5 bg-orange-50 text-[#FF4B26] font-bold text-[10px] rounded-md truncate max-w-[95px]"
+                      className="px-2 py-0.5 bg-[#E8F8EE] text-[#048747] font-bold text-[10px] rounded-md truncate max-w-[95px]"
                     >
                       {tag}
                     </span>
@@ -161,7 +133,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 text-gray-600 font-semibold text-xs shrink-0">
-                  <Zap className="w-3 h-3 text-orange-500" />
+                  <Zap className="w-3 h-3 text-[#06C167]" />
                   <span>{restaurant.deliveryTimeMinutes}m</span>
                 </div>
               </div>

@@ -205,13 +205,13 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#FF4722] via-[#FF5F2E] to-[#FF8400] flex items-center justify-center text-white shadow-md shadow-[#FF4B26]/20">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-md shadow-[#06C167]/20">
                 <Bike className="w-5 h-5" />
               </div>
               <div>
                 <div className="font-black text-sm text-[#111827] flex items-center gap-1.5 leading-none">
                   <span>{driver.name}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-[#FF4B26] font-extrabold uppercase">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold uppercase">
                     {driver.vehicleType}
                   </span>
                 </div>
@@ -237,7 +237,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               onClick={handleToggleOnline}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm cursor-pointer ${
                 isOnline
-                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                  ? 'bg-[#06C167] hover:bg-[#048747] text-white'
                   : 'bg-gray-300 hover:bg-gray-400 text-gray-700'
               }`}
             >
@@ -255,17 +255,17 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         <div className="grid grid-cols-3 gap-3">
           <div className="p-4 bg-white border border-gray-100 rounded-3xl shadow-xs">
             <div className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1">
-              <Wallet className="w-3.5 h-3.5 text-emerald-500" />
+              <Wallet className="w-3.5 h-3.5 text-[#06C167]" />
               <span>Today's MoMo</span>
             </div>
-            <div className="font-mono text-xl font-black text-emerald-600 mt-1">
+            <div className="font-mono text-xl font-black text-[#048747] mt-1">
               {formatMoney(driver.earningsTodayUsd)}
             </div>
           </div>
 
           <div className="p-4 bg-white border border-gray-100 rounded-3xl shadow-xs">
             <div className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#FF4B26]" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#06C167]" />
               <span>Completed</span>
             </div>
             <div className="font-mono text-xl font-black text-[#111827] mt-1">
@@ -285,10 +285,10 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         </div>
 
         {/* ============================================================ */}
-        {/* 1. INCOMING DELIVERY OFFER BANNER (High-Energy AURA Orange)  */}
+        {/* 1. INCOMING DELIVERY OFFER BANNER                            */}
         {/* ============================================================ */}
         {offeredOrder && (
-          <div className="p-5 sm:p-6 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white rounded-3xl shadow-xl shadow-[#FF4B26]/20 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="p-5 sm:p-6 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white rounded-3xl shadow-xl shadow-[#06C167]/20 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-white animate-ping" />
@@ -306,7 +306,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                 <div className="text-white/80 text-[11px] font-bold uppercase tracking-wider">1. Pickup Kitchen:</div>
                 <div className="font-extrabold text-white text-sm flex items-center gap-1.5">
                   <Store className="w-4 h-4 text-white" />
-                  <span>{offeredOrder.restaurantName || 'AURA Kitchen & Grill'}</span>
+                  <span>{offeredOrder.restaurantName || 'Monrovia Kitchen'}</span>
                 </div>
                 <div className="text-white/80 text-[11px]">Tubman Blvd, Sinkor</div>
               </div>
@@ -338,7 +338,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                 </button>
                 <button
                   onClick={() => handleAcceptOffer(offeredOrder)}
-                  className="px-6 py-3 bg-white hover:bg-gray-100 text-[#FF4B26] font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
+                  className="px-6 py-3 bg-white hover:bg-gray-100 text-[#048747] font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
                 >
                   Accept Delivery &rarr;
                 </button>
@@ -354,7 +354,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
           <div className="p-5 sm:p-6 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-extrabold text-[#FF4B26] uppercase tracking-wider flex items-center gap-1.5">
+                <div className="text-xs font-extrabold text-[#048747] uppercase tracking-wider flex items-center gap-1.5">
                   <Bike className="w-4 h-4 animate-bounce" />
                   <span>Active Delivery in Progress</span>
                 </div>
@@ -364,7 +364,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-[11px] text-gray-400 font-bold uppercase">Estimated MoMo Payout</span>
-                <div className="font-mono text-xl font-black text-emerald-600">
+                <div className="font-mono text-xl font-black text-[#048747]">
                   +{formatMoney(activeDelivery.deliveryFee || 2.5)}
                 </div>
               </div>
@@ -408,12 +408,12 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-2">
                 <div className="font-extrabold text-[#111827] flex items-center justify-between">
                   <span>Kitchen Contact</span>
-                  <span className="text-[10px] text-[#FF4B26] font-mono font-bold bg-orange-50 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] text-[#048747] font-mono font-bold bg-[#E8F8EE] px-2 py-0.5 rounded-full">
                     {activeDelivery.items.length} Items
                   </span>
                 </div>
                 <div className="text-gray-800 font-bold">
-                  {activeDelivery.restaurantName || 'AURA Kitchen & Grill'}
+                  {activeDelivery.restaurantName || 'Monrovia Kitchen'}
                 </div>
                 <div className="text-gray-500 text-[11px] truncate">
                   {activeDelivery.items.map((i) => `${i.quantity}x ${i.menuItem.name}`).join(', ')}
@@ -435,7 +435,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               {activeDelivery.delegationStatus === 'at_restaurant' && (
                 <button
                   onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'out_for_delivery')}
-                  className="w-full py-4 bg-gradient-to-r from-[#FF4722] to-[#FF8400] hover:from-[#FF4722] hover:to-[#FF7000] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#FF4B26]/20 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   Step 2: Food Collected, Heading to Customer &rarr;
                 </button>
@@ -444,7 +444,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               {activeDelivery.delegationStatus === 'out_for_delivery' && (
                 <button
                   onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'delivered')}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   Step 3: Complete Delivery &amp; Collect MoMo Payout &rarr;
                 </button>
@@ -458,7 +458,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         {/* ============================================================ */}
         {!offeredOrder && !activeDelivery && (
           <div className="p-8 sm:p-12 bg-white border border-gray-100 rounded-3xl text-center space-y-3 shadow-xs">
-            <div className="w-16 h-16 bg-orange-50 text-[#FF4B26] rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-16 h-16 bg-[#E8F8EE] text-[#048747] rounded-3xl flex items-center justify-center mx-auto shadow-inner">
               <Bike className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-black text-[#111827]">
@@ -473,7 +473,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             {!isOnline && (
               <button
                 onClick={handleToggleOnline}
-                className="mt-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all cursor-pointer active:scale-95"
+                className="mt-2 px-6 py-3 bg-gradient-to-r from-[#06C167] to-[#048747] hover:from-[#05A357] hover:to-[#03703a] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all cursor-pointer active:scale-95"
               >
                 Go Online Now
               </button>

@@ -38,9 +38,9 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end animate-overlay-fade" onClick={onClose}>
       <div 
-        className="w-full sm:max-w-md bg-white max-h-[92vh] sm:max-h-full rounded-t-3xl sm:rounded-none shadow-2xl flex flex-col border-t sm:border-l border-gray-100"
+        className="w-full sm:max-w-md bg-white max-h-[92vh] sm:max-h-full rounded-t-3xl sm:rounded-none shadow-2xl flex flex-col border-t sm:border-l border-gray-100 animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
@@ -51,7 +51,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
             <button
               onClick={() => setActiveTab('favorites')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'favorites' ? 'bg-white text-[#FF4B26] shadow-sm' : 'text-gray-500 hover:text-black'
+                activeTab === 'favorites' ? 'bg-white text-[#048747] shadow-sm' : 'text-gray-500 hover:text-black'
               }`}
             >
               Saved ({favorites.length})
@@ -59,7 +59,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
             <button
               onClick={() => setActiveTab('history')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                activeTab === 'history' ? 'bg-white text-[#FF4B26] shadow-sm' : 'text-gray-500 hover:text-black'
+                activeTab === 'history' ? 'bg-white text-[#048747] shadow-sm' : 'text-gray-500 hover:text-black'
               }`}
             >
               Past Orders ({pastOrders.length})
@@ -81,7 +81,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
             <>
               {favorites.length === 0 ? (
                 <div className="py-20 text-center space-y-2">
-                  <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF4B26] flex items-center justify-center mx-auto">
+                  <div className="w-14 h-14 rounded-full bg-[#E8F8EE] text-[#06C167] flex items-center justify-center mx-auto">
                     <Heart className="w-6 h-6" />
                   </div>
                   <h4 className="font-extrabold text-sm text-[#111827]">No saved dishes yet</h4>
@@ -90,20 +90,30 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                   </p>
                 </div>
               ) : (
-                favorites.map((dish) => (
-                  <div
-                    key={dish.id}
-                    className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex gap-3 items-center"
-                  >
-                    <div className="w-16 h-16 rounded-xl bg-gray-900 shrink-0 overflow-hidden relative">
-                      <DishIllustration type={dish.illustrationType} />
-                    </div>
+                favorites.map((dish) => {
+                  const dishImg = dish.image || (dish.images && dish.images[0]);
+                  return (
+                    <div
+                      key={dish.id}
+                      className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex gap-3 items-center"
+                    >
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden relative border border-gray-100">
+                        {dishImg ? (
+                          <img
+                            src={dishImg}
+                            alt={dish.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <DishIllustration type={dish.illustrationType} />
+                        )}
+                      </div>
 
-                    <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
                       <h4 className="font-extrabold text-xs sm:text-sm text-[#111827] truncate">
                         {dish.name}
                       </h4>
-                      <div className="font-mono text-xs font-bold text-[#FF4B26] mt-0.5">
+                      <div className="font-mono text-xs font-bold text-[#06C167] mt-0.5">
                         {formatPrice(dish.price)}
                       </div>
                       <div className="text-[10px] text-gray-400 truncate mt-0.5">
@@ -114,7 +124,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <button
                         onClick={() => onAddToCart(dish)}
-                        className="p-2 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white rounded-xl shadow-xs hover:shadow-md flex items-center justify-center"
+                        className="p-2 bg-gradient-to-r from-[#06C167] to-[#048747] text-white rounded-xl shadow-xs hover:shadow-md flex items-center justify-center cursor-pointer"
                         title="Add to bag"
                       >
                         <Plus className="w-4 h-4 stroke-[3]" />
@@ -128,7 +138,8 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                       </button>
                     </div>
                   </div>
-                ))
+                );
+              })
               )}
             </>
           )}

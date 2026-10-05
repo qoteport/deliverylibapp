@@ -85,10 +85,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end animate-overlay-fade" onClick={onClose}>
       
       <div 
-        className="relative bg-white w-full sm:max-w-md h-full shadow-2xl flex flex-col justify-between overflow-hidden"
+        className="relative bg-white w-full sm:max-w-md h-full shadow-2xl flex flex-col justify-between overflow-hidden animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -123,7 +123,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 onClick={() => onChangeDiningMode(mode)}
                 className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all ${
                   diningMode === mode
-                    ? 'bg-[#FF4B26] text-white shadow-xs'
+                    ? 'bg-[#06C167] text-white shadow-xs'
                     : 'bg-white text-gray-600 border border-gray-200'
                 }`}
               >
@@ -137,7 +137,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           {items.length === 0 ? (
             <div className="py-20 text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-orange-50 text-[#FF4B26] flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-[#E8F8EE] text-[#06C167] flex items-center justify-center mx-auto">
                 <ShoppingBag className="w-8 h-8" />
               </div>
               <h3 className="font-extrabold text-base text-[#111827]">
@@ -148,24 +148,34 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </p>
               <button
                 onClick={onClose}
-                className="mt-2 px-5 py-2.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white text-xs font-bold rounded-xl shadow-md shadow-[#FF4B26]/20"
+                className="mt-2 px-5 py-2.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-bold rounded-xl shadow-md shadow-[#06C167]/20"
               >
                 Browse Menu
               </button>
             </div>
           ) : (
-            items.map((item) => (
-              <div
-                key={item.cartItemId}
-                className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex gap-3 items-center"
-              >
-                {/* Thumbnail */}
-                <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-gray-900 shrink-0 overflow-hidden relative shadow-xs">
-                  <DishIllustration type={item.menuItem.illustrationType} />
-                </div>
+            items.map((item) => {
+              const dishImg = item.menuItem.image || (item.menuItem.images && item.menuItem.images[0]);
+              return (
+                <div
+                  key={item.cartItemId}
+                  className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex gap-3 items-center"
+                >
+                  {/* Thumbnail Image */}
+                  <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden relative shadow-xs border border-gray-100">
+                    {dishImg ? (
+                      <img
+                        src={dishImg}
+                        alt={item.menuItem.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <DishIllustration type={item.menuItem.illustrationType} />
+                    )}
+                  </div>
 
-                {/* Details */}
-                <div className="flex-1 min-w-0">
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-1.5">
                     <h4 className="font-black text-sm sm:text-base text-[#111827] leading-tight">
                       {item.menuItem.name}
@@ -219,7 +229,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 </div>
               </div>
-            ))
+            );
+          })
           )}
         </div>
 
@@ -236,7 +247,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   value={promoCodeInput}
                   onChange={(e) => setPromoCodeInput(e.target.value)}
                   placeholder="Promo: MONROVIA or MOMO"
-                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm uppercase font-mono font-bold placeholder:normal-case placeholder:text-gray-400 focus:outline-none focus:border-[#FF4B26]"
+                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm uppercase font-mono font-bold placeholder:normal-case placeholder:text-gray-400 focus:outline-none focus:border-[#06C167]"
                 />
               </div>
               <button
@@ -301,7 +312,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Proceed CTA */}
             <button
               onClick={handleCheckoutClick}
-              className="w-full py-4 px-5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs sm:text-sm uppercase tracking-wider font-black rounded-2xl shadow-xl shadow-[#FF4B26]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-between min-h-[52px] cursor-pointer"
+              className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs sm:text-sm uppercase tracking-wider font-black rounded-2xl shadow-xl shadow-[#06C167]/25 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-between min-h-[52px] cursor-pointer"
             >
               <span>Proceed to Checkout</span>
               <div className="flex items-center gap-2">

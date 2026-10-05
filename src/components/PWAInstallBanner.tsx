@@ -43,16 +43,16 @@ export const PWAInstallBanner: React.FC = () => {
   return (
     <>
       {/* Top Floating PWA Install Alert Banner */}
-      <div className="bg-gradient-to-r from-[#111827] via-[#1E293B] to-[#111827] text-white border-b border-orange-500/30 px-4 sm:px-8 lg:px-10 py-2.5 shadow-lg text-xs z-30 relative animate-in fade-in slide-in-from-top-1 duration-200">
+      <div className="bg-gradient-to-r from-[#111827] via-[#1E293B] to-[#111827] text-white border-b border-[#06C167]/30 px-4 sm:px-8 lg:px-10 py-2.5 shadow-lg text-xs z-30 relative animate-in fade-in slide-in-from-top-1 duration-200">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 max-w-2xl">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#FF4B26]/30">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#06C167]/30">
               <Smartphone className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <div className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-1.5 truncate">
                 <span>Install AURA Food App</span>
-                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full bg-[#FF4B26]/30 text-[#FF7A00] text-[10px] font-bold">
+                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded-full bg-[#06C167]/30 text-[#06C167] text-[10px] font-bold">
                   1-Tap Monrovia Delivery
                 </span>
               </div>
@@ -65,7 +65,7 @@ export const PWAInstallBanner: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleInstallClick}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] hover:from-[#FF5A36] hover:to-[#FF8A10] text-white font-black text-xs rounded-xl shadow-md shadow-[#FF4B26]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#06C167] to-[#048747] hover:from-[#05A357] hover:to-[#03703A] text-white font-black text-xs rounded-xl shadow-md shadow-[#06C167]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Install App</span>
@@ -95,7 +95,7 @@ export const PWAInstallBanner: React.FC = () => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shadow-md">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-md shadow-[#06C167]/20">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
@@ -119,17 +119,17 @@ export const PWAInstallBanner: React.FC = () => {
               /* iPhone & iPad Instructions */
               <div className="space-y-2.5 text-xs text-gray-600">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     1
                   </div>
                   <div>
                     Tap the <strong className="text-gray-900">Share</strong> icon{' '}
-                    <Share className="inline w-3.5 h-3.5 text-[#FF4B26] mx-0.5" /> in Safari's bottom toolbar.
+                    <Share className="inline w-3.5 h-3.5 text-[#06C167] mx-0.5" /> in Safari's bottom toolbar.
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     2
                   </div>
                   <div>
@@ -138,7 +138,7 @@ export const PWAInstallBanner: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     3
                   </div>
                   <div>
@@ -150,7 +150,7 @@ export const PWAInstallBanner: React.FC = () => {
               /* Android & Desktop Chrome / Edge Instructions */
               <div className="space-y-2.5 text-xs text-gray-600">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     1
                   </div>
                   <div>
@@ -159,7 +159,7 @@ export const PWAInstallBanner: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     2
                   </div>
                   <div>
@@ -168,7 +168,7 @@ export const PWAInstallBanner: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-[#FF4B26] font-extrabold flex items-center justify-center shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold flex items-center justify-center shrink-0">
                     3
                   </div>
                   <div>

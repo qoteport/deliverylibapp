@@ -6,7 +6,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { CustomDropdown } from './CustomDropdown';
 import { sendTwilioOrderNotification } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
-import { normalizeLiberianPhoneNumber, generateMomoUssdUri } from '../utils/phoneUtils';
+import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -42,15 +42,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Load from current logged-in user or persistent browser memory
+  const memory = getCustomerMemory();
+
   const [orderId, setOrderId] = useState(() => `AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [name, setName] = useState(currentUser?.name || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [name, setName] = useState(currentUser?.name || memory.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || memory.phone || '');
   const [destinationArea, setDestinationArea] = useState(
-    currentUser?.location || 'Sinkor'
+    currentUser?.location || memory.destinationArea || 'Sinkor (Tubman Blvd)'
   );
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(memory.gpsCoords || null);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
-  const [address, setAddress] = useState(currentUser?.address || '');
+  const [address, setAddress] = useState(currentUser?.address || memory.address || '');
   const [tableNumber, setTableNumber] = useState('Table 4');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo-mtn');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,15 +68,31 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Determine primary restaurant for order
   const primaryRestaurantId = items[0]?.menuItem?.restaurantId;
   const targetRestaurant = restaurants?.find((r) => r.id === primaryRestaurantId);
-  const restaurantName = targetRestaurant?.name || 'AURA Kitchen & Grill';
+  const restaurantName = targetRestaurant?.name || 'Monrovia Kitchen';
   const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '0886 554 123';
 
   // Sync / prefill when currentUser updates or modal opens
   useEffect(() => {
     if (isOpen) {
       setOrderId(`AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
+      const currentMemory = getCustomerMemory();
+      if (!name && (currentUser?.name || currentMemory.name)) {
+        setName(currentUser?.name || currentMemory.name || '');
+      }
+      if (!phone && (currentUser?.phone || currentMemory.phone)) {
+        setPhone(currentUser?.phone || currentMemory.phone || '');
+      }
+      if (!destinationArea && (currentUser?.location || currentMemory.destinationArea)) {
+        setDestinationArea(currentUser?.location || currentMemory.destinationArea || 'Sinkor (Tubman Blvd)');
+      }
+      if (!address && (currentUser?.address || currentMemory.address)) {
+        setAddress(currentUser?.address || currentMemory.address || '');
+      }
+      if (!gpsCoords && currentMemory.gpsCoords) {
+        setGpsCoords(currentMemory.gpsCoords);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   useEffect(() => {
     if (currentUser) {
@@ -88,7 +107,33 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setAddress(currentUser.address);
       }
     }
-  }, [currentUser, isOpen]);
+  }, [currentUser]);
+
+  // Persist memory on input changes
+  const handleNameChange = (val: string) => {
+    setName(val);
+    saveCustomerMemory({ name: val });
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    saveCustomerMemory({ phone: val });
+  };
+
+  const handleDestinationChange = (val: string) => {
+    setDestinationArea(val);
+    saveCustomerMemory({ destinationArea: val });
+  };
+
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    saveCustomerMemory({ address: val });
+  };
+
+  const handleGpsLocationSelected = (coords: { lat: number; lng: number }) => {
+    setGpsCoords(coords);
+    saveCustomerMemory({ gpsCoords: coords });
+  };
 
   const formatPrice = (usd: number) => {
     if (currency === 'LRD') {
@@ -124,7 +169,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       deliveryAddress: diningMode === 'delivery' ? (fullAddress ? `${fullAddress}, ${chosenDeliveryArea}` : chosenDeliveryArea) : undefined,
       tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
       customerName: name.trim() || (currentUser?.name || 'Monrovia Customer'),
-      customerPhone: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
+      customerPhone: phone.trim() || (currentUser?.phone || '0886 000 000'),
       customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
       subtotal: cartTotals.subtotal,
       discount: cartTotals.discount,
@@ -136,12 +181,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       currency,
       estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       paymentMethod,
-      paymentNumber: normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000'),
+      paymentNumber: phone.trim() || currentUser?.phone || '0886 000 000',
     };
 
-    // Save order to Firebase Firestore
+    // Save order to Firebase Firestore with complete metadata for realtime listeners
     try {
-      const primaryRestaurantId = items[0]?.menuItem?.restaurantId || 'aura-sinkor';
+      const primaryRestaurantId = items[0]?.menuItem?.restaurantId || 'rest_living_room';
       await setDoc(doc(db, 'orders', newOrder.id), {
         id: newOrder.id,
         customerName: newOrder.customerName,
@@ -150,15 +195,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         deliveryArea: newOrder.deliveryArea || '',
         deliveryAddress: newOrder.deliveryAddress || '',
         diningMode: newOrder.diningMode,
+        tableNumber: newOrder.tableNumber || '',
         restaurantId: primaryRestaurantId,
+        restaurantName: restaurantName,
         paymentMethod: newOrder.paymentMethod,
         paymentNumber: newOrder.paymentNumber || '',
         currency: newOrder.currency,
         subtotal: newOrder.subtotal,
-        deliveryFee: newOrder.deliveryFee,
+        discount: newOrder.discount || 0,
+        serviceFee: newOrder.serviceFee || 0,
+        deliveryFee: newOrder.deliveryFee || 0,
+        tax: newOrder.tax || 0,
+        tip: newOrder.tip || 0,
         total: newOrder.total,
         status: newOrder.status,
         createdAt: newOrder.createdAt,
+        createdAtTimestamp: nowTimestamp,
+        prepDurationMinutes: prepMinutes,
+        estimatedDeliveryTime: newOrder.estimatedDeliveryTime,
         itemsCount: newOrder.items.length,
         items: newOrder.items.map((i) => ({
           cartItemId: i.cartItemId,
@@ -173,6 +227,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             price: i.menuItem.price,
             category: i.menuItem.category,
             restaurantId: i.menuItem.restaurantId || primaryRestaurantId,
+            image: i.menuItem.image || '',
+            illustrationType: i.menuItem.illustrationType || 'jollof',
           },
         })),
       });
@@ -195,9 +251,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade">
       <div 
-        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
@@ -230,10 +286,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="font-extrabold text-[#111827] uppercase tracking-wider">
                 1. Contact Information
               </div>
-              {currentUser && (
+              {currentUser ? (
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                   <UserIcon className="w-2.5 h-2.5" />
                   <span>Account Linked</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>✨ Auto-saved for next order</span>
                 </span>
               )}
             </div>
@@ -244,9 +304,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="Full Name"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
                 />
               </div>
               <div>
@@ -255,9 +315,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="tel"
                   required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="088... / 077..."
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
                 />
               </div>
             </div>
@@ -278,9 +338,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     required
                     list="monrovia-areas-list"
                     value={destinationArea}
-                    onChange={(e) => setDestinationArea(e.target.value)}
+                    onChange={(e) => handleDestinationChange(e.target.value)}
                     placeholder="e.g. Sinkor, ELWA Junction, Oldest Congo Town, Duala Market, etc."
-                    className="w-full pl-9 pr-24 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                    className="w-full pl-9 pr-24 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
                   />
                   <MapPin className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
 
@@ -295,10 +355,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsLocationPickerOpen(true)}
-                    className="absolute right-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 active:scale-95 text-[#FF4B26] border border-orange-200/80 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="absolute right-1.5 px-3 py-1.5 bg-[#E8F8EE] hover:bg-[#D4F4E0] active:scale-95 text-[#048747] border border-[#A7F3D0] rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                     title="Open interactive Monrovia map to pinpoint exact delivery spot"
                   >
-                    <MapPin className="w-3 h-3 text-[#FF4B26] stroke-[2.5]" />
+                    <MapPin className="w-3 h-3 text-[#06C167] stroke-[2.5]" />
                     <span>Pick on Map</span>
                   </button>
                 </div>
@@ -309,7 +369,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsLocationPickerOpen(true)}
-                      className="text-[#FF4B26] hover:underline font-bold"
+                      className="text-[#06C167] hover:underline font-bold"
                     >
                       Adjust on Map
                     </button>
@@ -320,9 +380,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="text"
                   required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => handleAddressChange(e.target.value)}
                   placeholder="Street name, landmark, gate color or house description"
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
                 />
               </div>
             )}
@@ -334,7 +394,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
                 placeholder="e.g. Table 4 or Terrace"
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             )}
 
@@ -414,27 +474,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 onClick={() => setPaymentMethod('cod-lrd')}
                 className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
                   paymentMethod === 'cod-lrd'
-                    ? 'border-[#FF4B26] bg-[#FFF2EE] ring-2 ring-[#FF4B26]/20 shadow-xs'
+                    ? 'border-[#06C167] bg-[#E8F8EE] ring-2 ring-[#06C167]/20 shadow-xs'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
-                <span className="font-mono text-sm font-black text-[#FF4B26] shrink-0">L$</span>
+                <span className="font-mono text-sm font-black text-[#048747] shrink-0">L$</span>
                 <div>
-                  <div className="text-xs font-black text-[#FF4B26]">Cash (LRD L$)</div>
-                  <div className="text-[10px] text-orange-700 font-medium">Pay in Liberian $</div>
+                  <div className="text-xs font-black text-[#048747]">Cash (LRD L$)</div>
+                  <div className="text-[10px] text-emerald-700 font-medium">Pay in Liberian $</div>
                 </div>
               </button>
             </div>
 
             {/* Mobile Money Transfer Details Box */}
             {(paymentMethod === 'momo-mtn' || paymentMethod === 'orange-money') && (
-              <div className="p-4 bg-orange-50/90 rounded-2xl border border-orange-200 space-y-3">
+              <div className="p-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 space-y-3">
                 <div className="text-[11px] text-gray-700 leading-snug">
                   Please transfer <strong className="text-gray-900 font-mono font-black">{formatPrice(cartTotals.total)}</strong> to <strong>{restaurantName}</strong> using the details below:
                 </div>
 
                 {/* 1. Restaurant Primary MoMo Number with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-orange-200/90 flex items-center justify-between gap-2 shadow-xs">
+                <div className="bg-white p-3 rounded-xl border border-emerald-200/90 flex items-center justify-between gap-2 shadow-xs">
                   <div className="min-w-0">
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
                       Restaurant MoMo Number
@@ -468,12 +528,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
 
                 {/* 2. Order ID with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-orange-200/90 flex items-center justify-between gap-2 shadow-xs">
+                <div className="bg-white p-3 rounded-xl border border-emerald-200/90 flex items-center justify-between gap-2 shadow-xs">
                   <div className="min-w-0">
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
                       Transfer Reference / Note
                     </div>
-                    <div className="font-mono text-sm sm:text-base font-black text-[#FF4B26] mt-0.5 tracking-wide">
+                    <div className="font-mono text-sm sm:text-base font-black text-[#048747] mt-0.5 tracking-wide">
                       {orderId}
                     </div>
                     <div className="text-[10px] text-gray-500 font-semibold">
@@ -484,11 +544,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCopy(orderId, 'orderId')}
-                    className="px-3 py-2 bg-[#FFF2EE] hover:bg-[#FFE5DC] text-[#FF4B26] border border-orange-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+                    className="px-3 py-2 bg-[#E8F8EE] hover:bg-[#D4F4E0] text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
                     title="Copy Order ID"
                   >
                     {copiedField === 'orderId' ? (
-                      <span className="flex items-center gap-1.5 text-[#FF4B26]">
+                      <span className="flex items-center gap-1.5 text-[#048747]">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                         <span>Copied!</span>
                       </span>
@@ -499,21 +559,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       </span>
                     )}
                   </button>
-                </div>
-
-                {/* 3. Quick Mobile USSD Dialer Action */}
-                <div className="pt-1 flex items-center justify-between">
-                  <a
-                    href={generateMomoUssdUri(
-                      paymentMethod === 'orange-money' ? 'orange' : 'mtn',
-                      restaurantPhone,
-                      Math.round(cartTotals.total * USD_TO_LRD_RATE)
-                    )}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-xs rounded-xl transition shadow-xs active:scale-98"
-                  >
-                    <Phone className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Dial USSD Prompt ({paymentMethod === 'orange-money' ? '*144#' : '*156#'})</span>
-                  </a>
                 </div>
               </div>
             )}
@@ -543,7 +588,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 px-5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#FF4B26]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px]"
+            className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
           >
             {isSubmitting ? (
               <span>Transmitting Order to Kitchen...</span>
@@ -573,6 +618,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               setAddress(updatedAddress);
             }
             setGpsCoords(coords);
+            saveCustomerMemory({
+              destinationArea: area,
+              address: updatedAddress || address,
+              gpsCoords: coords,
+            });
           }}
         />
       )}

@@ -396,14 +396,14 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                       {allowedPhonesList.map((p) => (
                         <div
                           key={p}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50/80 border border-orange-200 rounded-xl text-xs font-mono font-bold text-[#FF4B26] shadow-2xs animate-in fade-in duration-150"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8F8EE] border border-emerald-200 rounded-xl text-xs font-mono font-bold text-[#048747] shadow-2xs animate-in fade-in duration-150"
                         >
-                          <Phone className="w-3 h-3 text-[#FF4B26]" />
+                          <Phone className="w-3 h-3 text-[#06C167]" />
                           <span>{p}</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveStaffPhone(p)}
-                            className="p-0.5 ml-1 text-orange-400 hover:text-red-600 rounded-full hover:bg-orange-100 transition-colors cursor-pointer"
+                            className="p-0.5 ml-1 text-emerald-600 hover:text-red-600 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
                             aria-label={`Remove phone ${p}`}
                           >
                             <X className="w-3 h-3" />
@@ -464,7 +464,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
             <div className="space-y-3 pt-3 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-extrabold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#FF4B26]" />
+                  <Clock className="w-3.5 h-3.5 text-[#06C167]" />
                   <span>3. Delivery Settings</span>
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -483,7 +483,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     value={deliveryTimeMinutes}
                     onChange={(e) => setDeliveryTimeMinutes(Number(e.target.value))}
                     placeholder="25"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#FF4B26]"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -494,7 +494,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     value={deliveryFeeUsd}
                     onChange={(e) => setDeliveryFeeUsd(Number(e.target.value))}
                     placeholder="2.00"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#FF4B26]"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -504,7 +504,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     value={minOrderUsd}
                     onChange={(e) => setMinOrderUsd(Number(e.target.value))}
                     placeholder="5.00"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#FF4B26]"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
               </div>
@@ -525,7 +525,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 px-5 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#FF4B26]/20 hover:shadow-2xl transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
+                className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
               >
                 {isSubmitting ? (
                   <span>Saving to Firebase Firestore...</span>

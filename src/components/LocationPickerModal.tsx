@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, MapPin, Navigation, Check } from 'lucide-react';
+import { X, MapPin, Navigation, Check, Search, Loader2 } from 'lucide-react';
 import { LocationCoords } from '../types';
 
 interface LocationPickerModalProps {
@@ -41,13 +41,85 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   const [areaName, setAreaName] = useState(initialArea || 'Sinkor');
   const [landmarkDetails, setLandmarkDetails] = useState(initialAddress || '');
   const [isLocating, setIsLocating] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerInstanceRef = useRef<any>(null);
+  const autocompleteRef = useRef<any>(null);
 
-  // Initialize Native Google Map
+  // Helper to find nearest Monrovia landmark by distance if geocoder returns generic
+  const findNearestMonroviaNeighborhood = (coords: LocationCoords): string => {
+    let nearest = MONROVIA_LANDMARKS[0].name;
+    let minDistance = Infinity;
+
+    for (const lm of MONROVIA_LANDMARKS) {
+      const dLat = coords.lat - lm.coords.lat;
+      const dLng = coords.lng - lm.coords.lng;
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearest = lm.name;
+      }
+    }
+    return nearest;
+  };
+
+  // Google Places Reverse Geocoding
+  const reverseGeocode = (coords: LocationCoords) => {
+    if (!(window as any).google?.maps?.Geocoder) {
+      const fallback = findNearestMonroviaNeighborhood(coords);
+      setAreaName(fallback);
+      return;
+    }
+
+    setIsGeocoding(true);
+    const geocoder = new (window as any).google.maps.Geocoder();
+    geocoder.geocode({ location: coords }, (results: any[], status: string) => {
+      setIsGeocoding(false);
+      if (status === 'OK' && results && results.length > 0) {
+        const firstResult = results[0];
+        let detectedArea = '';
+        let detectedStreet = '';
+        let detectedCity = '';
+
+        for (const comp of firstResult.address_components || []) {
+          const types = comp.types || [];
+          if (types.includes('neighborhood') || types.includes('sublocality') || types.includes('sublocality_level_1')) {
+            if (!detectedArea) detectedArea = comp.long_name;
+          } else if (types.includes('route') || types.includes('street_address')) {
+            if (!detectedStreet) detectedStreet = comp.long_name;
+          } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+            if (!detectedCity) detectedCity = comp.long_name;
+          }
+        }
+
+        // Build clean area representation
+        let finalArea = detectedArea || detectedStreet || detectedCity;
+        if (!finalArea || finalArea.toLowerCase() === 'monrovia' || finalArea.toLowerCase() === 'liberia') {
+          finalArea = findNearestMonroviaNeighborhood(coords);
+        }
+
+        setAreaName(finalArea);
+
+        // Auto-fill street/landmark detail if empty
+        if (firstResult.formatted_address) {
+          const formatted = firstResult.formatted_address.split(',')[0];
+          if (formatted && formatted !== finalArea) {
+            setLandmarkDetails((prev) => (prev ? prev : formatted));
+          }
+        }
+      } else {
+        const fallback = findNearestMonroviaNeighborhood(coords);
+        setAreaName(fallback);
+      }
+    });
+  };
+
+  // Initialize Native Google Map & Places Autocomplete
   useEffect(() => {
     let isMounted = true;
 
@@ -59,7 +131,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
       const map = new gmaps.Map(mapContainerRef.current, {
         center,
-        zoom: 14,
+        zoom: 15,
         disableDefaultUI: false,
         zoomControl: true,
         streetViewControl: false,
@@ -84,8 +156,10 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         if (!isMounted) return;
         const newLat = event.latLng.lat();
         const newLng = event.latLng.lng();
-        setSelectedCoords({ lat: newLat, lng: newLng });
+        const newCoords = { lat: newLat, lng: newLng };
+        setSelectedCoords(newCoords);
         setGpsError(null);
+        reverseGeocode(newCoords);
       });
 
       // Handle map click
@@ -93,10 +167,55 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         if (!isMounted) return;
         const newLat = event.latLng.lat();
         const newLng = event.latLng.lng();
-        setSelectedCoords({ lat: newLat, lng: newLng });
-        marker.setPosition({ lat: newLat, lng: newLng });
+        const newCoords = { lat: newLat, lng: newLng };
+        setSelectedCoords(newCoords);
+        marker.setPosition(newCoords);
         setGpsError(null);
+        reverseGeocode(newCoords);
       });
+
+      // Setup Places Autocomplete on the search input
+      if (searchInputRef.current && gmaps.places?.Autocomplete) {
+        const autocomplete = new gmaps.places.Autocomplete(searchInputRef.current, {
+          componentRestrictions: { country: 'lr' },
+          fields: ['geometry', 'name', 'formatted_address', 'address_components'],
+        });
+
+        autocomplete.bindTo('bounds', map);
+        autocompleteRef.current = autocomplete;
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (!place.geometry || !place.geometry.location) return;
+
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          const newCoords = { lat, lng };
+
+          setSelectedCoords(newCoords);
+          map.panTo(newCoords);
+          map.setZoom(16);
+          marker.setPosition(newCoords);
+
+          // Extract area and place name
+          const placeTitle = place.name || '';
+          let placeArea = '';
+
+          for (const comp of place.address_components || []) {
+            const types = comp.types || [];
+            if (types.includes('neighborhood') || types.includes('sublocality')) {
+              placeArea = comp.long_name;
+              break;
+            }
+          }
+
+          setAreaName(placeArea || placeTitle || findNearestMonroviaNeighborhood(newCoords));
+          if (placeTitle) {
+            setLandmarkDetails(placeTitle);
+          }
+          setGpsError(null);
+        });
+      }
     };
 
     // Load Google Maps Script if not present
@@ -126,14 +245,17 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   }, []);
 
   // Update map and marker when selectedCoords change programmatically
-  const updateMapPosition = (coords: LocationCoords) => {
+  const updateMapPosition = (coords: LocationCoords, skipReverseGeocode = false) => {
     setSelectedCoords(coords);
     if (mapInstanceRef.current && (window as any).google?.maps) {
       mapInstanceRef.current.panTo(coords);
-      mapInstanceRef.current.setZoom(15);
+      mapInstanceRef.current.setZoom(16);
     }
     if (markerInstanceRef.current) {
       markerInstanceRef.current.setPosition(coords);
+    }
+    if (!skipReverseGeocode) {
+      reverseGeocode(coords);
     }
   };
 
@@ -144,34 +266,32 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     }
     setIsLocating(true);
     setGpsError(null);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const coords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
-        updateMapPosition(coords);
         setIsLocating(false);
-        if (!areaName || areaName === 'Sinkor') {
-          setAreaName('My Current Location');
-        }
+        updateMapPosition(coords, false); // Will trigger reverseGeocode
       },
       (error) => {
         setIsLocating(false);
         let msg = 'Unable to retrieve your location.';
         if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Location permission was denied. You can tap anywhere on the map instead.';
+          msg = 'Location permission was denied. You can tap anywhere on the map or search above.';
         } else if (error.code === error.TIMEOUT) {
           msg = 'Location request timed out. Please tap your location on the map.';
         }
         setGpsError(msg);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
   const handleSelectLandmark = (landmark: { name: string; coords: LocationCoords }) => {
-    updateMapPosition(landmark.coords);
+    updateMapPosition(landmark.coords, true);
     setAreaName(landmark.name);
     setGpsError(null);
   };
@@ -192,12 +312,12 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-xs">
               <MapPin className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
               <h3 className="font-extrabold text-[#111827] text-sm">Pinpoint Delivery Spot</h3>
-              <p className="text-[11px] text-gray-500">Tap anywhere on the map or drag the pin</p>
+              <p className="text-[11px] text-gray-500">Google Places &amp; GPS Area Detection</p>
             </div>
           </div>
           <button
@@ -208,16 +328,35 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
           </button>
         </div>
 
-        {/* Quick Area Filter Pills */}
-        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        {/* Google Places Search Bar */}
+        <div className="px-4 py-2 bg-white border-b border-gray-100 shrink-0">
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search places in Monrovia (e.g. Boulevard Palace, 15th St Sinkor, ELWA)..."
+              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-[#111827] focus:outline-none focus:border-[#06C167] focus:bg-white transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Quick Area Filter Pills & Use GPS */}
+        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={handleLocateMe}
             disabled={isLocating}
-            className="px-3 py-1.5 bg-[#FF4B26] text-white rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-xs hover:bg-[#E03A16] active:scale-95 transition-all cursor-pointer"
+            className="px-3 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-xs active:scale-95 transition-all cursor-pointer"
           >
-            <Navigation className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-            <span>{isLocating ? 'Locating...' : 'Use My GPS'}</span>
+            {isLocating ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Navigation className="w-3.5 h-3.5" />
+            )}
+            <span>{isLocating ? 'Detecting Area...' : 'Use My GPS'}</span>
           </button>
 
           {MONROVIA_LANDMARKS.map((lm) => (
@@ -240,10 +379,19 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         <div className="relative flex-1 min-h-[260px] sm:min-h-[300px] bg-gray-100">
           <div ref={mapContainerRef} className="w-full h-full min-h-[260px] sm:min-h-[300px]" />
 
-          {/* Floating Instructions Banner */}
+          {/* Floating Instructions Banner & Geocoding status */}
           <div className="absolute top-2 left-2 right-2 sm:left-auto sm:right-2 sm:w-auto bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-gray-200 text-[11px] font-bold text-gray-800 flex items-center gap-1.5 pointer-events-none">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Tap anywhere or drag pin to set exact delivery spot</span>
+            {isGeocoding ? (
+              <>
+                <Loader2 className="w-3 h-3 text-[#06C167] animate-spin" />
+                <span className="text-[#048747]">Detecting Monrovia Area...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Tap map or drag pin to update area</span>
+              </>
+            )}
           </div>
 
           {/* GPS Error alert */}
@@ -265,15 +413,22 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         <div className="p-4 bg-white border-t border-gray-100 space-y-3 shrink-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider block">
-                Area / Neighborhood
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider block">
+                  Detected Area / Neighborhood
+                </label>
+                {isGeocoding && (
+                  <span className="text-[10px] text-[#06C167] font-bold animate-pulse">
+                    Detecting...
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={areaName}
                 onChange={(e) => setAreaName(e.target.value)}
                 placeholder="e.g. Sinkor 12th Street, ELWA, Duala"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
 
@@ -286,7 +441,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 value={landmarkDetails}
                 onChange={(e) => setLandmarkDetails(e.target.value)}
                 placeholder="e.g. Green gate opposite Total Gas Station"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#FF4B26]"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
           </div>
@@ -297,7 +452,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               href={`https://www.google.com/maps?q=${selectedCoords.lat},${selectedCoords.lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#FF4B26] font-bold hover:underline font-sans"
+              className="text-[#06C167] font-bold hover:underline font-sans"
             >
               Preview in Google Maps &rarr;
             </a>
@@ -307,10 +462,10 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>Confirm Pinpoint Location</span>
+            <span>Confirm Delivery Location ({areaName || 'Selected Area'})</span>
           </button>
         </div>
 

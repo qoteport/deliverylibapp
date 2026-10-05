@@ -55,7 +55,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background: #FF4B26;
+  background: #06C167;
 }
 
 /* Prevent iOS Auto-Zoom on inputs by ensuring base 16px font on small screens */
@@ -94,11 +94,61 @@ body {
   scrollbar-width: none;
 }
 
-/* Glass & Popover animation utilities */
+/* ========================================================================== */
+/* ULTRA-SMOOTH MODAL, BOTTOM SHEET & DRAWER TRANSITION ANIMATIONS           */
+/* ========================================================================== */
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes sheetSlideUpMobile {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialogPopDesktop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes drawerSlideRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes dropdownFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.98);
+    transform: translateY(-6px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -106,6 +156,30 @@ body {
   }
 }
 
+/* Smooth Backdrop overlay class */
+.animate-overlay-fade {
+  animation: backdropFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, backdrop-filter;
+}
+
+/* Responsive Modal Container: Slides up like native iOS/Android sheet on mobile, zooms smoothly on desktop */
+.animate-modal-sheet {
+  animation: sheetSlideUpMobile 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (min-width: 640px) {
+  .animate-modal-sheet {
+    animation: dialogPopDesktop 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* Right side drawer slide animation */
+.animate-drawer-right {
+  animation: drawerSlideRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
 .animate-dropdown {
-  animation: dropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: dropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

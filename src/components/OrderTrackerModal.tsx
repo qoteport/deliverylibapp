@@ -97,22 +97,22 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
   // Restaurant details fallback
-  const restaurantName = order.restaurantName || 'AURA Kitchen & Grill';
-  const restaurantLocation = '14th Street & Tubman Blvd, Sinkor';
+  const restaurantName = order.restaurantName || 'Sinkor Kitchen';
+  const restaurantLocation = 'Tubman Blvd, Sinkor';
   const restaurantPhone = '+231 886 554 123';
 
-  // Driver details fallback
-  const driverName = order.assignedDriverName || 'Tambay Kollie';
-  const driverPhone = order.assignedDriverPhone || '+231 886 991 223';
+  // Driver details (Real dynamic dispatch info)
+  const driverName = order.assignedDriverName || null;
+  const driverPhone = order.assignedDriverPhone || null;
   const driverVehicle = order.driverVehicle || 'Motorbike';
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade"
       onClick={onClose}
     >
       <div 
-        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
         <div 
@@ -126,7 +126,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-gray-500">{order.id}</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-50 text-[#FF4B26]">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#E8F8EE] text-[#048747]">
                 Live Tracker
               </span>
             </div>
@@ -135,7 +135,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
             </h2>
           </div>
 
-          {/* Elevated Close Button Design */}
+          {/* Elevated Close Button Design (Icon Only) */}
           <button
             type="button"
             onClick={(e) => {
@@ -143,12 +143,11 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            className="px-3.5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 font-black text-xs uppercase tracking-wider active:scale-95 cursor-pointer shrink-0"
+            className="p-2.5 rounded-2xl bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200/90 shadow-sm hover:shadow-md transition-all flex items-center justify-center min-h-[38px] min-w-[38px] active:scale-95 cursor-pointer shrink-0"
             aria-label="Close live order tracker"
             title="Close tracker"
           >
-            <X className="w-4 h-4 stroke-[3]" />
-            <span>Close</span>
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
@@ -156,7 +155,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
         <div className="p-5 overflow-y-auto space-y-4">
           
           {/* Live Countdown Card */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FF4722] via-[#FF5F2E] to-[#FF8400] text-white flex items-center justify-between shadow-lg shadow-[#FF4B26]/20">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white flex items-center justify-between shadow-lg shadow-[#06C167]/20">
             <div>
               <div className="text-[11px] font-extrabold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
                 {isCompleted ? (
@@ -226,8 +225,8 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all duration-300 ${
                         isPassed
                           ? isCurrent
-                            ? 'bg-[#FF4B26] text-white shadow-md shadow-[#FF4B26]/30 animate-pulse'
-                            : 'bg-emerald-500 text-white'
+                            ? 'bg-[#06C167] text-white shadow-md shadow-[#06C167]/30 animate-pulse'
+                            : 'bg-emerald-600 text-white'
                           : 'bg-gray-100 text-gray-400'
                       }`}
                     >
@@ -238,7 +237,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       <div
                         className={`text-xs font-bold leading-tight ${
                           isCurrent
-                            ? 'text-[#FF4B26]'
+                            ? 'text-[#048747]'
                             : isPassed
                             ? 'text-gray-900'
                             : 'text-gray-400'
@@ -265,10 +264,10 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
             </div>
 
             {/* 1. Restaurant Contact Card */}
-            <div className="p-3.5 bg-orange-50/60 border border-orange-200/70 rounded-2xl space-y-2 text-xs">
+            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200/70 rounded-2xl space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-[#FF4B26] text-white flex items-center justify-center shadow-xs">
+                  <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
                     <Store className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -276,7 +275,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       {restaurantName}
                     </div>
                     <div className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                      <MapPin className="w-2.5 h-2.5 text-[#FF4B26]" />
+                      <MapPin className="w-2.5 h-2.5 text-[#06C167]" />
                       <span>{restaurantLocation}</span>
                     </div>
                   </div>
@@ -284,14 +283,14 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
 
                 <a
                   href={`tel:${restaurantPhone}`}
-                  className="px-3 py-1.5 bg-white hover:bg-orange-100 text-[#FF4B26] border border-orange-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95"
+                  className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95 cursor-pointer"
                   title="Call Restaurant Kitchen"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>Call Kitchen</span>
                 </a>
               </div>
-              <div className="text-[11px] text-gray-700 bg-white p-2.5 rounded-xl border border-orange-200/80 space-y-2">
+              <div className="text-[11px] text-gray-700 bg-white p-2.5 rounded-xl border border-emerald-200/80 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-[10px] text-gray-500 font-bold uppercase block">MoMo Number</span>
@@ -319,15 +318,15 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                 <div className="flex items-center justify-between pt-1.5 border-t border-gray-100">
                   <div>
                     <span className="text-[10px] text-gray-500 font-bold uppercase block">Order ID Reference</span>
-                    <strong className="text-[#FF4B26] font-mono text-xs">{order.id}</strong>
+                    <strong className="text-[#048747] font-mono text-xs">{order.id}</strong>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleCopy(order.id, 'trackerOrderId')}
-                    className="px-2.5 py-1 bg-orange-100 hover:bg-orange-200 text-[#FF4B26] rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 bg-[#E8F8EE] hover:bg-[#D4F4E0] text-[#048747] rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     {copiedField === 'trackerOrderId' ? (
-                      <span className="flex items-center gap-1 text-[#FF4B26]">
+                      <span className="flex items-center gap-1 text-[#048747]">
                         <Check className="w-3 h-3 stroke-[3]" />
                         <span>Copied</span>
                       </span>
@@ -342,41 +341,65 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
               </div>
             </div>
 
-            {/* 2. Delivery Driver Contact Information (Shown for delivery orders) */}
+            {/* 2. Delivery Driver Contact Information (Shown when driver is assigned) */}
             {order.diningMode === 'delivery' && (
-              <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2 text-xs">
+                {driverName ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
+                          <Bike className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-black text-gray-900 text-xs flex items-center gap-1.5">
+                            <span>{driverName}</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
+                              {driverVehicle}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-emerald-700">
+                            {order.delegationStatus === 'out_for_delivery'
+                              ? '🛵 Courier is on the way to you'
+                              : '🛵 Assigned Monrovia Courier'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {driverPhone && (
+                        <a
+                          href={`tel:${driverPhone}`}
+                          className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95"
+                          title="Call Courier"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Call Driver</span>
+                        </a>
+                      )}
+                    </div>
+                    {driverPhone && (
+                      <div className="text-[11px] text-gray-600 font-mono pl-9">
+                        Rider Phone: <strong className="text-gray-900">{driverPhone}</strong>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2.5 py-1 text-gray-600">
+                    <div className="w-7 h-7 rounded-xl bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
                       <Bike className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="font-black text-blue-950 text-xs flex items-center gap-1.5">
-                        <span>{driverName}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-200/70 text-blue-800 font-bold">
-                          {driverVehicle}
-                        </span>
+                      <div className="font-extrabold text-xs text-gray-900">
+                        {order.status === 'received' || order.status === 'preparing' || order.status === 'plating'
+                          ? 'Dispatching nearest available Monrovia courier...'
+                          : 'Awaiting courier assignment'}
                       </div>
-                      <div className="text-[10px] text-blue-700">
-                        {order.delegationStatus === 'out_for_delivery'
-                          ? '🛵 Courier is on the way to you'
-                          : '🛵 Assigned Monrovia Courier'}
+                      <div className="text-[10px] text-gray-500">
+                        Courier details will appear as soon as a driver accepts your delivery
                       </div>
                     </div>
                   </div>
-
-                  <a
-                    href={`tel:${driverPhone}`}
-                    className="px-3 py-1.5 bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95"
-                    title="Call Courier"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>Call Driver</span>
-                  </a>
-                </div>
-                <div className="text-[11px] text-gray-600 font-mono pl-9">
-                  Rider Phone: <strong className="text-gray-900">{driverPhone}</strong>
-                </div>
+                )}
               </div>
             )}
 
