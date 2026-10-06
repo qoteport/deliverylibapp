@@ -409,11 +409,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             )}
           </div>
 
-          {/* Payment Selection for Liberia */}
-          <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+          {/* Payment Selection Preference */}
+          <div className="space-y-2.5 text-xs pt-2 border-t border-gray-100">
             <div className="font-extrabold text-[#111827] uppercase tracking-wider flex items-center justify-between">
-              <span>3. Payment Option</span>
-              <span className="font-mono text-[#FF4B26] font-bold">Currency: {currency}</span>
+              <span>3. Payment Preference</span>
+              <span className="font-mono text-[#048747] font-bold">Currency: {currency}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -421,7 +421,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('momo-mtn')}
-                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
                   paymentMethod === 'momo-mtn'
                     ? 'border-[#FFCC00] bg-[#FFFBEA] ring-2 ring-[#FFCC00]/30 shadow-xs'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -440,7 +440,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('orange-money')}
-                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
                   paymentMethod === 'orange-money'
                     ? 'border-[#FF6600] bg-[#FFF5EF] ring-2 ring-[#FF6600]/30 shadow-xs'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -459,7 +459,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('cod-usd')}
-                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
                   paymentMethod === 'cod-usd'
                     ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -468,7 +468,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <DollarSign className="w-6 h-6 text-emerald-600 shrink-0" />
                 <div>
                   <div className="text-xs font-black text-emerald-800">Cash (USD $)</div>
-                  <div className="text-[10px] text-emerald-600 font-medium">Pay courier in USD</div>
+                  <div className="text-[10px] text-emerald-600 font-medium">Pay on arrival</div>
                 </div>
               </button>
 
@@ -476,7 +476,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('cod-lrd')}
-                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 ${
+                className={`p-3 rounded-2xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
                   paymentMethod === 'cod-lrd'
                     ? 'border-[#06C167] bg-[#E8F8EE] ring-2 ring-[#06C167]/20 shadow-xs'
                     : 'border-gray-200 bg-white hover:border-gray-300'
@@ -485,87 +485,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span className="font-mono text-sm font-black text-[#048747] shrink-0">L$</span>
                 <div>
                   <div className="text-xs font-black text-[#048747]">Cash (LRD L$)</div>
-                  <div className="text-[10px] text-emerald-700 font-medium">Pay in Liberian $</div>
+                  <div className="text-[10px] text-emerald-700 font-medium">Pay on arrival</div>
                 </div>
               </button>
             </div>
 
-            {/* Mobile Money Transfer Details Box */}
-            {(paymentMethod === 'momo-mtn' || paymentMethod === 'orange-money') && (
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
-                <div className="text-[11px] text-gray-700 leading-snug">
-                  Please transfer <strong className="text-gray-900 font-mono font-black">{formatPrice(cartTotals.total)}</strong> to <strong>{restaurantName}</strong> using the details below:
-                </div>
-
-                {/* 1. Restaurant Primary MoMo Number with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
-                      Restaurant MoMo Number
-                    </div>
-                    <div className="font-mono text-sm sm:text-base font-black text-[#111827] mt-0.5 truncate">
-                      {restaurantPhone}
-                    </div>
-                    <div className="text-[10px] text-gray-500 font-semibold truncate">
-                      Account: {restaurantName}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(restaurantPhone, 'phone')}
-                    className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
-                    title="Copy restaurant phone number"
-                  >
-                    {copiedField === 'phone' ? (
-                      <span className="flex items-center gap-1.5 text-[#048747]">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Copied!</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5">
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Number</span>
-                      </span>
-                    )}
-                  </button>
-                </div>
-
-                {/* 2. Order ID with Copy Button */}
-                <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
-                      Transfer Reference / Note
-                    </div>
-                    <div className="font-mono text-sm sm:text-base font-black text-[#111827] mt-0.5 tracking-wide">
-                      {orderId}
-                    </div>
-                    <div className="text-[10px] text-gray-500 font-semibold">
-                      Attach this Order ID as the transfer reason
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(orderId, 'orderId')}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
-                    title="Copy Order ID"
-                  >
-                    {copiedField === 'orderId' ? (
-                      <span className="flex items-center gap-1.5 text-emerald-600">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Copied!</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5">
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Order ID</span>
-                      </span>
-                    )}
-                  </button>
+            {/* Pay After Kitchen Confirms Notice */}
+            <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-900">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-extrabold text-[#048747]">Pay After Kitchen Confirms</div>
+                <div className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
+                  Your order is sent to the restaurant first. Once the kitchen accepts and starts cooking, you will complete payment via MoMo / Orange / Cash in your <strong>Live Order Tracker</strong>.
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Total Breakdown Snapshot */}

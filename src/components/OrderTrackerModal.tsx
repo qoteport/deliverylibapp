@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle } from 'lucide-react';
-import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
+import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle, Wallet, DollarSign, ShieldCheck } from 'lucide-react';
+import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant, PaymentMethod } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 
 interface OrderTrackerModalProps {
@@ -30,6 +30,8 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(order.paymentMethod || 'momo-mtn');
+  const [isPaid, setIsPaid] = useState<boolean>(order.paymentStatus === 'paid');
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -305,6 +307,12 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Notice that payment transfer unlocks after kitchen accept */}
+              <div className="pt-2 border-t border-amber-200/60 flex items-center gap-1.5 text-[11px] text-amber-800">
+                <Wallet className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Payment transfer details will appear here as soon as the kitchen confirms your order.</span>
+              </div>
             </div>
           )}
 
@@ -408,6 +416,203 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* 3. PAYMENT OPTION (Unlocked once kitchen confirms) */}
+          {isConfirmed && (
+            <div className="p-4 bg-white border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-xs">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs sm:text-sm text-gray-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Order Payment</span>
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
+                        Kitchen Confirmed
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-gray-500 font-medium">
+                      Please send payment to {restaurantName}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="font-mono text-base sm:text-lg font-black text-[#048747]">
+                    {formatPrice(order.total)}
+                  </span>
+                  {currency === 'USD' && (
+                    <div className="text-[10px] text-gray-500 font-mono">
+                      ~L${Math.round(order.total * USD_TO_LRD_RATE).toLocaleString()} LRD
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Method Switcher Tabs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('momo-mtn')}
+                  className={`p-2 rounded-xl border text-left font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                    selectedPaymentMethod === 'momo-mtn'
+                      ? 'border-[#FFCC00] bg-[#FFFBEA] ring-2 ring-[#FFCC00]/30 shadow-xs'
+                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-md bg-[#FFCC00] text-black font-black flex items-center justify-center text-[10px] shrink-0">M</span>
+                  <span className="truncate">MTN MoMo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('orange-money')}
+                  className={`p-2 rounded-xl border text-left font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                    selectedPaymentMethod === 'orange-money'
+                      ? 'border-[#FF6600] bg-[#FFF5EF] ring-2 ring-[#FF6600]/30 shadow-xs'
+                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-md bg-[#FF6600] text-white font-black flex items-center justify-center text-[10px] shrink-0">O</span>
+                  <span className="truncate">Orange</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('cod-usd')}
+                  className={`p-2 rounded-xl border text-left font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                    selectedPaymentMethod === 'cod-usd'
+                      ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="truncate">Cash ($)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('cod-lrd')}
+                  className={`p-2 rounded-xl border text-left font-bold transition-all text-xs flex items-center gap-1.5 cursor-pointer ${
+                    selectedPaymentMethod === 'cod-lrd'
+                      ? 'border-[#06C167] bg-[#E8F8EE] ring-2 ring-[#06C167]/20 shadow-xs'
+                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <span className="font-mono text-xs font-black text-[#048747] shrink-0">L$</span>
+                  <span className="truncate">Cash (L$)</span>
+                </button>
+              </div>
+
+              {/* MoMo / Orange Money Transfer Details */}
+              {(selectedPaymentMethod === 'momo-mtn' || selectedPaymentMethod === 'orange-money') && (
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2 text-xs">
+                  <div className="text-[11px] text-gray-700 leading-snug">
+                    Transfer <strong className="text-gray-900 font-mono font-black">{formatPrice(order.total)}</strong> to <strong>{restaurantName}</strong> ({selectedPaymentMethod === 'momo-mtn' ? 'Dial *156#' : 'Dial *144#'}):
+                  </div>
+
+                  {/* 1. Restaurant Primary MoMo Number with Copy Button */}
+                  <div className="bg-white p-2.5 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-extrabold uppercase text-gray-500">
+                        Restaurant MoMo Number
+                      </div>
+                      <div className="font-mono text-sm font-black text-[#111827] mt-0.5 truncate">
+                        {restaurantPhone}
+                      </div>
+                      <div className="text-[10px] text-gray-500 font-medium truncate">
+                        Account: {restaurantName}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(restaurantPhone, 'trackerMoMoPhone')}
+                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+                    >
+                      {copiedField === 'trackerMoMoPhone' ? (
+                        <span className="flex items-center gap-1 text-[#048747]">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Copied!</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Number</span>
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* 2. Order ID with Copy Button */}
+                  <div className="bg-white p-2.5 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-extrabold uppercase text-gray-500">
+                        Transfer Reference / Note
+                      </div>
+                      <div className="font-mono text-sm font-black text-[#048747] mt-0.5">
+                        {order.id}
+                      </div>
+                      <div className="text-[10px] text-gray-500 font-medium">
+                        Attach this Order ID as the transfer reason
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(order.id, 'trackerOrderIdRef')}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200 rounded-xl font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
+                    >
+                      {copiedField === 'trackerOrderIdRef' ? (
+                        <span className="flex items-center gap-1 text-emerald-600">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Copied!</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Order ID</span>
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Payment Sent Confirmation Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPaid(!isPaid)}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ${
+                      isPaid
+                        ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                        : 'bg-gray-900 hover:bg-black text-white'
+                    }`}
+                  >
+                    {isPaid ? (
+                      <>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>Payment Sent to Kitchen ({formatPrice(order.total)})</span>
+                      </>
+                    ) : (
+                      <span>I Have Sent MoMo Payment</span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Cash on Delivery Details */}
+              {(selectedPaymentMethod === 'cod-usd' || selectedPaymentMethod === 'cod-lrd') && (
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80 text-xs text-emerald-900 space-y-1">
+                  <div className="font-extrabold flex items-center gap-1.5">
+                    <span>💵 Cash Payment on Delivery</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Please have exact cash ready (<strong>{selectedPaymentMethod === 'cod-usd' ? `$${order.total.toFixed(2)} USD` : `L$${Math.round(order.total * USD_TO_LRD_RATE).toLocaleString()} LRD`}</strong>) to hand to your courier upon delivery.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Contact & Support Section */}
           <div className="pt-3 border-t border-gray-100 space-y-2.5">
