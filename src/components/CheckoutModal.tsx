@@ -289,13 +289,52 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     onOrderPlaced(newOrder);
   };
 
+  const [sheetDragY, setSheetDragY] = useState<number>(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState<boolean>(false);
+  const [sheetTouchStartY, setSheetTouchStartY] = useState<number | null>(null);
+
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    setSheetTouchStartY(e.touches[0].clientY);
+    setIsDraggingSheet(true);
+  };
+
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (sheetTouchStartY === null) return;
+    const deltaY = e.touches[0].clientY - sheetTouchStartY;
+    if (deltaY > 0) {
+      setSheetDragY(deltaY);
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    setIsDraggingSheet(false);
+    if (sheetDragY > 85) {
+      onClose();
+    }
+    setSheetDragY(0);
+    setSheetTouchStartY(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade" onClick={onClose}>
       <div 
-        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right"
+        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right touch-pan-y"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          transform: sheetDragY > 0 ? `translateY(${sheetDragY}px)` : undefined,
+          transition: isDraggingSheet ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
       >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+        {/* Mobile top pull indicator handle */}
+        <div 
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+          className="w-full py-2.5 flex items-center justify-center sm:hidden cursor-grab active:cursor-grabbing shrink-0"
+          title="Pull down to close"
+        >
+          <div className="w-14 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
+        </div>
 
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">

@@ -171,7 +171,13 @@ export interface Order {
   createdAtTimestamp?: number;
   confirmedAtTimestamp?: number;
   targetEtaTimestamp?: number;
+  readyAtTimestamp?: number;
+  enRouteAtTimestamp?: number;
+  deliveredAtTimestamp?: number;
   prepDurationMinutes?: number;
+  actualPrepMinutes?: number;
+  actualDeliveryMinutes?: number;
+  totalFulfillmentMinutes?: number;
   paymentMethod: PaymentMethod;
   paymentNumber?: string;
   paymentStatus?: 'pending' | 'paid';

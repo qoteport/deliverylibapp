@@ -677,6 +677,41 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
         {activeTab === 'orders' && (
           <div className="space-y-4">
             
+            {/* Kitchen Efficiency & Prep Time KPIs Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-xs space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Avg Kitchen Prep</div>
+                <div className="text-base sm:text-lg font-black text-gray-900 font-mono flex items-center gap-1">
+                  <Clock className="w-4 h-4 text-[#FF4B26]" />
+                  <span>{avgPrepTimeMins} mins</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-xs space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">On-Time Prep Rate</div>
+                <div className="text-base sm:text-lg font-black text-emerald-600 font-mono flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>{onTimePercentage}%</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-xs space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Active Live Orders</div>
+                <div className="text-base sm:text-lg font-black text-[#FF4B26] font-mono flex items-center gap-1">
+                  <Flame className="w-4 h-4 text-[#FF4B26]" />
+                  <span>{liveOrders.length}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-xs space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Total Fulfilled</div>
+                <div className="text-base sm:text-lg font-black text-[#048747] font-mono flex items-center gap-1">
+                  <Award className="w-4 h-4 text-[#06C167]" />
+                  <span>{deliveredOrders.length} orders</span>
+                </div>
+              </div>
+            </div>
+
             {/* Live stream status */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-500">
               <span className="flex items-center gap-1.5">
@@ -836,6 +871,41 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                           </span>
                         </div>
                       </div>
+
+                      {/* Kitchen Prep Time Alert & Metric Pill */}
+                      {!isDone && order.status !== 'cancelled' && (() => {
+                        const prepTargetMins = order.prepDurationMinutes || (order.diningMode === 'pickup' ? 15 : order.diningMode === 'dine-in' ? 12 : 25);
+                        const orderStartTimestamp = order.confirmedAtTimestamp || order.createdAtTimestamp || Date.now();
+                        const elapsedMinutes = Math.max(0, Math.floor((Date.now() - orderStartTimestamp) / 60000));
+                        const isOverdue = elapsedMinutes > prepTargetMins;
+                        const isNearTime = !isOverdue && elapsedMinutes >= Math.max(1, prepTargetMins - 5);
+
+                        return (
+                          <div className={`p-2 rounded-xl text-xs flex items-center justify-between gap-2 ${
+                            isOverdue
+                              ? 'bg-red-50 border border-red-200 text-red-900 animate-pulse'
+                              : isNearTime
+                              ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                              : 'bg-emerald-50/70 border border-emerald-200/60 text-emerald-900'
+                          }`}>
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <Clock className={`w-3.5 h-3.5 ${isOverdue ? 'text-red-600 animate-spin' : isNearTime ? 'text-amber-600' : 'text-emerald-600'}`} />
+                              <span>
+                                {isOverdue
+                                  ? `🚨 Prep Overdue by +${elapsedMinutes - prepTargetMins}m (${elapsedMinutes}m / ${prepTargetMins}m target)`
+                                  : isNearTime
+                                  ? `⚠️ Approaching Target Time (${prepTargetMins - elapsedMinutes}m left)`
+                                  : `⏱️ Cooking Pace: ${elapsedMinutes}m elapsed (Target: ${prepTargetMins}m)`}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                              isOverdue ? 'bg-red-600 text-white' : isNearTime ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                            }`}>
+                              {isOverdue ? 'URGENT' : isNearTime ? 'EXPEDITE' : 'ON TRACK'}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Items List with Dish Images */}
                       <div className="space-y-2">

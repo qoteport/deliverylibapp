@@ -120,16 +120,55 @@ export const DishModal: React.FC<DishModalProps> = ({
     onClose();
   };
 
+  const [sheetDragY, setSheetDragY] = useState<number>(0);
+  const [isDraggingSheet, setIsDraggingSheet] = useState<boolean>(false);
+  const [sheetTouchStartY, setSheetTouchStartY] = useState<number | null>(null);
+
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    setSheetTouchStartY(e.touches[0].clientY);
+    setIsDraggingSheet(true);
+  };
+
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (sheetTouchStartY === null) return;
+    const deltaY = e.touches[0].clientY - sheetTouchStartY;
+    if (deltaY > 0) {
+      setSheetDragY(deltaY);
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    setIsDraggingSheet(false);
+    if (sheetDragY > 85) {
+      onClose();
+    }
+    setSheetDragY(0);
+    setSheetTouchStartY(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade" onClick={onClose}>
       <div 
-        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right"
+        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right touch-pan-y"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          transform: sheetDragY > 0 ? `translateY(${sheetDragY}px)` : undefined,
+          transition: isDraggingSheet ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
       >
         {/* Visual Top Image Gallery / Illustration */}
         <div className="relative w-full h-72 sm:h-80 bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
-          {/* Mobile top pull indicator */}
-          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/80 rounded-full z-30 sm:hidden shadow-sm pointer-events-none" />
+          
+          {/* Mobile top pull-down notch handle (Interactive touch area) */}
+          <div 
+            onTouchStart={handleSheetTouchStart}
+            onTouchMove={handleSheetTouchMove}
+            onTouchEnd={handleSheetTouchEnd}
+            className="absolute top-0 inset-x-0 h-10 flex items-center justify-center z-30 sm:hidden cursor-grab active:cursor-grabbing"
+            title="Pull down to close"
+          >
+            <div className="w-14 h-1.5 bg-white/90 shadow-md rounded-full ring-1 ring-black/10 transition-transform active:scale-95" />
+          </div>
 
           <button
             onClick={onClose}
@@ -146,11 +185,12 @@ export const DishModal: React.FC<DishModalProps> = ({
               onTouchEnd={handleTouchEnd}
               className="relative w-full h-full flex items-center justify-center overflow-hidden touch-pan-y select-none bg-gray-100"
             >
-              {/* Centered High-Def Food Image in Natural Brightness */}
+              {/* Centered High-Def Food Image with smooth animated transition */}
               <img
+                key={activeImageIndex}
                 src={allImages[activeImageIndex] || allImages[0]}
                 alt={dish.name}
-                className="w-full h-full object-cover object-center transition-all duration-300 pointer-events-none"
+                className="w-full h-full object-cover object-center pointer-events-none animate-in fade-in zoom-in-95 duration-200"
                 loading="eager"
                 draggable={false}
               />
@@ -200,7 +240,7 @@ export const DishModal: React.FC<DishModalProps> = ({
                       : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
                   }`}
                 >
-                  <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover object-center" />
+                  <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

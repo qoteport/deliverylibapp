@@ -46,14 +46,28 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
     return cuisineTags.length > 0 ? cuisineTags.slice(0, 2) : ['Specialties', 'Grills'];
   };
 
+  const handleRestaurantClick = (id: string) => {
+    onSelectRestaurant(id);
+    // Smooth scroll down to show the kitchen's menu dishes
+    setTimeout(() => {
+      const menuSection = document.getElementById('menu-section');
+      if (menuSection) {
+        menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  };
+
   return (
     <div className="px-4 sm:px-8 lg:px-10 max-w-5xl mx-auto space-y-2.5 pt-1">
       
       {/* Neighborhood Pills Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
         <button
-          onClick={() => onSelectNeighborhood('all')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-xs ${
+          onClick={() => {
+            onSelectNeighborhood('all');
+            handleRestaurantClick('all');
+          }}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-xs cursor-pointer ${
             selectedNeighborhood === 'all'
               ? 'bg-[#111827] text-white'
               : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-black'
@@ -65,7 +79,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
           <button
             key={nh}
             onClick={() => onSelectNeighborhood(nh)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shadow-xs ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shadow-xs cursor-pointer ${
               selectedNeighborhood === nh
                 ? 'bg-[#06C167] text-white border border-[#06C167]'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-black'
@@ -86,7 +100,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
           return (
             <div
               key={restaurant.id}
-              onClick={() => onSelectRestaurant(isSelected ? 'all' : restaurant.id)}
+              onClick={() => handleRestaurantClick(isSelected ? 'all' : restaurant.id)}
               className={`p-3.5 rounded-2xl border cursor-pointer shrink-0 w-60 sm:w-64 flex flex-col justify-between transition-all ${
                 isSelected
                   ? 'border-[#06C167] ring-2 ring-[#06C167]/20 bg-white shadow-md'

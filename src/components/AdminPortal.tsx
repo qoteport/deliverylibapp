@@ -34,12 +34,20 @@ import {
   Wallet,
   Calendar,
   Layers,
-  Utensils
+  Utensils,
+  BarChart3,
+  PieChart,
+  Activity,
+  ArrowUpRight,
+  Search,
+  Timer,
+  Sparkles,
+  ChefHat
 } from 'lucide-react';
-import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
-import { doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
@@ -80,13 +88,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onToggleCurrency,
 }) => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'drivers' | 'orders' | 'system'>('restaurants');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'restaurants' | 'drivers' | 'orders' | 'users' | 'system'>('analytics');
   const [restaurantFilter, setRestaurantFilter] = useState<'all' | 'pending' | 'verified'>('all');
   const [driverFilter, setDriverFilter] = useState<'all' | 'pending' | 'verified'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchRestaurant, setSearchRestaurant] = useState<string>('');
   const [searchDriver, setSearchDriver] = useState<string>('');
-  
+  const [searchUser, setSearchUser] = useState<string>('');
+
+  // Firestore Live Users & Customer Directory
+  const [dbUsers, setDbUsers] = useState<AppUser[]>([]);
+  const [selectedUserForOrders, setSelectedUserForOrders] = useState<{
+    name: string;
+    phone: string;
+    location: string;
+    address: string;
+    orders: Order[];
+    totalSpend: number;
+    ordersCount: number;
+  } | null>(null);
+
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [prevOrdersCount, setPrevOrdersCount] = useState(orders.length);
 
@@ -169,6 +190,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   }, [orders]);
 
+  // Listen to Firestore users collection in realtime
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+        const list: AppUser[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as AppUser);
+        });
+        setDbUsers(list);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore users listen error:', e);
+    }
+  }, []);
+
   const formatPrice = (usd: number) => {
     if (currency === 'LRD') {
       return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
@@ -187,6 +224,218 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const pendingDriversCount = drivers.filter(
     (d) => d.isVerified === false || d.verificationStatus === 'pending'
   ).length;
+
+  // Aggregate customers from both Firestore `users` collection and `orders` history
+  const customersMap = new Map<string, {
+    uid?: string;
+    phone: string;
+    name: string;
+    location: string;
+    address: string;
+    ordersCount: number;
+    totalSpend: number;
+    lastOrderDate: string;
+    orders: Order[];
+    favoriteRestaurant: string;
+    role: string;
+  }>();
+
+  // 1. Seed from Firestore users
+  dbUsers.forEach((u) => {
+    if (u.phone) {
+      const cleanPhone = u.phone.trim();
+      customersMap.set(cleanPhone, {
+        uid: u.uid,
+        phone: cleanPhone,
+        name: u.name || 'Monrovia Customer',
+        location: u.location || 'Monrovia',
+        address: u.address || '',
+        ordersCount: 0,
+        totalSpend: 0,
+        lastOrderDate: (u as any).lastActiveAt ? new Date((u as any).lastActiveAt).toLocaleDateString() : 'Active',
+        orders: [],
+        favoriteRestaurant: 'N/A',
+        role: u.role || 'customer',
+      });
+    }
+  });
+
+  // 2. Aggregate from all orders placed in system
+  orders.forEach((o) => {
+    const phone = (o.customerPhone || '').trim();
+    if (!phone) return;
+
+    const existing = customersMap.get(phone) || {
+      uid: `order-cust-${phone.replace(/\D/g, '')}`,
+      phone: phone,
+      name: o.customerName || 'Customer',
+      location: o.deliveryArea || o.deliveryAddress || 'Monrovia',
+      address: o.deliveryAddress || '',
+      ordersCount: 0,
+      totalSpend: 0,
+      lastOrderDate: o.createdAt || 'Recent',
+      orders: [],
+      favoriteRestaurant: o.restaurantName || 'Monrovia Spot',
+      role: 'customer',
+    };
+
+    if (o.customerName && (!existing.name || existing.name === 'Monrovia Customer')) {
+      existing.name = o.customerName;
+    }
+    if (o.deliveryArea && (!existing.location || existing.location === 'Monrovia')) {
+      existing.location = o.deliveryArea;
+    }
+    if (o.deliveryAddress && !existing.address) {
+      existing.address = o.deliveryAddress;
+    }
+
+    existing.ordersCount += 1;
+    existing.totalSpend += o.total;
+    existing.orders.push(o);
+
+    customersMap.set(phone, existing);
+  });
+
+  // Calculate favorite restaurant for each customer
+  customersMap.forEach((cust) => {
+    if (cust.orders.length > 0) {
+      const restCounts: Record<string, number> = {};
+      cust.orders.forEach((o) => {
+        const name = o.restaurantName || 'Spot';
+        restCounts[name] = (restCounts[name] || 0) + 1;
+      });
+      const topRest = Object.entries(restCounts).sort((a, b) => b[1] - a[1])[0];
+      if (topRest) {
+        cust.favoriteRestaurant = topRest[0];
+      }
+    }
+  });
+
+  const allCustomers = Array.from(customersMap.values());
+  const filteredCustomers = allCustomers.filter((c) => {
+    const q = searchUser.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.phone.toLowerCase().includes(q) ||
+      c.location.toLowerCase().includes(q) ||
+      c.address.toLowerCase().includes(q)
+    );
+  });
+
+  // Analytics Aggregations
+  const completedOrders = orders.filter((o) => o.status === 'completed');
+  const cancelledOrders = orders.filter((o) => o.status === 'cancelled');
+  const inProgressOrders = orders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled');
+  const completionRate = orders.length > 0 ? Math.round((completedOrders.length / orders.length) * 100) : 0;
+  const avgOrderValueUsd = orders.length > 0 ? totalGmvUsd / orders.length : 0;
+  const totalDeliveryFees = orders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+  const estimatedPlatformCommission = completedOrders.reduce((sum, o) => sum + (o.total * 0.1), 0);
+
+  // Prep time metrics (Kitchen)
+  const ordersWithPrep = orders.filter((o) => o.actualPrepMinutes && o.actualPrepMinutes > 0);
+  const avgPrepMins = ordersWithPrep.length > 0
+    ? Math.round(ordersWithPrep.reduce((acc, o) => acc + (o.actualPrepMinutes || 0), 0) / ordersWithPrep.length)
+    : (orders.length > 0 ? 22 : 0);
+
+  // Delivery transit metrics (Rider)
+  const ordersWithDelivery = orders.filter((o) => o.actualDeliveryMinutes && o.actualDeliveryMinutes > 0);
+  const avgDeliveryMins = ordersWithDelivery.length > 0
+    ? Math.round(ordersWithDelivery.reduce((acc, o) => acc + (o.actualDeliveryMinutes || 0), 0) / ordersWithDelivery.length)
+    : (orders.length > 0 ? 18 : 0);
+
+  // Total fulfillment duration
+  const ordersWithFulfillment = orders.filter((o) => o.totalFulfillmentMinutes && o.totalFulfillmentMinutes > 0);
+  const avgFulfillmentMins = ordersWithFulfillment.length > 0
+    ? Math.round(ordersWithFulfillment.reduce((acc, o) => acc + (o.totalFulfillmentMinutes || 0), 0) / ordersWithFulfillment.length)
+    : (avgPrepMins + avgDeliveryMins);
+
+  // Status breakdown counts
+  const statusCounts = {
+    received: orders.filter((o) => o.status === 'received').length,
+    preparing: orders.filter((o) => o.status === 'preparing').length,
+    plating: orders.filter((o) => o.status === 'plating').length,
+    'en-route': orders.filter((o) => o.status === 'en-route').length,
+    completed: completedOrders.length,
+    cancelled: cancelledOrders.length,
+  };
+
+  // Payment Breakdown
+  const paymentBreakdown: Record<string, { count: number; gmv: number; label: string; icon: string }> = {
+    'momo-on-delivery': { count: 0, gmv: 0, label: 'MTN / Orange MoMo on Delivery', icon: '📱' },
+    'cash': { count: 0, gmv: 0, label: 'Cash on Delivery (USD / LRD)', icon: '💵' },
+    'momo': { count: 0, gmv: 0, label: 'Instant Mobile Money (MoMo)', icon: '⚡' },
+    'card': { count: 0, gmv: 0, label: 'Debit / Credit Card', icon: '💳' },
+  };
+
+  orders.forEach((o) => {
+    const key = o.paymentMethod || 'momo-on-delivery';
+    if (!paymentBreakdown[key]) {
+      paymentBreakdown[key] = { count: 0, gmv: 0, label: key, icon: '💰' };
+    }
+    paymentBreakdown[key].count += 1;
+    paymentBreakdown[key].gmv += o.total;
+  });
+
+  // Top Performing Kitchens
+  const kitchenPerformanceMap: Record<string, { id: string; name: string; cuisine: string; ordersCount: number; gmv: number; completedCount: number; prepTimes: number[] }> = {};
+  orders.forEach((o) => {
+    const id = o.restaurantId || o.restaurantName || 'kitchen';
+    const matchingRest = restaurants.find((r) => r.id === id || r.name === o.restaurantName);
+    const name = o.restaurantName || matchingRest?.name || 'Kitchen';
+    const cuisine = matchingRest?.cuisine || 'Monrovia Kitchen';
+    if (!kitchenPerformanceMap[id]) {
+      kitchenPerformanceMap[id] = { id, name, cuisine, ordersCount: 0, gmv: 0, completedCount: 0, prepTimes: [] };
+    }
+    kitchenPerformanceMap[id].ordersCount += 1;
+    kitchenPerformanceMap[id].gmv += o.total;
+    if (o.status === 'completed') kitchenPerformanceMap[id].completedCount += 1;
+    if (o.actualPrepMinutes) kitchenPerformanceMap[id].prepTimes.push(o.actualPrepMinutes);
+  });
+
+  const topKitchens = Object.values(kitchenPerformanceMap)
+    .sort((a, b) => b.gmv - a.gmv)
+    .slice(0, 6);
+
+  // Top Selling Dishes
+  const dishSalesMap: Record<string, { name: string; quantity: number; gmv: number; count: number; restaurantName: string }> = {};
+  orders.forEach((o) => {
+    o.items?.forEach((item) => {
+      const name = item.menuItem?.name || 'Dish Item';
+      if (!dishSalesMap[name]) {
+        dishSalesMap[name] = { 
+          name, 
+          quantity: 0, 
+          gmv: 0, 
+          count: 0, 
+          restaurantName: o.restaurantName || 'Spot' 
+        };
+      }
+      dishSalesMap[name].quantity += item.quantity || 1;
+      dishSalesMap[name].gmv += item.itemTotal || ((item.menuItem?.priceUsd || 0) * (item.quantity || 1));
+      dishSalesMap[name].count += 1;
+    });
+  });
+
+  const topDishes = Object.values(dishSalesMap)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 8);
+
+  // Top Delivery Neighborhoods
+  const neighborhoodDemandMap: Record<string, { name: string; ordersCount: number; gmv: number }> = {};
+  orders.forEach((o) => {
+    const area = o.deliveryArea || o.deliveryAddress || 'Monrovia Central';
+    const cleanArea = area.split(',')[0].split('(')[0].trim() || 'Monrovia';
+    if (!neighborhoodDemandMap[cleanArea]) {
+      neighborhoodDemandMap[cleanArea] = { name: cleanArea, ordersCount: 0, gmv: 0 };
+    }
+    neighborhoodDemandMap[cleanArea].ordersCount += 1;
+    neighborhoodDemandMap[cleanArea].gmv += o.total;
+  });
+
+  const topNeighborhoods = Object.values(neighborhoodDemandMap)
+    .sort((a, b) => b.ordersCount - a.ordersCount)
+    .slice(0, 6);
 
   const filteredOrders = statusFilter === 'all'
     ? orders
@@ -520,16 +769,46 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto no-scrollbar">
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'analytics'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Analytics &amp; Insights</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'orders'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Live Orders ({orders.length})</span>
+            {activeOrdersCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-black text-[10px] font-black">
+                {activeOrdersCount}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('restaurants')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'restaurants'
                 ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
-            Kitchens &amp; Verification ({restaurants.length})
+            <Store className="w-3.5 h-3.5" />
+            <span>Kitchens ({restaurants.length})</span>
             {pendingRestaurantsCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
                 {pendingRestaurantsCount}
               </span>
             )}
@@ -537,42 +816,520 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           <button
             onClick={() => setActiveTab('drivers')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'drivers'
                 ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
-            Delivery Fleet ({drivers.length})
+            <Bike className="w-3.5 h-3.5" />
+            <span>Delivery Fleet ({drivers.length})</span>
             {pendingDriversCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white text-[#048747] text-[10px] font-black">
                 {pendingDriversCount}
               </span>
             )}
           </button>
 
           <button
-            onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'orders'
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'users'
                 ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
-            Live Orders Feed ({orders.length})
+            <Users className="w-3.5 h-3.5" />
+            <span>Customers &amp; Users ({allCustomers.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('system')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'system'
                 ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
-            Database Maintenance
+            <span>Database Maintenance</span>
           </button>
         </div>
+
+        {/* ============================================================ */}
+        {/* TAB 0: ADVANCED ANALYTICS & INSIGHTS DASHBOARD               */}
+        {/* ============================================================ */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            
+            {/* Speed & Fulfillment Efficiency KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Avg Kitchen Prep Time */}
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Avg Kitchen Prep</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <ChefHat className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-mono font-black text-gray-900">{avgPrepMins}</span>
+                  <span className="text-xs font-bold text-gray-500">minutes</span>
+                </div>
+                <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                  <Timer className="w-3.5 h-3.5" />
+                  <span>Target: &le; 25m • {ordersWithPrep.length} timed orders</span>
+                </div>
+              </div>
+
+              {/* Avg Courier Delivery Transit */}
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Avg Courier Transit</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Bike className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-mono font-black text-gray-900">{avgDeliveryMins}</span>
+                  <span className="text-xs font-bold text-gray-500">minutes</span>
+                </div>
+                <div className="text-[11px] text-blue-600 font-bold flex items-center gap-1">
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>Monrovia city transit time</span>
+                </div>
+              </div>
+
+              {/* Avg Total Fulfillment Time */}
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Total Order to Door</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#048747] flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-mono font-black text-gray-900">{avgFulfillmentMins}</span>
+                  <span className="text-xs font-bold text-gray-500">minutes</span>
+                </div>
+                <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Cooking to customer hands</span>
+                </div>
+              </div>
+
+              {/* Order Success & Completion Rate */}
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Completion Rate</span>
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <Award className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-mono font-black text-gray-900">{completionRate}%</span>
+                  <span className="text-xs font-bold text-gray-500">({completedOrders.length}/{orders.length})</span>
+                </div>
+                <div className="text-[11px] text-gray-500 font-medium">
+                  {cancelledOrders.length} cancelled • {inProgressOrders.length} live
+                </div>
+              </div>
+
+            </div>
+
+            {/* Financial Revenue & Splits Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-3">
+                <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider block">
+                  Gross Merchandise Volume
+                </span>
+                <div className="text-2xl font-mono font-black text-gray-900">
+                  {formatPrice(totalGmvUsd)}
+                </div>
+                <div className="text-xs text-gray-500 space-y-1 pt-1 border-t border-gray-100">
+                  <div className="flex justify-between">
+                    <span>Delivered GMV:</span>
+                    <span className="font-mono font-bold text-gray-900">{formatPrice(completedOrders.reduce((s, o) => s + o.total, 0))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Avg Order Basket:</span>
+                    <span className="font-mono font-bold text-gray-900">{formatPrice(avgOrderValueUsd)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-3">
+                <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider block">
+                  Estimated Platform Revenue (10%)
+                </span>
+                <div className="text-2xl font-mono font-black text-[#048747]">
+                  {formatPrice(estimatedPlatformCommission)}
+                </div>
+                <div className="text-xs text-gray-500 space-y-1 pt-1 border-t border-gray-100">
+                  <div className="flex justify-between">
+                    <span>Total Orders:</span>
+                    <span className="font-bold text-gray-900">{orders.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Active In Flight:</span>
+                    <span className="font-bold text-emerald-600">{inProgressOrders.length} orders</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-3">
+                <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider block">
+                  Delivery Fees Paid to Riders
+                </span>
+                <div className="text-2xl font-mono font-black text-blue-600">
+                  {formatPrice(totalDeliveryFees)}
+                </div>
+                <div className="text-xs text-gray-500 space-y-1 pt-1 border-t border-gray-100">
+                  <div className="flex justify-between">
+                    <span>Active Couriers:</span>
+                    <span className="font-bold text-gray-900">{onlineDriversCount} online</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Fleet:</span>
+                    <span className="font-bold text-gray-900">{drivers.length} registered</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Orders Status Distribution & Payment Methods */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
+              {/* Status Breakdown */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#06C167]" />
+                    <span>Order Status Lifecycle Breakdown</span>
+                  </h4>
+                  <span className="text-xs text-gray-400 font-mono">{orders.length} total</span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  {[
+                    { key: 'received', label: 'Received / Awaiting Prep', count: statusCounts.received, color: 'bg-amber-400' },
+                    { key: 'preparing', label: 'Cooking in Kitchen', count: statusCounts.preparing, color: 'bg-orange-500' },
+                    { key: 'plating', label: 'Plating & Packed', count: statusCounts.plating, color: 'bg-blue-500' },
+                    { key: 'en-route', label: 'En-Route with Courier', count: statusCounts.enRoute || statusCounts['en-route'], color: 'bg-indigo-500' },
+                    { key: 'completed', label: 'Delivered & Completed', count: statusCounts.completed, color: 'bg-emerald-500' },
+                    { key: 'cancelled', label: 'Cancelled / Declined', count: statusCounts.cancelled, color: 'bg-red-500' },
+                  ].map((st) => {
+                    const pct = orders.length > 0 ? Math.round((st.count / orders.length) * 100) : 0;
+                    return (
+                      <div key={st.key} className="space-y-1">
+                        <div className="flex justify-between font-bold text-gray-700">
+                          <span>{st.label}</span>
+                          <span className="font-mono text-gray-900">{st.count} ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${st.color} rounded-full transition-all duration-500`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Payment Methods Breakdown */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-[#06C167]" />
+                    <span>Payment Methods Distribution</span>
+                  </h4>
+                  <span className="text-xs text-gray-400 font-mono">Monrovia MoMo & Cash</span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  {Object.entries(paymentBreakdown).map(([key, data]) => {
+                    const pct = orders.length > 0 ? Math.round((data.count / orders.length) * 100) : 0;
+                    return (
+                      <div key={key} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-lg">{data.icon}</span>
+                          <div>
+                            <div className="font-bold text-gray-900">{data.label}</div>
+                            <div className="text-[10px] text-gray-400 font-mono">{data.count} orders ({pct}%)</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono font-extrabold text-gray-900">{formatPrice(data.gmv)}</div>
+                          <div className="text-[10px] text-emerald-600 font-bold">GMV Share</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Top Kitchens & Top Dishes Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
+              {/* Top Performing Kitchens */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                    <Store className="w-4 h-4 text-[#06C167]" />
+                    <span>Top Performing Kitchens</span>
+                  </h4>
+                  <span className="text-xs text-gray-400">By Sales & Volume</span>
+                </div>
+
+                {topKitchens.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-gray-400">No kitchen orders recorded yet.</div>
+                ) : (
+                  <div className="space-y-2.5 text-xs">
+                    {topKitchens.map((k, idx) => {
+                      const avgKPrep = k.prepTimes.length > 0 
+                        ? Math.round(k.prepTimes.reduce((a, b) => a + b, 0) / k.prepTimes.length)
+                        : null;
+
+                      return (
+                        <div key={k.id} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between hover:bg-gray-100/80 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-xl bg-white border border-gray-200 text-gray-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
+                              #{idx + 1}
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-gray-900">{k.name}</div>
+                              <div className="text-[10px] text-gray-400 flex items-center gap-2">
+                                <span>{k.cuisine}</span>
+                                <span>•</span>
+                                <span>{k.ordersCount} orders</span>
+                                {avgKPrep && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-emerald-700 font-bold">⏱️ {avgKPrep}m avg prep</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right font-mono">
+                            <div className="font-black text-gray-900">{formatPrice(k.gmv)}</div>
+                            <div className="text-[10px] text-gray-400">{k.completedCount} fulfilled</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Top Selling Dishes */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-[#06C167]" />
+                    <span>Top Selling Monrovia Dishes</span>
+                  </h4>
+                  <span className="text-xs text-gray-400">By Quantity Sold</span>
+                </div>
+
+                {topDishes.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-gray-400">No dish items recorded yet.</div>
+                ) : (
+                  <div className="space-y-2.5 text-xs">
+                    {topDishes.map((d, idx) => (
+                      <div key={d.name} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between hover:bg-gray-100/80 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-xl bg-[#E8F8EE] text-[#048747] font-mono font-black text-xs flex items-center justify-center shrink-0">
+                            #{idx + 1}
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-gray-900">{d.name}</div>
+                            <div className="text-[10px] text-gray-400">
+                              From {d.restaurantName}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right font-mono">
+                          <div className="font-black text-[#048747]">{d.quantity} ordered</div>
+                          <div className="text-[10px] text-gray-400">{formatPrice(d.gmv)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Monrovia Delivery Demand by Neighborhood */}
+            <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#06C167]" />
+                  <span>Monrovia Delivery Corridors &amp; Demand</span>
+                </h4>
+                <span className="text-xs text-gray-400">Top Neighborhoods</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {topNeighborhoods.map((nh) => (
+                  <div key={nh.name} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1 text-center">
+                    <span className="text-xs font-extrabold text-gray-800 block truncate">{nh.name}</span>
+                    <div className="text-base font-mono font-black text-emerald-600">{nh.ordersCount}</div>
+                    <div className="text-[10px] text-gray-400 font-mono">{formatPrice(nh.gmv)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 4: USERS & CUSTOMERS DIRECTORY                           */}
+        {/* ============================================================ */}
+        {activeTab === 'users' && (
+          <div className="space-y-4">
+            
+            {/* Quick Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-xs">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchUser}
+                    onChange={(e) => setSearchUser(e.target.value)}
+                    placeholder="Search by customer name, phone, or neighborhood..."
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                <span className="px-2.5 py-1 bg-emerald-50 text-[#048747] font-bold rounded-xl border border-emerald-200">
+                  {allCustomers.length} Total Registered Customers
+                </span>
+              </div>
+            </div>
+
+            {/* Customers Table */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-[#111827]">
+                  Customer Directory ({filteredCustomers.length})
+                </h3>
+                <span className="text-xs text-gray-400">
+                  Synced with Firestore &amp; Order History
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                    <tr>
+                      <th className="p-3 sm:p-4">Customer</th>
+                      <th className="p-3 sm:p-4">Phone / Contact</th>
+                      <th className="p-3 sm:p-4">Delivery Location</th>
+                      <th className="p-3 sm:p-4">Orders Placed</th>
+                      <th className="p-3 sm:p-4">Lifetime Spend</th>
+                      <th className="p-3 sm:p-4">Favorite Kitchen</th>
+                      <th className="p-3 sm:p-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {filteredCustomers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-gray-400">
+                          No customer records found matching your search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCustomers.map((c) => {
+                        const initials = c.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2) || 'MC';
+
+                        return (
+                          <tr key={c.phone} className="hover:bg-gray-50 transition-colors">
+                            <td className="p-3 sm:p-4 font-bold text-[#111827] flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                {initials}
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-gray-900">{c.name}</div>
+                                <div className="text-[10px] text-gray-400">Last active: {c.lastOrderDate}</div>
+                              </div>
+                            </td>
+
+                            <td className="p-3 sm:p-4 font-mono text-xs">
+                              <div className="font-bold text-gray-900">{c.phone}</div>
+                              <a
+                                href={`tel:${c.phone}`}
+                                className="text-[10px] text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>Call Customer</span>
+                              </a>
+                            </td>
+
+                            <td className="p-3 sm:p-4 text-xs">
+                              <div className="font-semibold text-gray-800">{c.location}</div>
+                              {c.address && (
+                                <div className="text-[10px] text-gray-400 truncate max-w-[180px]">
+                                  {c.address}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="p-3 sm:p-4 font-mono font-bold">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                c.ordersCount > 3
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : c.ordersCount > 0
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {c.ordersCount} orders
+                              </span>
+                            </td>
+
+                            <td className="p-3 sm:p-4 font-mono font-black text-gray-900">
+                              {formatPrice(c.totalSpend)}
+                            </td>
+
+                            <td className="p-3 sm:p-4 text-xs font-semibold text-gray-700">
+                              {c.favoriteRestaurant}
+                            </td>
+
+                            <td className="p-3 sm:p-4">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUserForOrders(c)}
+                                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#048747] font-bold rounded-xl border border-emerald-200 text-xs flex items-center gap-1 cursor-pointer"
+                              >
+                                <ShoppingBag className="w-3 h-3" />
+                                <span>Orders ({c.orders.length})</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* TAB 1: RESTAURANTS & ONBOARDING + VERIFICATION               */}
@@ -1108,7 +1865,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     >
                       {/* Order Top Bar */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs font-black text-[#111827] bg-gray-100 px-2.5 py-1 rounded-lg">
                             #{o.id}
                           </span>
@@ -1127,6 +1884,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-600">
                             {o.diningMode}
                           </span>
+
+                          {/* Prep and Delivery Metrics Badges */}
+                          {o.actualPrepMinutes && o.actualPrepMinutes > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                              <span>👨‍🍳 Prep: {o.actualPrepMinutes}m</span>
+                            </span>
+                          ) : null}
+
+                          {o.actualDeliveryMinutes && o.actualDeliveryMinutes > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1">
+                              <span>🛵 Transit: {o.actualDeliveryMinutes}m</span>
+                            </span>
+                          ) : null}
+
+                          {o.totalFulfillmentMinutes && o.totalFulfillmentMinutes > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <span>⚡ Doorstep: {o.totalFulfillmentMinutes}m</span>
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -2166,6 +2942,152 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 6: CUSTOMER ORDER HISTORY DIALOG                              */}
+      {/* ========================================================================= */}
+      {selectedUserForOrders && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center font-black text-base shadow-md shadow-emerald-500/20">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-gray-900">{selectedUserForOrders.name}</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-[#048747] border border-emerald-200">
+                      Customer
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                    <span className="font-mono font-bold text-gray-800">{selectedUserForOrders.phone}</span>
+                    <span>•</span>
+                    <span>{selectedUserForOrders.location}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedUserForOrders(null)}
+                className="p-2 text-gray-400 hover:text-black rounded-xl cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400">Total Orders</span>
+                <div className="text-lg font-mono font-black text-gray-900">{selectedUserForOrders.orders.length}</div>
+              </div>
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400">Lifetime Spend</span>
+                <div className="text-lg font-mono font-black text-[#048747]">{formatPrice(selectedUserForOrders.totalSpend)}</div>
+              </div>
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400">Avg Spend</span>
+                <div className="text-lg font-mono font-black text-gray-900">
+                  {formatPrice(selectedUserForOrders.orders.length > 0 ? selectedUserForOrders.totalSpend / selectedUserForOrders.orders.length : 0)}
+                </div>
+              </div>
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400">Contact</span>
+                <a
+                  href={`tel:${selectedUserForOrders.phone}`}
+                  className="text-xs font-bold text-[#048747] hover:underline flex items-center gap-1 mt-1"
+                >
+                  <Phone className="w-3 h-3" />
+                  <span>Call Customer</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Customer Saved Address */}
+            {selectedUserForOrders.address && (
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 text-xs space-y-1">
+                <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[10px] block">
+                  Saved Delivery Address:
+                </span>
+                <div className="text-gray-900 font-medium">{selectedUserForOrders.address}</div>
+              </div>
+            )}
+
+            {/* Order History Timeline */}
+            <div className="space-y-3">
+              <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider block">
+                Order History ({selectedUserForOrders.orders.length})
+              </span>
+
+              {selectedUserForOrders.orders.length === 0 ? (
+                <div className="p-8 text-center bg-gray-50 rounded-2xl text-xs text-gray-400">
+                  No orders placed under this phone number yet.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {selectedUserForOrders.orders.map((o) => (
+                    <div
+                      key={o.id}
+                      className="p-4 bg-gray-50/70 hover:bg-gray-100/70 transition-colors rounded-2xl border border-gray-200/80 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-gray-900">#{o.id}</span>
+                          <span className="text-gray-400 font-medium">{o.createdAt}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                            o.status === 'completed'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : o.status === 'cancelled'
+                                ? 'bg-red-50 text-red-800 border-red-200'
+                                : 'bg-blue-50 text-blue-800 border-blue-200'
+                          }`}>
+                            {o.status}
+                          </span>
+                        </div>
+                        <span className="font-mono font-black text-gray-900">{formatPrice(o.total)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-gray-600">
+                        <div>
+                          <strong>Spot: </strong>
+                          <span>{o.restaurantName || 'Kitchen'}</span>
+                        </div>
+                        <div>
+                          <strong>Payment: </strong>
+                          <span>{o.paymentMethod}</span>
+                        </div>
+                      </div>
+
+                      {o.items && o.items.length > 0 && (
+                        <div className="text-[11px] text-gray-500 pt-1 border-t border-gray-200/60">
+                          {o.items.map((it) => `${it.quantity}x ${it.menuItem?.name || 'Dish'}`).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex justify-end pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setSelectedUserForOrders(null)}
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                Close Directory
               </button>
             </div>
 

@@ -584,11 +584,31 @@ export default function App() {
     const existingOrder = orders.find((o) => o.id === orderId) || (activeTrackingOrder?.id === orderId ? activeTrackingOrder : null);
     const spotName = existingOrder?.restaurantName || 'The restaurant';
 
+    const confTimestamp = extra?.confirmedAtTimestamp || existingOrder?.confirmedAtTimestamp || (status === 'preparing' || (status !== 'received' && !existingOrder?.confirmedAtTimestamp) ? now : undefined);
+    const readyTimestamp = extra?.readyAtTimestamp || existingOrder?.readyAtTimestamp || (status === 'plating' ? now : undefined);
+    const enRouteTimestamp = extra?.enRouteAtTimestamp || existingOrder?.enRouteAtTimestamp || (status === 'en-route' ? now : undefined);
+    const deliveredTimestamp = extra?.deliveredAtTimestamp || existingOrder?.deliveredAtTimestamp || (status === 'completed' ? now : undefined);
+
+    let calculatedActualPrepMinutes = extra?.actualPrepMinutes || existingOrder?.actualPrepMinutes;
+    if (!calculatedActualPrepMinutes && readyTimestamp && (confTimestamp || existingOrder?.createdAtTimestamp)) {
+      calculatedActualPrepMinutes = Math.max(1, Math.round((readyTimestamp - (confTimestamp || existingOrder!.createdAtTimestamp!)) / 60000));
+    }
+
+    let calculatedActualDeliveryMinutes = extra?.actualDeliveryMinutes || existingOrder?.actualDeliveryMinutes;
+    if (!calculatedActualDeliveryMinutes && deliveredTimestamp && (enRouteTimestamp || readyTimestamp)) {
+      calculatedActualDeliveryMinutes = Math.max(1, Math.round((deliveredTimestamp - (enRouteTimestamp || readyTimestamp!)) / 60000));
+    }
+
+    let calculatedTotalFulfillmentMinutes = extra?.totalFulfillmentMinutes || existingOrder?.totalFulfillmentMinutes;
+    if (!calculatedTotalFulfillmentMinutes && deliveredTimestamp && existingOrder?.createdAtTimestamp) {
+      calculatedTotalFulfillmentMinutes = Math.max(1, Math.round((deliveredTimestamp - existingOrder.createdAtTimestamp) / 60000));
+    }
+
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id !== orderId) return o;
         const prepMins = o.prepDurationMinutes || (o.diningMode === 'pickup' ? 15 : o.diningMode === 'dine-in' ? 12 : 25);
-        updatedConfirmedAt = extra?.confirmedAtTimestamp || o.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
+        updatedConfirmedAt = confTimestamp || o.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
         updatedTargetEta = extra?.targetEtaTimestamp || o.targetEtaTimestamp || (status !== 'received' ? (updatedConfirmedAt || now) + prepMins * 60000 : undefined);
         return {
           ...o,
@@ -596,6 +616,12 @@ export default function App() {
           status,
           confirmedAtTimestamp: updatedConfirmedAt,
           targetEtaTimestamp: updatedTargetEta,
+          readyAtTimestamp: readyTimestamp || o.readyAtTimestamp,
+          enRouteAtTimestamp: enRouteTimestamp || o.enRouteAtTimestamp,
+          deliveredAtTimestamp: deliveredTimestamp || o.deliveredAtTimestamp,
+          actualPrepMinutes: calculatedActualPrepMinutes || o.actualPrepMinutes,
+          actualDeliveryMinutes: calculatedActualDeliveryMinutes || o.actualDeliveryMinutes,
+          totalFulfillmentMinutes: calculatedTotalFulfillmentMinutes || o.totalFulfillmentMinutes,
           ...(status === 'cancelled' ? { 
             cancelledBy: cancelledBy || o.cancelledBy || 'customer', 
             cancellationReason: cancellationReason || o.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
@@ -608,7 +634,7 @@ export default function App() {
       setActiveTrackingOrder((prev) => {
         if (!prev) return null;
         const prepMins = prev.prepDurationMinutes || (prev.diningMode === 'pickup' ? 15 : prev.diningMode === 'dine-in' ? 12 : 25);
-        const confAt = extra?.confirmedAtTimestamp || prev.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
+        const confAt = confTimestamp || prev.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
         const etaAt = extra?.targetEtaTimestamp || prev.targetEtaTimestamp || (status !== 'received' ? (confAt || now) + prepMins * 60000 : undefined);
         return {
           ...prev,
@@ -616,6 +642,12 @@ export default function App() {
           status,
           confirmedAtTimestamp: confAt,
           targetEtaTimestamp: etaAt,
+          readyAtTimestamp: readyTimestamp || prev.readyAtTimestamp,
+          enRouteAtTimestamp: enRouteTimestamp || prev.enRouteAtTimestamp,
+          deliveredAtTimestamp: deliveredTimestamp || prev.deliveredAtTimestamp,
+          actualPrepMinutes: calculatedActualPrepMinutes || prev.actualPrepMinutes,
+          actualDeliveryMinutes: calculatedActualDeliveryMinutes || prev.actualDeliveryMinutes,
+          totalFulfillmentMinutes: calculatedTotalFulfillmentMinutes || prev.totalFulfillmentMinutes,
           ...(status === 'cancelled' ? { 
             cancelledBy: cancelledBy || prev.cancelledBy || 'customer', 
             cancellationReason: cancellationReason || prev.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
