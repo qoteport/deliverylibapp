@@ -202,14 +202,17 @@ export const DishModal: React.FC<DishModalProps> = ({
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
           
           {allImages.length > 1 && (
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar pt-1">
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-2 px-2 -mx-2 no-scrollbar scroll-smooth">
               {allImages.map((imgUrl, idx) => (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => setActiveImageIndex(idx)}
                   className={`w-16 h-16 rounded-2xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                    idx === 0 ? 'ml-1' : ''
+                  } ${
                     idx === activeImageIndex
-                      ? 'border-[#06C167] ring-2 ring-[#06C167]/30 scale-105 shadow-sm'
+                      ? 'border-[#06C167] ring-2 ring-[#06C167]/40 scale-105 shadow-sm'
                       : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-300'
                   }`}
                 >
