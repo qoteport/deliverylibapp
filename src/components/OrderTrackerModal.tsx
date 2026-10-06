@@ -539,7 +539,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       ) : (
                         <span className="flex items-center gap-1">
                           <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Number</span>
+                          <span>Copy</span>
                         </span>
                       )}
                     </button>
@@ -572,7 +572,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       ) : (
                         <span className="flex items-center gap-1">
                           <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Order ID</span>
+                          <span>Copy ID</span>
                         </span>
                       )}
                     </button>
@@ -594,7 +594,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                         <span>Payment Sent to Kitchen ({formatPrice(order.total)})</span>
                       </>
                     ) : (
-                      <span>I Have Sent MoMo Payment</span>
+                      <span>I have Sent Payment</span>
                     )}
                   </button>
                 </div>

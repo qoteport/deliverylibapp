@@ -48,9 +48,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Load from current logged-in user or persistent browser memory
   const memory = getCustomerMemory();
 
+  const isRealCustomer = (u?: AppUser | null) => u?.role === 'customer';
+  const sanitizeCustomerName = (n?: string) => {
+    if (!n) return '';
+    const lower = n.toLowerCase().trim();
+    if (lower.includes('kitchen staff') || lower.includes('staff') || lower.includes('restaurant manager') || lower.includes('admin') || lower.includes('portal')) {
+      return '';
+    }
+    return n;
+  };
+
   const [orderId, setOrderId] = useState(() => `AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [name, setName] = useState(currentUser?.name || memory.name || '');
-  const [phone, setPhone] = useState(currentUser?.phone || memory.phone || '');
+  const [name, setName] = useState(() => {
+    if (isRealCustomer(currentUser) && currentUser?.name) {
+      return sanitizeCustomerName(currentUser.name);
+    }
+    return sanitizeCustomerName(memory.name) || '';
+  });
+  const [phone, setPhone] = useState(() => {
+    if (isRealCustomer(currentUser) && currentUser?.phone) {
+      return currentUser.phone;
+    }
+    return memory.phone || '';
+  });
   const [destinationArea, setDestinationArea] = useState(
     currentUser?.location || memory.destinationArea || 'Sinkor (Tubman Blvd)'
   );
@@ -79,11 +99,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     if (isOpen) {
       setOrderId(`AU-LR-${Math.floor(1000 + Math.random() * 9000)}`);
       const currentMemory = getCustomerMemory();
-      if (!name && (currentUser?.name || currentMemory.name)) {
-        setName(currentUser?.name || currentMemory.name || '');
+      const validMemName = sanitizeCustomerName(currentMemory.name);
+      const isCust = isRealCustomer(currentUser);
+      if (!name) {
+        const candidate = isCust ? sanitizeCustomerName(currentUser?.name) : validMemName;
+        if (candidate) setName(candidate);
       }
-      if (!phone && (currentUser?.phone || currentMemory.phone)) {
-        setPhone(currentUser?.phone || currentMemory.phone || '');
+      if (!phone) {
+        const candidate = isCust ? currentUser?.phone : currentMemory.phone;
+        if (candidate) setPhone(candidate);
       }
       if (!destinationArea && (currentUser?.location || currentMemory.destinationArea)) {
         setDestinationArea(currentUser?.location || currentMemory.destinationArea || 'Sinkor (Tubman Blvd)');
@@ -98,15 +122,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }, [isOpen, currentUser]);
 
   useEffect(() => {
-    if (currentUser) {
-      if (currentUser.name) setName(currentUser.name);
-      if (currentUser.phone) {
+    if (isRealCustomer(currentUser)) {
+      const validName = sanitizeCustomerName(currentUser?.name);
+      if (validName) setName(validName);
+      if (currentUser?.phone) {
         setPhone(currentUser.phone);
       }
-      if (currentUser.location) {
+      if (currentUser?.location) {
         setDestinationArea(currentUser.location);
       }
-      if (currentUser.address) {
+      if (currentUser?.address) {
         setAddress(currentUser.address);
       }
     }

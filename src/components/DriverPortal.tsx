@@ -483,20 +483,24 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-2">
                 <div className="font-extrabold text-[#111827] flex items-center justify-between">
-                  <span>Customer Contact</span>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-500">Customer Contact</span>
                   <a
                     href={`tel:${activeDelivery.customerPhone}`}
-                    className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center gap-1 transition-colors"
+                    className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Phone className="w-3.5 h-3.5" />
-                    <span>Call</span>
+                    <span>Call Customer</span>
                   </a>
                 </div>
-                <div className="text-gray-800 font-bold">
-                  {activeDelivery.customerName} ({activeDelivery.customerPhone})
+                <div className="text-sm font-black text-gray-950">
+                  {activeDelivery.customerName || 'Customer'}
                 </div>
-                <div className="text-gray-500 text-[11px]">
-                  {activeDelivery.deliveryAddress || activeDelivery.deliveryArea}
+                <div className="text-xs font-mono font-bold text-[#048747]">
+                  {activeDelivery.customerPhone}
+                </div>
+                <div className="text-gray-500 text-[11px] pt-1.5 border-t border-gray-200/70 flex items-start gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                  <span>{activeDelivery.deliveryAddress || activeDelivery.deliveryArea}</span>
                 </div>
               </div>
 
