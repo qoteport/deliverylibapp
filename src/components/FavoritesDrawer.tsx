@@ -97,7 +97,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                       key={dish.id}
                       className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex gap-3 items-center"
                     >
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#1E1A17] to-[#2E241E] shrink-0 overflow-hidden relative border border-gray-100">
+                      <div className="w-16 h-16 rounded-xl bg-gray-100 shrink-0 overflow-hidden relative border border-gray-100">
                         {dishImg ? (
                           <img
                             src={dishImg}

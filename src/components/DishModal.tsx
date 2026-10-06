@@ -127,13 +127,13 @@ export const DishModal: React.FC<DishModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Visual Top Image Gallery / Illustration */}
-        <div className="relative w-full h-72 sm:h-80 bg-gradient-to-br from-[#1E1A17] via-[#2A221B] to-[#151210] shrink-0 overflow-hidden flex items-center justify-center">
+        <div className="relative w-full h-72 sm:h-80 bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
           {/* Mobile top pull indicator */}
-          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/70 rounded-full z-30 sm:hidden shadow-sm pointer-events-none" />
+          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/80 rounded-full z-30 sm:hidden shadow-sm pointer-events-none" />
 
           <button
             onClick={onClose}
-            className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white min-h-[38px] min-w-[38px] flex items-center justify-center transition-all backdrop-blur-md shadow-lg absolute top-3.5 right-3.5 z-30 cursor-pointer active:scale-95"
+            className="p-2.5 rounded-full bg-white/95 hover:bg-white text-gray-800 border border-gray-200/90 min-h-[38px] min-w-[38px] flex items-center justify-center transition-all shadow-md absolute top-3.5 right-3.5 z-30 cursor-pointer active:scale-95"
             aria-label="Close"
           >
             <X className="w-5 h-5 stroke-[2.5]" />
@@ -144,29 +144,20 @@ export const DishModal: React.FC<DishModalProps> = ({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-full h-full flex items-center justify-center overflow-hidden touch-pan-y select-none"
+              className="relative w-full h-full flex items-center justify-center overflow-hidden touch-pan-y select-none bg-gray-100"
             >
-              {/* Blurred background backdrop for complete visual coverage */}
-              <div 
-                className="absolute inset-0 bg-cover bg-center blur-2xl scale-125 opacity-40 transform pointer-events-none"
-                style={{ backgroundImage: `url(${allImages[activeImageIndex] || allImages[0]})` }}
-              />
-
-              {/* Centered High-Def Food Image */}
+              {/* Centered High-Def Food Image in Natural Brightness */}
               <img
                 src={allImages[activeImageIndex] || allImages[0]}
                 alt={dish.name}
-                className="relative z-10 w-full h-full object-cover object-center transform scale-[1.01] transition-all duration-300 pointer-events-none"
+                className="w-full h-full object-cover object-center transition-all duration-300 pointer-events-none"
                 loading="eager"
                 draggable={false}
               />
-              
-              {/* Subtle top & bottom shadow gradient for depth */}
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
               {/* Swipe Dots Indicator */}
               {allImages.length > 1 && (
-                <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full z-20 shadow-md">
+                <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full z-20 shadow-md">
                   {allImages.map((_, i) => (
                     <button
                       key={i}

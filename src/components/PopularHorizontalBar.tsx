@@ -61,7 +61,7 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
               className="group cursor-pointer shrink-0 w-60 sm:w-68 md:w-72 rounded-3xl bg-white border border-gray-100/90 shadow-[0_3px_14px_rgba(0,0,0,0.05)] hover:shadow-xl hover:border-[#06C167]/30 transition-all duration-200 overflow-hidden flex flex-col active:scale-[0.98]"
             >
               {/* Prominent Food Image Area */}
-              <div className="relative aspect-[16/11] w-full bg-gradient-to-br from-[#1E1A17] via-[#2E241E] to-[#151210] overflow-hidden">
+              <div className="relative aspect-[16/11] w-full bg-gray-100 overflow-hidden">
                 {primaryImage ? (
                   <img
                     src={primaryImage}

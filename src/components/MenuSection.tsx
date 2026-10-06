@@ -152,7 +152,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
               className="group bg-white rounded-3xl border border-gray-100/90 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-xl hover:border-gray-200/90 transition-all duration-200 cursor-pointer flex flex-col active:scale-[0.99]"
             >
               {/* Vibrant Dish Illustration or Uploaded Image Area */}
-              <div className="relative aspect-[16/10] w-full bg-gradient-to-br from-[#1E1A17] via-[#2A231C] to-[#1A1613] overflow-hidden">
+              <div className="relative aspect-[16/10] w-full bg-gray-100 overflow-hidden">
                 {primaryImage ? (
                   <img
                     src={primaryImage}
