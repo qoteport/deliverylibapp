@@ -14,14 +14,6 @@ interface DishModalProps {
   allMenuItems?: MenuItem[];
 }
 
-const DEFAULT_MONROVIA_ADDONS: AddonOption[] = [
-  { id: 'extra-plantains', name: 'Fried Sweet Plantains (Dodo)', price: 1.50, description: 'Golden ripe fried plantains' },
-  { id: 'monrovia-pepper', name: 'Extra Monrovia Hot Pepper Sauce', price: 0.75, description: 'Authentic habanero & scotch bonnet glaze' },
-  { id: 'suya-skewer', name: 'Grilled Suya Beef Skewer', price: 2.50, description: 'Spiced with traditional yaji blend' },
-  { id: 'fried-kala', name: 'Fried Kala Balls (2 pcs)', price: 1.00, description: 'Crispy fried dough with pepper dip' },
-  { id: 'cold-wonjo', name: 'Chilled Fresh Wonjo (Hibiscus) Juice', price: 1.50, description: 'Infused with ginger and cloves' },
-];
-
 const SPICE_OPTIONS = [
   { value: 'Mild', label: 'Mild (Low Pepper)', badge: '🌶️ Gentle' },
   { value: 'Medium', label: 'Medium (Balanced Pepper)', badge: '🌶️🌶️ Classic' },
@@ -59,9 +51,10 @@ export const DishModal: React.FC<DishModalProps> = ({
   );
   const resolvedRestaurantName = restaurantName || targetRestaurant?.name || dish.provenance || '';
 
-  const availableAddonsList: AddonOption[] = (dish.availableAddons && dish.availableAddons.length > 0)
+  // Only use authentic add-ons / extras configured by the kitchen (never dummy defaults)
+  const availableAddonsList: AddonOption[] = (dish.availableAddons && Array.isArray(dish.availableAddons))
     ? dish.availableAddons
-    : DEFAULT_MONROVIA_ADDONS;
+    : [];
 
   const allImages = dish.images && dish.images.length > 0
     ? dish.images
@@ -320,54 +313,56 @@ export const DishModal: React.FC<DishModalProps> = ({
             </div>
           )}
 
-          {/* MONROVIA SIDES & ADD-ONS */}
-          <div className="space-y-2 pt-3 border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider">
-                Popular Sides &amp; Extras
-              </label>
-              <span className="text-[11px] text-gray-400 font-medium">Optional</span>
-            </div>
+          {/* MONROVIA SIDES & ADD-ONS (Only displayed if menu item actually has add-ons configured) */}
+          {availableAddonsList.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#111827] uppercase tracking-wider">
+                  Sides &amp; Extras
+                </label>
+                <span className="text-[11px] text-gray-400 font-medium">Optional</span>
+              </div>
 
-            <div className="space-y-2">
-              {availableAddonsList.map((addon) => {
-                const isSelected = selectedAddons.some((a) => a.id === addon.id);
+              <div className="space-y-2">
+                {availableAddonsList.map((addon) => {
+                  const isSelected = selectedAddons.some((a) => a.id === addon.id);
 
-                return (
-                  <div
-                    key={addon.id}
-                    onClick={() => toggleAddon(addon.id, addon.name, addon.price)}
-                    className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-[#06C167] bg-[#E8F8EE]/60 text-gray-900 shadow-xs'
-                        : 'border-gray-100 bg-gray-50/70 hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
-                          isSelected
-                            ? 'bg-[#06C167] border-[#06C167] text-white'
-                            : 'border-gray-300 bg-white text-transparent'
-                        }`}
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  return (
+                    <div
+                      key={addon.id}
+                      onClick={() => toggleAddon(addon.id, addon.name, addon.price)}
+                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-[#06C167] bg-[#E8F8EE]/60 text-gray-900 shadow-xs'
+                          : 'border-gray-100 bg-gray-50/70 hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
+                            isSelected
+                              ? 'bg-[#06C167] border-[#06C167] text-white'
+                              : 'border-gray-300 bg-white text-transparent'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-gray-900">{addon.name}</div>
+                          {addon.description && (
+                            <div className="text-[11px] text-gray-400">{addon.description}</div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-gray-900">{addon.name}</div>
-                        {addon.description && (
-                          <div className="text-[11px] text-gray-400">{addon.description}</div>
-                        )}
-                      </div>
+                      <span className="font-mono text-xs font-bold text-gray-900 tabular-nums">
+                        +{formatPrice(addon.price)}
+                      </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-gray-900 tabular-nums">
-                      +{formatPrice(addon.price)}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* SPECIAL INSTRUCTIONS */}
           <div className="space-y-1.5 pt-3 border-t border-gray-100">
