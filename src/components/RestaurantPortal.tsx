@@ -901,7 +901,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                       {/* Courier / Rider Assignment Info (For Delivery Orders) */}
                       {order.diningMode === 'delivery' && (
                         <div className="pt-2 border-t border-gray-100">
-                          {order.assignedDriverName && (order.delegationStatus === 'accepted' || order.delegationStatus === 'heading_to_restaurant' || order.delegationStatus === 'at_restaurant' || order.delegationStatus === 'out_for_delivery' || order.delegationStatus === 'assigned' || order.status === 'en-route' || order.status === 'completed') ? (
+                          {order.assignedDriverName && (order.delegationStatus === 'accepted' || order.delegationStatus === 'heading_to_restaurant' || order.delegationStatus === 'at_restaurant' || order.delegationStatus === 'out_for_delivery' || order.status === 'en-route' || order.status === 'completed') ? (
                             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5">
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="w-8 h-8 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs shrink-0">

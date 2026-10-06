@@ -174,6 +174,7 @@ export interface Order {
   prepDurationMinutes?: number;
   paymentMethod: PaymentMethod;
   paymentNumber?: string;
+  paymentStatus?: 'pending' | 'paid';
   // Driver & Delegation Fields
   assignedDriverId?: string;
   assignedDriverName?: string;
