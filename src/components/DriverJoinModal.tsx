@@ -5,6 +5,7 @@ import { CustomDropdown } from './CustomDropdown';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { sanitizeForFirestore } from '../utils/cleanData';
+import { saveDriverToApi } from '../utils/apiSync';
 
 interface DriverJoinModalProps {
   isOpen: boolean;
@@ -115,7 +116,10 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
     setIsSuccess(true);
     onDriverRegistered(newDriver);
 
-    // Sync to Firestore
+    // 1. Sync directly to Backend API store for instantaneous cross-device delivery
+    saveDriverToApi(newDriver).catch((e) => console.warn('API driver sync notice:', e));
+
+    // 2. Sync to Firebase Firestore
     try {
       await setDoc(doc(db, 'drivers', newDriver.id), sanitizeForFirestore(newDriver), { merge: true });
       console.log('Driver successfully registered to Firestore:', newDriver.id);

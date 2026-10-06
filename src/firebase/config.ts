@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -15,17 +15,6 @@ export const db = initializeFirestore(
 );
 
 export const auth = getAuth(app);
-
-// Automatically sign in anonymously if no user is signed in to guarantee valid auth token for Firestore rules
-if (typeof window !== 'undefined') {
-  onAuthStateChanged(auth, (currentUser) => {
-    if (!currentUser) {
-      signInAnonymously(auth).catch((err) => {
-        console.warn('Anonymous auth notice:', err);
-      });
-    }
-  });
-}
 
 // Operation types for error handling
 export enum OperationType {

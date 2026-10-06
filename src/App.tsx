@@ -35,6 +35,17 @@ import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
 import { sendBrowserNotification } from './utils/browserNotifications';
 import { delegateOrderToDriver } from './utils/dispatchEngine';
 import { sanitizeForFirestore } from './utils/cleanData';
+import {
+  fetchOrdersFromApi,
+  saveOrderToApi,
+  updateOrderStatusApi,
+  fetchDriversFromApi,
+  saveDriverToApi,
+  fetchRestaurantsFromApi,
+  saveRestaurantToApi,
+  fetchMenuFromApi,
+  saveMenuItemToApi,
+} from './utils/apiSync';
 import { Check } from 'lucide-react';
 
 export default function App() {
@@ -279,6 +290,67 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // 5. Continuous Dual Realtime Sync with Backend API Store (Zero-Config, High Availability)
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncWithApi = async () => {
+      // 1. Sync Orders
+      const apiOrders = await fetchOrdersFromApi();
+      if (apiOrders && isMounted) {
+        setOrders((prev) => {
+          const apiMap = new Map(apiOrders.map((o) => [o.id, o]));
+          const merged = [...apiOrders];
+          for (const localO of prev) {
+            if (localO && localO.id && !apiMap.has(localO.id)) {
+              merged.push(localO);
+              saveOrderToApi(localO).catch(() => {});
+            }
+          }
+          const sorted = merged.sort(
+            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+          );
+          return sorted;
+        });
+      }
+
+      // 2. Sync Drivers
+      const apiDrivers = await fetchDriversFromApi();
+      if (apiDrivers && isMounted) {
+        setDrivers((prev) => {
+          const apiMap = new Map(apiDrivers.map((d) => [d.id, d]));
+          const merged = [...apiDrivers];
+          for (const localD of prev) {
+            if (localD && localD.id && !apiMap.has(localD.id)) {
+              merged.push(localD);
+              saveDriverToApi(localD).catch(() => {});
+            }
+          }
+          return merged;
+        });
+      }
+
+      // 3. Sync Restaurants
+      const apiRestaurants = await fetchRestaurantsFromApi();
+      if (apiRestaurants && apiRestaurants.length > 0 && isMounted) {
+        setRestaurants(apiRestaurants);
+      }
+
+      // 4. Sync Menu
+      const apiMenu = await fetchMenuFromApi();
+      if (apiMenu && apiMenu.length > 0 && isMounted) {
+        setMenuItems(apiMenu);
+      }
+    };
+
+    syncWithApi();
+    const interval = setInterval(syncWithApi, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   // Persist local state backups
   useEffect(() => {
     try {
@@ -430,12 +502,15 @@ export default function App() {
     setIsOrderTrackerOpen(true);
     showToast(`Order ${newOrder.id} placed! Transmitted to kitchen & delegation engine.`);
 
-    // Guarantee order document in Firebase Firestore
+    // 1. Sync directly to Backend API store
+    saveOrderToApi(newOrder).catch((e) => console.warn('API order sync error:', e));
+
+    // 2. Guarantee order document in Firebase Firestore
     try {
       await setDoc(doc(db, 'orders', newOrder.id), sanitizeForFirestore(newOrder), { merge: true });
       console.log('Order confirmed written to Firestore:', newOrder.id);
     } catch (err) {
-      console.error('Firestore order sync error in handleOrderPlaced:', err);
+      console.warn('Firestore order sync notice:', err);
     }
 
     // Format clean dish summary for customer notification
@@ -598,7 +673,13 @@ export default function App() {
       });
     }
 
-    // Sync in realtime to Firestore
+    // 1. Sync directly to Backend API store
+    updateOrderStatusApi(orderId, status, cancelledBy, cancellationReason, {
+      confirmedAtTimestamp: updatedConfirmedAt,
+      targetEtaTimestamp: updatedTargetEta,
+    }).catch((e) => console.warn('API status update notice:', e));
+
+    // 2. Sync in realtime to Firestore
     try {
       const updatePayload: Record<string, any> = { 
         status,
@@ -631,6 +712,7 @@ export default function App() {
   const handleRestaurantCreated = async (newRest: Restaurant) => {
     setRestaurants((prev) => [newRest, ...prev]);
     showToast(`Restaurant "${newRest.name}" registered successfully!`);
+    saveRestaurantToApi(newRest).catch((e) => console.warn('API save restaurant notice:', e));
     try {
       await setDoc(doc(db, 'restaurants', newRest.id), newRest);
     } catch (e) {
@@ -671,6 +753,7 @@ export default function App() {
     setDrivers((prev) =>
       prev.map((d) => (d.id === updatedDriver.id ? updatedDriver : d))
     );
+    saveDriverToApi(updatedDriver).catch((e) => console.warn('API driver update notice:', e));
     try {
       await setDoc(doc(db, 'drivers', updatedDriver.id), updatedDriver, { merge: true });
     } catch (e) {
@@ -690,6 +773,7 @@ export default function App() {
       return updated;
     });
     showToast(`Welcome ${newDriver.name}! Driver profile created.`);
+    saveDriverToApi(newDriver).catch((e) => console.warn('API driver register notice:', e));
     try {
       await setDoc(doc(db, 'drivers', newDriver.id), sanitizeForFirestore(newDriver), { merge: true });
     } catch (e) {
@@ -700,10 +784,11 @@ export default function App() {
   const handleAddMenuItem = async (item: MenuItem) => {
     setMenuItems((prev) => [item, ...prev]);
     showToast(`Added "${item.name}" to menu`);
+    saveMenuItemToApi(item).catch((e) => console.warn('API save menu notice:', e));
     try {
       await setDoc(doc(db, 'menu', item.id), item);
     } catch (e) {
-      console.warn('Firestore add menu item notice:', e);
+      console.warn('Firestore setDoc menu notice:', e);
     }
   };
 

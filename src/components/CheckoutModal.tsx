@@ -9,6 +9,7 @@ import { LocationPickerModal } from './LocationPickerModal';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 import { normalizeLiberianPhoneNumber } from '../utils/phoneUtils';
 import { sanitizeForFirestore } from '../utils/cleanData';
+import { saveOrderToApi } from '../utils/apiSync';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -240,10 +241,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         })),
       });
 
+      // 1. Sync directly to Backend API store for instantaneous cross-device delivery
+      await saveOrderToApi(newOrder);
+
+      // 2. Sync to Firebase Firestore
       await setDoc(doc(db, 'orders', newOrder.id), orderPayload);
       console.log('Order successfully synced to Firebase Firestore:', newOrder.id);
     } catch (err) {
-      console.error('Firestore order write error:', err);
+      console.warn('Firestore order write notice:', err);
     }
 
     // Dispatch Twilio SMS & WhatsApp alerts to customer and dispatch desk

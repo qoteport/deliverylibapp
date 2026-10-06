@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,7 +25,45 @@ const USD_TO_LRD_RATE = Number(process.env.USD_TO_LRD_RATE) || 195;
 
 // Parse standard URL-encoded form data (from Twilio webhooks) and JSON
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// Persistent JSON Storage Directory
+const DATA_DIR = path.resolve(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) {
+    console.warn('Could not create data dir:', e);
+  }
+}
+
+function readData<T>(filename: string, fallback: T): T {
+  try {
+    const filePath = path.join(DATA_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn(`Error reading ${filename}:`, e);
+  }
+  return fallback;
+}
+
+function writeData<T>(filename: string, data: T) {
+  try {
+    const filePath = path.join(DATA_DIR, filename);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn(`Error writing ${filename}:`, e);
+  }
+}
+
+// In-memory collections backed by disk
+let ordersStore: any[] = readData('orders.json', []);
+let driversStore: any[] = readData('drivers.json', []);
+let restaurantsStore: any[] = readData('restaurants.json', []);
+let menuStore: any[] = readData('menu.json', []);
 
 /**
  * Public configuration endpoint for client
@@ -41,6 +80,140 @@ app.get('/api/config/public', (_req: Request, res: Response) => {
 });
 
 /**
+ * Orders Endpoints
+ */
+app.get('/api/orders', (_req: Request, res: Response) => {
+  const sorted = [...ordersStore].sort(
+    (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+  );
+  res.json(sorted);
+});
+
+app.post('/api/orders', (req: Request, res: Response) => {
+  const newOrder = req.body;
+  if (!newOrder || !newOrder.id) {
+    return res.status(400).json({ success: false, error: 'Order id and payload required' });
+  }
+
+  const existingIdx = ordersStore.findIndex((o) => o.id === newOrder.id);
+  if (existingIdx >= 0) {
+    ordersStore[existingIdx] = { ...ordersStore[existingIdx], ...newOrder };
+  } else {
+    ordersStore.unshift(newOrder);
+  }
+  writeData('orders.json', ordersStore);
+
+  console.log(`📦 [API Order Saved]: #${newOrder.id} - ${newOrder.customerName} - Total: $${newOrder.total}`);
+  res.json({ success: true, order: newOrder });
+});
+
+app.patch('/api/orders/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body || {};
+
+  const existingIdx = ordersStore.findIndex((o) => o.id === id);
+  if (existingIdx >= 0) {
+    ordersStore[existingIdx] = { ...ordersStore[existingIdx], ...updates };
+    writeData('orders.json', ordersStore);
+    console.log(`🔄 [API Order Updated]: #${id} -> status: ${updates.status || 'updated'}`);
+    return res.json({ success: true, order: ordersStore[existingIdx] });
+  }
+
+  // If not existing yet, create it
+  const created = { id, ...updates };
+  ordersStore.unshift(created);
+  writeData('orders.json', ordersStore);
+  res.json({ success: true, order: created });
+});
+
+/**
+ * Drivers Endpoints
+ */
+app.get('/api/drivers', (_req: Request, res: Response) => {
+  res.json(driversStore);
+});
+
+app.post('/api/drivers', (req: Request, res: Response) => {
+  const driver = req.body;
+  if (!driver || !driver.id) {
+    return res.status(400).json({ success: false, error: 'Driver id and payload required' });
+  }
+
+  const existingIdx = driversStore.findIndex((d) => d.id === driver.id);
+  if (existingIdx >= 0) {
+    driversStore[existingIdx] = { ...driversStore[existingIdx], ...driver };
+  } else {
+    driversStore.unshift(driver);
+  }
+  writeData('drivers.json', driversStore);
+
+  console.log(`🛵 [API Driver Saved]: #${driver.id} - ${driver.name} (${driver.phone})`);
+  res.json({ success: true, driver });
+});
+
+app.patch('/api/drivers/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body || {};
+
+  const existingIdx = driversStore.findIndex((d) => d.id === id);
+  if (existingIdx >= 0) {
+    driversStore[existingIdx] = { ...driversStore[existingIdx], ...updates };
+    writeData('drivers.json', driversStore);
+    console.log(`🛵 [API Driver Updated]: #${id} -> isVerified: ${updates.isVerified}, isOnline: ${updates.isOnline}`);
+    return res.json({ success: true, driver: driversStore[existingIdx] });
+  }
+
+  const created = { id, ...updates };
+  driversStore.unshift(created);
+  writeData('drivers.json', driversStore);
+  res.json({ success: true, driver: created });
+});
+
+/**
+ * Restaurants Endpoints
+ */
+app.get('/api/restaurants', (_req: Request, res: Response) => {
+  res.json(restaurantsStore);
+});
+
+app.post('/api/restaurants', (req: Request, res: Response) => {
+  const rest = req.body;
+  if (!rest || !rest.id) {
+    return res.status(400).json({ success: false, error: 'Restaurant id required' });
+  }
+  const existingIdx = restaurantsStore.findIndex((r) => r.id === rest.id);
+  if (existingIdx >= 0) {
+    restaurantsStore[existingIdx] = { ...restaurantsStore[existingIdx], ...rest };
+  } else {
+    restaurantsStore.unshift(rest);
+  }
+  writeData('restaurants.json', restaurantsStore);
+  res.json({ success: true, restaurant: rest });
+});
+
+/**
+ * Menu Endpoints
+ */
+app.get('/api/menu', (_req: Request, res: Response) => {
+  res.json(menuStore);
+});
+
+app.post('/api/menu', (req: Request, res: Response) => {
+  const item = req.body;
+  if (!item || !item.id) {
+    return res.status(400).json({ success: false, error: 'Menu item id required' });
+  }
+  const existingIdx = menuStore.findIndex((m) => m.id === item.id);
+  if (existingIdx >= 0) {
+    menuStore[existingIdx] = { ...menuStore[existingIdx], ...item };
+  } else {
+    menuStore.unshift(item);
+  }
+  writeData('menu.json', menuStore);
+  res.json({ success: true, menuItem: item });
+});
+
+/**
  * Secure Server-side Twilio SMS Endpoint
  */
 app.post('/api/notifications/sms', async (req: Request, res: Response) => {
@@ -51,10 +224,9 @@ app.post('/api/notifications/sms', async (req: Request, res: Response) => {
   }
 
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    return res.status(503).json({ success: false, error: 'Twilio credentials not configured on server.' });
+    return res.status(200).json({ success: false, skipped: true, error: 'Twilio credentials not configured.' });
   }
 
-  // Normalize phone number (Liberian 088/077 prefix -> +231)
   let cleanTo = String(to).trim();
   if (!cleanTo.startsWith('+')) {
     if (cleanTo.startsWith('0')) {
@@ -85,12 +257,12 @@ app.post('/api/notifications/sms', async (req: Request, res: Response) => {
       console.log(`✅ [Twilio SMS Server] Sent to ${cleanTo}: SID ${data.sid}`);
       return res.json({ success: true, sid: data.sid, message: `SMS successfully sent to ${cleanTo}` });
     } else {
-      console.error('❌ [Twilio SMS Server Error]:', data);
-      return res.status(twilioRes.status).json({ success: false, error: data.message || 'Twilio SMS failed' });
+      console.warn('⚠️ [Twilio SMS Notice]:', data.message || 'Rate limit / quota');
+      return res.status(200).json({ success: false, error: data.message || 'Twilio SMS notice' });
     }
   } catch (err: any) {
-    console.error('❌ [Twilio SMS Server Network Exception]:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Internal error' });
+    console.warn('⚠️ [Twilio SMS Network Exception]:', err.message);
+    return res.status(200).json({ success: false, error: err.message || 'Network exception' });
   }
 });
 
@@ -105,7 +277,7 @@ app.post('/api/notifications/whatsapp', async (req: Request, res: Response) => {
   }
 
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    return res.status(503).json({ success: false, error: 'Twilio credentials not configured on server.' });
+    return res.status(200).json({ success: false, skipped: true, error: 'Twilio credentials not configured.' });
   }
 
   let cleanTo = String(to || TWILIO_DISPATCH_WHATSAPP).trim();
@@ -152,12 +324,12 @@ app.post('/api/notifications/whatsapp', async (req: Request, res: Response) => {
       console.log(`✅ [Twilio WhatsApp Server] Sent to ${cleanTo}: SID ${data.sid}`);
       return res.json({ success: true, sid: data.sid, message: `WhatsApp message sent to ${cleanTo}` });
     } else {
-      console.error('❌ [Twilio WhatsApp Server Error]:', data);
-      return res.status(twilioRes.status).json({ success: false, error: data.message || 'Twilio WhatsApp failed' });
+      console.warn('⚠️ [Twilio WhatsApp Notice]:', data.message || 'Rate limit / quota');
+      return res.status(200).json({ success: false, error: data.message || 'Twilio WhatsApp notice' });
     }
   } catch (err: any) {
-    console.error('❌ [Twilio WhatsApp Server Network Exception]:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Internal error' });
+    console.warn('⚠️ [Twilio WhatsApp Exception]:', err.message);
+    return res.status(200).json({ success: false, error: err.message || 'Network exception' });
   }
 });
 
