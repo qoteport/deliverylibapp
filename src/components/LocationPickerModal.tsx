@@ -169,7 +169,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         const newLng = event.latLng.lng();
         const newCoords = { lat: newLat, lng: newLng };
         setSelectedCoords(newCoords);
-        marker.setPosition(newCoords);
+        if (typeof marker.setPosition === 'function') { marker.setPosition(newCoords); } else { marker.position = newCoords; }
         setGpsError(null);
         reverseGeocode(newCoords);
       });
@@ -226,7 +226,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       if (!existingScript) {
         const script = document.createElement('script');
         script.id = 'google-maps-script-loader';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker&v=weekly`;
         script.async = true;
         script.onload = () => {
           if (isMounted) initMap();
@@ -306,8 +306,8 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-y-auto flex flex-col max-h-[92vh] border border-gray-100 my-auto">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-y-auto flex flex-col max-h-[92vh] border border-gray-100 my-auto" onClick={(e) => e.stopPropagation()}>
         
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 sticky top-0 z-10">
@@ -347,7 +347,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
-            onClick={handleLocateMe}
+            onClick={(e) => { e.stopPropagation(); handleLocateMe(); }}
             disabled={isLocating}
             className="px-3 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-xs active:scale-95 transition-all cursor-pointer"
           >

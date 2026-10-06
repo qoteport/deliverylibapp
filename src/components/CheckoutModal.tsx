@@ -422,7 +422,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   {/* Map Pinpoint Button next to / inside the text input box */}
                   <button
                     type="button"
-                    onClick={() => setIsLocationPickerOpen(true)}
+                    onClick={(e) => { e.stopPropagation(); setIsLocationPickerOpen(true); }}
                     className="absolute right-1.5 px-3 py-1.5 bg-[#E8F8EE] hover:bg-[#D4F4E0] active:scale-95 text-[#048747] border border-[#A7F3D0] rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                     title="Open interactive Monrovia map to pinpoint exact delivery spot"
                   >
@@ -436,7 +436,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <span>📍 Pinpoint: {gpsCoords.lat.toFixed(4)}° N, {gpsCoords.lng.toFixed(4)}° W</span>
                     <button
                       type="button"
-                      onClick={() => setIsLocationPickerOpen(true)}
+                      onClick={(e) => { e.stopPropagation(); setIsLocationPickerOpen(true); }}
                       className="text-[#06C167] hover:underline font-bold"
                     >
                       Adjust on Map
