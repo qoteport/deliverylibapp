@@ -514,11 +514,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCopy(restaurantPhone, 'phone')}
-                    className="px-3 py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-black text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+                    className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
                     title="Copy restaurant phone number"
                   >
                     {copiedField === 'phone' ? (
-                      <span className="flex items-center gap-1.5 text-emerald-400">
+                      <span className="flex items-center gap-1.5 text-[#048747]">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                         <span>Copied!</span>
                       </span>
