@@ -276,6 +276,33 @@ app.delete('/api/menu/:id', (req: Request, res: Response) => {
   res.json({ success: true, deletedId: id });
 });
 
+app.post('/api/menu/bulk-delete', (req: Request, res: Response) => {
+  const { ids } = req.body || {};
+  if (Array.isArray(ids)) {
+    const idSet = new Set(ids);
+    menuStore = menuStore.filter((m) => !idSet.has(m.id));
+    writeData('menu.json', menuStore);
+  }
+  res.json({ success: true });
+});
+
+/**
+ * Nuclear Wipe Endpoint - Clears all backend JSON stores
+ */
+app.post('/api/reset-all-data', (_req: Request, res: Response) => {
+  ordersStore = [];
+  driversStore = [];
+  restaurantsStore = [];
+  menuStore = [];
+  writeData('orders.json', ordersStore);
+  writeData('drivers.json', driversStore);
+  writeData('restaurants.json', restaurantsStore);
+  writeData('menu.json', menuStore);
+  console.log('🚨 [API Reset]: All JSON data stores wiped cleanly.');
+  res.json({ success: true });
+});
+
+
 /**
  * Secure Server-side Twilio SMS Endpoint
  */

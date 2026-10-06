@@ -41,8 +41,10 @@ import {
   updateOrderStatusApi,
   fetchDriversFromApi,
   saveDriverToApi,
+  deleteDriverFromApi,
   fetchRestaurantsFromApi,
   saveRestaurantToApi,
+  deleteRestaurantFromApi,
   fetchMenuFromApi,
   saveMenuItemToApi,
 } from './utils/apiSync';
@@ -280,38 +282,28 @@ export default function App() {
       // 1. Sync Orders
       const apiOrders = await fetchOrdersFromApi();
       if (apiOrders && isMounted) {
-        setOrders((prev) => {
-          if (prev.length === 0) {
-            const sorted = apiOrders.sort(
-              (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-            );
-            return sorted;
-          }
-          return prev;
-        });
+        const sorted = apiOrders.sort(
+          (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+        );
+        setOrders(sorted);
       }
 
       // 2. Sync Drivers
       const apiDrivers = await fetchDriversFromApi();
       if (apiDrivers && isMounted) {
-        setDrivers((prev) => {
-          if (prev.length === 0) {
-            return apiDrivers;
-          }
-          return prev;
-        });
+        setDrivers(apiDrivers);
       }
 
       // 3. Sync Restaurants
       const apiRestaurants = await fetchRestaurantsFromApi();
-      if (apiRestaurants && apiRestaurants.length > 0 && isMounted) {
-        setRestaurants((prev) => (prev.length === 0 ? apiRestaurants : prev));
+      if (apiRestaurants && isMounted) {
+        setRestaurants(apiRestaurants);
       }
 
       // 4. Sync Menu
       const apiMenu = await fetchMenuFromApi();
-      if (apiMenu && apiMenu.length > 0 && isMounted) {
-        setMenuItems((prev) => (prev.length === 0 ? apiMenu : prev));
+      if (apiMenu && isMounted) {
+        setMenuItems(apiMenu);
       }
     };
 
@@ -746,6 +738,7 @@ export default function App() {
   const handleDeleteRestaurant = async (restaurantId: string) => {
     setRestaurants((prev) => prev.filter((r) => r.id !== restaurantId));
     setMenuItems((prev) => prev.filter((m) => m.restaurantId !== restaurantId));
+    deleteRestaurantFromApi(restaurantId).catch(() => {});
 
     try {
       await deleteDoc(doc(db, 'restaurants', restaurantId));
@@ -753,6 +746,33 @@ export default function App() {
     } catch (e) {
       console.warn('Firestore deleteDoc restaurant notice:', e);
     }
+  };
+
+  const handleDeleteDriver = async (driverId: string) => {
+    setDrivers((prev) => prev.filter((d) => d.id !== driverId));
+    deleteDriverFromApi(driverId).catch(() => {});
+    try {
+      await deleteDoc(doc(db, 'drivers', driverId));
+    } catch (e) {
+      console.warn('Firestore delete driver notice:', e);
+    }
+  };
+
+  const handleDeleteOrders = (ids: string[]) => {
+    setOrders((prev) => prev.filter((o) => !ids.includes(o.id)));
+  };
+
+  const handleDeleteDrivers = (ids: string[]) => {
+    setDrivers((prev) => prev.filter((d) => !ids.includes(d.id)));
+  };
+
+  const handleDeleteRestaurants = (ids: string[]) => {
+    setRestaurants((prev) => prev.filter((r) => !ids.includes(r.id)));
+    setMenuItems((prev) => prev.filter((m) => !ids.includes(m.restaurantId || '')));
+  };
+
+  const handleDeleteMenuItem = (itemId: string) => {
+    setMenuItems((prev) => prev.filter((m) => m.id !== itemId));
   };
 
   const handleUpdateDriver = async (updatedDriver: DeliveryDriver) => {
@@ -890,6 +910,10 @@ export default function App() {
             onDeleteRestaurant={handleDeleteRestaurant}
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onUpdateDriver={handleUpdateDriver}
+            onDeleteDriver={handleDeleteDriver}
+            onDeleteOrders={handleDeleteOrders}
+            onDeleteDrivers={handleDeleteDrivers}
+            onDeleteRestaurants={handleDeleteRestaurants}
             onPurgeDemoData={handlePurgeAllDemoData}
             currency={currency}
             onToggleCurrency={handleToggleCurrency}
@@ -934,6 +958,7 @@ export default function App() {
           onExitPortal={() => navigateTo({ name: 'home' })}
           onUpdateOrderStatus={handleUpdateOrderStatus}
           onAddMenuItem={handleAddMenuItem}
+          onDeleteMenuItem={handleDeleteMenuItem}
           onToggleItemAvailability={handleToggleItemAvailability}
           currency={currency}
           onToggleCurrency={handleToggleCurrency}

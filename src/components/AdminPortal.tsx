@@ -76,6 +76,10 @@ interface AdminPortalProps {
     cancellationReason?: string
   ) => void;
   onUpdateDriver: (driver: DeliveryDriver) => void;
+  onDeleteDriver?: (driverId: string) => void;
+  onDeleteOrders?: (ids: string[]) => void;
+  onDeleteDrivers?: (ids: string[]) => void;
+  onDeleteRestaurants?: (ids: string[]) => void;
   onPurgeDemoData?: () => void;
   currency: Currency;
   onToggleCurrency: () => void;
@@ -91,6 +95,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onDeleteRestaurant,
   onUpdateOrderStatus,
   onUpdateDriver,
+  onDeleteDriver,
+  onDeleteOrders,
+  onDeleteDrivers,
+  onDeleteRestaurants,
   onPurgeDemoData,
   currency,
   onToggleCurrency,
@@ -156,6 +164,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         await batch.commit();
 
         if (colName === 'orders') {
+          if (onDeleteOrders) onDeleteOrders(ids);
           await bulkDeleteOrdersFromApi(ids);
           try {
             const saved = localStorage.getItem('aura_orders');
@@ -166,6 +175,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             }
           } catch {}
         } else if (colName === 'drivers') {
+          if (onDeleteDrivers) onDeleteDrivers(ids);
           await bulkDeleteDriversFromApi(ids);
           try {
             const saved = localStorage.getItem('aura_monrovia_drivers');
@@ -176,6 +186,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             }
           } catch {}
         } else if (colName === 'restaurants') {
+          if (onDeleteRestaurants) onDeleteRestaurants(ids);
           await bulkDeleteRestaurantsFromApi(ids);
           try {
             const saved = localStorage.getItem('aura_monrovia_restaurants');
@@ -198,6 +209,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           allIds.push(docSnap.id);
         });
         await batch.commit();
+        if (onDeleteOrders) onDeleteOrders(allIds);
         await bulkDeleteOrdersFromApi(allIds);
         localStorage.removeItem('aura_orders');
         setDeleteSuccessMessage(`Successfully deleted all ${querySnapshot.size} orders.`);
@@ -216,6 +228,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           }
         });
         await batch.commit();
+        if (onDeleteOrders) onDeleteOrders(inactiveIds);
         await bulkDeleteOrdersFromApi(inactiveIds);
         setDeleteSuccessMessage(`Successfully deleted ${count} completed/cancelled orders.`);
         setDbSelectedRowIds([]);
@@ -228,6 +241,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           allIds.push(docSnap.id);
         });
         await batch.commit();
+        if (onDeleteDrivers) onDeleteDrivers(allIds);
         await bulkDeleteDriversFromApi(allIds);
         localStorage.removeItem('aura_monrovia_drivers');
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} couriers from fleet.`);
@@ -241,6 +255,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           allIds.push(docSnap.id);
         });
         await batch.commit();
+        if (onDeleteRestaurants) onDeleteRestaurants(allIds);
         await bulkDeleteRestaurantsFromApi(allIds);
         localStorage.removeItem('aura_monrovia_restaurants');
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and menus.`);
@@ -267,6 +282,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         userSnaps.forEach((d) => batch.delete(d.ref));
 
         await batch.commit();
+        fetch('/api/reset-all-data', { method: 'POST' }).catch(() => {});
 
         localStorage.clear();
         sessionStorage.clear();
@@ -813,6 +829,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Delete Driver
   const handleDeleteDriver = async (driverId: string) => {
     if (!window.confirm('Are you sure you want to remove this driver from the Monrovia fleet?')) return;
+    if (onDeleteDriver) {
+      onDeleteDriver(driverId);
+    }
+    deleteDriverFromApi(driverId).catch(() => {});
     try {
       await deleteDoc(doc(db, 'drivers', driverId));
     } catch (err) {

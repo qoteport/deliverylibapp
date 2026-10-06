@@ -217,3 +217,26 @@ export async function bulkDeleteRestaurantsFromApi(ids: string[]): Promise<boole
     return false;
   }
 }
+
+export async function deleteMenuItemFromApi(itemId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/menu/${itemId}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function bulkDeleteMenuItemsFromApi(ids: string[]): Promise<boolean> {
+  try {
+    const res = await fetch('/api/menu/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+

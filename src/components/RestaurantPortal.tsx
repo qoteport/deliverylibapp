@@ -8,7 +8,7 @@ import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
-import { saveRestaurantToApi, saveMenuItemToApi } from '../utils/apiSync';
+import { saveRestaurantToApi, saveMenuItemToApi, deleteMenuItemFromApi } from '../utils/apiSync';
 
 interface RestaurantPortalProps {
   restaurant: Restaurant;
@@ -22,6 +22,7 @@ interface RestaurantPortalProps {
     cancellationReason?: string
   ) => void;
   onAddMenuItem: (item: MenuItem) => void;
+  onDeleteMenuItem?: (itemId: string) => void;
   onToggleItemAvailability: (itemId: string) => void;
   currency: Currency;
   onToggleCurrency: () => void;
@@ -78,6 +79,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   onExitPortal,
   onUpdateOrderStatus,
   onAddMenuItem,
+  onDeleteMenuItem,
   onToggleItemAvailability,
   currency,
   onToggleCurrency,
@@ -471,25 +473,10 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       console.warn('API dish sync notice:', e);
     }
 
-    // Save to Firestore in Real Time
+    // Save to Firestore in Real Time (both 'menu' and 'menu_items' for compatibility)
     try {
-      await setDoc(doc(db, 'menu_items', targetDish.id), {
-        id: targetDish.id,
-        restaurantId: targetDish.restaurantId,
-        name: targetDish.name,
-        subname: targetDish.subname,
-        category: targetDish.category,
-        description: targetDish.description,
-        priceUsd: targetDish.price,
-        priceLrd: targetDish.priceLrd,
-        prepTimeMinutes: targetDish.prepTimeMinutes,
-        spiceLevel: targetDish.spiceLevel,
-        images: targetDish.images || [],
-        image: targetDish.image || '',
-        availableAddons: targetDish.availableAddons || [],
-        isAvailable: targetDish.isAvailable,
-        updatedAt: new Date().toISOString(),
-      });
+      await setDoc(doc(db, 'menu', targetDish.id), targetDish);
+      await setDoc(doc(db, 'menu_items', targetDish.id), targetDish);
       console.log('Dish successfully synced to Firestore:', targetDish.id);
     } catch (err) {
       console.warn('Firestore dish write notice:', err);
@@ -501,9 +488,16 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
 
   const handleDeleteDish = async (dishId: string) => {
     if (!confirm('Are you sure you want to remove this dish from your menu?')) return;
+    if (onDeleteMenuItem) {
+      onDeleteMenuItem(dishId);
+    }
+    deleteMenuItemFromApi(dishId).catch(() => {});
     try {
+      await deleteDoc(doc(db, 'menu', dishId));
       await deleteDoc(doc(db, 'menu_items', dishId));
-    } catch {}
+    } catch (err) {
+      console.warn('Firestore dish delete notice:', err);
+    }
   };
 
   // Save Restaurant Profile
