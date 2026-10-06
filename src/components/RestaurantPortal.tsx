@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -196,6 +196,23 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const cancelledOrders = restaurantOrders.filter(
     (o) => o.status === 'cancelled'
   );
+
+  // Kitchen efficiency KPIs (based on recorded prep durations)
+  const targetPrepMins = restaurant?.deliveryTimeMinutes || 25;
+  const timedPrepOrders = restaurantOrders.filter(
+    (o) => typeof o.actualPrepMinutes === 'number' && o.actualPrepMinutes > 0
+  );
+  const avgPrepTimeMins = timedPrepOrders.length > 0
+    ? Math.round(
+        timedPrepOrders.reduce((sum, o) => sum + (o.actualPrepMinutes || 0), 0) / timedPrepOrders.length
+      )
+    : 0;
+  const onTimePercentage = timedPrepOrders.length > 0
+    ? Math.round(
+        (timedPrepOrders.filter((o) => (o.actualPrepMinutes || 0) <= targetPrepMins).length /
+          timedPrepOrders.length) * 100
+      )
+    : 100;
 
   const displayedOrders =
     orderFilterTab === 'live' ? liveOrders :
