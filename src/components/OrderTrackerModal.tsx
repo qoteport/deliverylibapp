@@ -95,13 +95,18 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
     return `$${usd.toFixed(2)}`;
   };
 
+  const isDriverConfirmed = Boolean(order.assignedDriverName && order.delegationStatus && order.delegationStatus !== 'offered');
+  const driverName = isDriverConfirmed ? order.assignedDriverName : null;
+  const driverPhone = isDriverConfirmed ? order.assignedDriverPhone : null;
+  const driverVehicle = order.driverVehicle || 'Motorbike';
+
   const steps: { key: Order['status']; label: string; icon: React.ElementType }[] = [
     { key: 'received', label: 'Order Confirmed & Sent to Kitchen', icon: CheckCircle2 },
     { key: 'preparing', label: 'Chef Cooking & Searing', icon: Flame },
     { key: 'plating', label: 'Packed in Thermal Carrier', icon: ChefHat },
     {
       key: 'en-route',
-      label: order.diningMode === 'dine-in' ? 'Serving to Table' : order.diningMode === 'pickup' ? 'Ready for Pickup' : order.assignedDriverName ? `${order.assignedDriverName} En Route` : 'Courier En Route',
+      label: order.diningMode === 'dine-in' ? 'Serving to Table' : order.diningMode === 'pickup' ? 'Ready for Pickup' : isDriverConfirmed ? `${driverName} En Route` : 'Courier En Route',
       icon: order.diningMode === 'dine-in' ? Utensils : Bike,
     },
     { key: 'completed', label: 'Delivered & Completed', icon: CheckCircle2 },
@@ -123,18 +128,13 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
 
   const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
-  // Driver details (Real dynamic dispatch info)
-  const driverName = order.assignedDriverName || null;
-  const driverPhone = order.assignedDriverPhone || null;
-  const driverVehicle = order.driverVehicle || 'Motorbike';
-
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade"
       onClick={onClose}
     >
       <div 
-        className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-modal-sheet"
+        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full sm:h-full animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
         <div 

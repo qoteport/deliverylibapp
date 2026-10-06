@@ -189,12 +189,15 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade"
+      onClick={onClose}
+    >
       <div 
-        className="relative bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[94vh]"
+        className="relative bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-full sm:h-full animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0 cursor-pointer" onClick={onClose} />
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0 cursor-pointer hover:bg-gray-300 transition-colors" onClick={onClose} title="Swipe down or tap to minimize" />
 
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">

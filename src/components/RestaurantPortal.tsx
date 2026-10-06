@@ -873,6 +873,85 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                         })}
                       </div>
 
+                      {/* Courier / Rider Assignment Info (For Delivery Orders) */}
+                      {order.diningMode === 'delivery' && (
+                        <div className="pt-2 border-t border-gray-100">
+                          {order.assignedDriverName && (order.delegationStatus === 'accepted' || order.delegationStatus === 'heading_to_restaurant' || order.delegationStatus === 'at_restaurant' || order.delegationStatus === 'out_for_delivery' || order.delegationStatus === 'assigned' || order.status === 'en-route' || order.status === 'completed') ? (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs shrink-0">
+                                  <Bike className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#048747]">
+                                    Confirmed Courier for Pickup
+                                  </div>
+                                  <div className="text-xs font-black text-gray-900 flex items-center gap-1.5 truncate">
+                                    <span className="truncate">{order.assignedDriverName}</span>
+                                    {order.driverVehicle && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-white text-emerald-800 font-bold border border-emerald-200 shrink-0">
+                                        {order.driverVehicle}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-emerald-700 font-medium">
+                                    {order.delegationStatus === 'heading_to_restaurant'
+                                      ? '🛵 Heading to your kitchen now'
+                                      : order.delegationStatus === 'at_restaurant'
+                                      ? '📍 Arrived at your kitchen for pickup'
+                                      : order.delegationStatus === 'out_for_delivery'
+                                      ? '📦 En route to customer'
+                                      : '✅ Accepted & Assigned'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {order.assignedDriverPhone && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <a
+                                    href={`tel:${order.assignedDriverPhone}`}
+                                    className="px-2.5 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors"
+                                    title="Call Rider"
+                                  >
+                                    <Phone className="w-3 h-3" />
+                                    <span>Call Rider</span>
+                                  </a>
+                                  <a
+                                    href={`https://wa.me/${order.assignedDriverPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${order.assignedDriverName}, order #${order.id} is being prepared at ${restaurant.name}.`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors"
+                                    title="WhatsApp Rider"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>WhatsApp</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ) : order.assignedDriverName && order.delegationStatus === 'offered' ? (
+                            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center gap-2.5 text-xs">
+                              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 animate-pulse">
+                                <Bike className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
+                                  Dispatching Courier...
+                                </div>
+                                <div className="text-xs font-bold text-amber-900">
+                                  Offer sent to {order.assignedDriverName} (Awaiting acceptance)
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2 text-gray-500 text-[11px] font-semibold">
+                              <Bike className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <span>Searching nearest Monrovia courier for pickup handover...</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Payment, Direct Call & WhatsApp Dispatch */}
                       <div className="p-3 bg-gray-50 rounded-2xl text-[11px] text-gray-600 flex flex-wrap items-center justify-between gap-2.5">
                         <div>

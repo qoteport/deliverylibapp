@@ -25,6 +25,7 @@ import { sendBrowserNotification } from '../utils/browserNotifications';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { saveOrderToApi, saveDriverToApi, updateOrderStatusApi, updateDriverApi } from '../utils/apiSync';
 
 interface DriverPortalProps {
   driver: DeliveryDriver;
@@ -99,6 +100,11 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   const handleAcceptOffer = async (order: Order) => {
     const updatedOrder: Order = {
       ...order,
+      assignedDriverId: driver.id,
+      assignedDriverName: driver.name,
+      assignedDriverPhone: driver.phone,
+      driverVehicle: driver.vehicleType,
+      driverLocation: driver.currentLocation,
       delegationStatus: 'heading_to_restaurant',
       status: 'preparing',
     };
@@ -112,8 +118,18 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     };
     onUpdateDriver(updatedDriver);
 
+    // 1. Dual Sync to Backend API
+    saveOrderToApi(updatedOrder).catch(() => {});
+    saveDriverToApi(updatedDriver).catch(() => {});
+
+    // 2. Sync to Firestore
     try {
       await updateDoc(doc(db, 'orders', order.id), {
+        assignedDriverId: driver.id,
+        assignedDriverName: driver.name,
+        assignedDriverPhone: driver.phone,
+        driverVehicle: driver.vehicleType,
+        driverLocation: driver.currentLocation,
         delegationStatus: 'heading_to_restaurant',
         status: 'preparing',
       });
@@ -162,6 +178,10 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       };
       onUpdateDriver(updatedDriver);
 
+      // Dual Sync API
+      updateOrderStatusApi(order.id, 'completed', undefined, undefined, { delegationStatus: 'delivered' }).catch(() => {});
+      saveDriverToApi(updatedDriver).catch(() => {});
+
       try {
         await updateDoc(doc(db, 'orders', order.id), {
           delegationStatus: 'delivered',
@@ -183,6 +203,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         tag: `delivered-${order.id}`,
       });
     } else {
+      updateOrderStatusApi(order.id, orderStatus, undefined, undefined, { delegationStatus: nextStage }).catch(() => {});
       try {
         await updateDoc(doc(db, 'orders', order.id), {
           delegationStatus: nextStage,

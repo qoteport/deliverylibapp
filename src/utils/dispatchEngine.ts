@@ -3,6 +3,7 @@ import { db } from '../firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
 import { sendBrowserNotification } from './browserNotifications';
 import { sendTwilioOrderNotification, getSavedTwilioConfig } from './twilio';
+import { saveOrderToApi } from './apiSync';
 
 // Calculate Euclidean distance approximation between two lat/lng coords in km
 export function calculateDistanceKm(from: LocationCoords, to: LocationCoords): number {
@@ -79,6 +80,13 @@ export async function delegateOrderToDriver(
     driverLocation: bestDriver.currentLocation,
     delegationStatus: 'offered',
   };
+
+  // Sync to Backend API store
+  try {
+    await saveOrderToApi(updatedOrder);
+  } catch (e) {
+    console.warn('API delegation sync notice:', e);
+  }
 
   // Sync to Firestore
   try {
