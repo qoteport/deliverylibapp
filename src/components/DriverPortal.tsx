@@ -342,7 +342,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
             <div className="flex items-center justify-between pt-1">
               <div>
-                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">Guaranteed Trip Payout:</div>
+                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">Earnings:</div>
                 <div className="font-mono text-2xl font-black text-white">
                   +{formatMoney(offeredOrder.deliveryFee || 2.5)}
                 </div>
