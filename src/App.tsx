@@ -929,21 +929,27 @@ export default function App() {
   if (currentRoute.name === 'restaurant') {
     const currentRestaurant =
       restaurants.find((r) => r.id === currentRoute.restaurantId) ||
-      restaurants[0] || {
-        id: currentRoute.restaurantId,
-        name: 'Monrovia Kitchen',
-        neighborhood: 'Sinkor',
-        address: 'Tubman Blvd',
-        cuisine: 'Liberian Food & Grills',
-        phone: '+231 886 554 123',
-        deliveryTimeMinutes: 25,
-        deliveryFeeUsd: 2.0,
-        minOrderUsd: 5.0,
-        isOpen: true,
-        rating: 5.0,
-        reviewCount: 1,
-        tagline: 'Freshly prepared specialty',
-      };
+      restaurants[0];
+
+    if (!currentRestaurant) {
+      return (
+        <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#FF4B26] flex items-center justify-center mb-3">
+            <Store className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black text-gray-900">Kitchen Not Found</h2>
+          <p className="text-xs text-gray-500 max-w-sm my-2">
+            This kitchen profile is not registered or has been removed from the network.
+          </p>
+          <button
+            onClick={() => navigateTo({ name: 'home' })}
+            className="mt-2 px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl cursor-pointer"
+          >
+            Return to Storefront
+          </button>
+        </div>
+      );
+    }
 
     const restaurantDishes = menuItems.filter(
       (m) => !m.restaurantId || m.restaurantId === currentRestaurant.id
@@ -973,8 +979,27 @@ export default function App() {
   if (currentRoute.name === 'driver') {
     const currentDriver =
       drivers.find((d) => d.id === currentRoute.driverId) ||
-      drivers[0] ||
-      INITIAL_DRIVERS[0];
+      drivers[0];
+
+    if (!currentDriver) {
+      return (
+        <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+            <Bike className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black text-gray-900">Courier Profile Not Found</h2>
+          <p className="text-xs text-gray-500 max-w-sm my-2">
+            This courier profile is not registered or has been removed from the fleet roster.
+          </p>
+          <button
+            onClick={() => navigateTo({ name: 'home' })}
+            className="mt-2 px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl cursor-pointer"
+          >
+            Return to Storefront
+          </button>
+        </div>
+      );
+    }
 
     return (
       <ErrorBoundary>
