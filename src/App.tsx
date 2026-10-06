@@ -662,7 +662,10 @@ export default function App() {
       }
     }
 
-    if (statusText) {
+    // Only dispatch customer-facing milestone browser notifications to customer devices
+    const isCustomerView = currentRoute.view !== 'restaurant' && currentRoute.view !== 'driver' && currentRoute.view !== 'admin' && user?.role !== 'restaurant_owner';
+
+    if (statusText && isCustomerView) {
       sendBrowserNotification({
         title: statusTitle,
         body: statusText,
