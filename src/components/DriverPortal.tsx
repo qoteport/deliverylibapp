@@ -331,7 +331,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               <span>Rating</span>
             </div>
             <div className="font-mono text-xl font-black text-amber-500 mt-1">
-              ★ {driver.rating.toFixed(1)}
+              ★ {(driver.rating ?? 5.0).toFixed(1)}
             </div>
           </div>
         </div>

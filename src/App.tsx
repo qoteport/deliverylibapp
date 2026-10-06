@@ -48,7 +48,7 @@ import {
   fetchMenuFromApi,
   saveMenuItemToApi,
 } from './utils/apiSync';
-import { Check } from 'lucide-react';
+import { Check, Store, Bike } from 'lucide-react';
 
 export default function App() {
   const { user } = useAuth();

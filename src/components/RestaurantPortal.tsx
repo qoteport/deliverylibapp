@@ -239,7 +239,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       if (newestOrder) {
         sendBrowserNotification({
           title: `🔔 New Kitchen Order #${newestOrder.id}`,
-          body: `${newestOrder.customerName} ordered ${newestOrder.items.length} items (${newestOrder.diningMode}) • $${newestOrder.total.toFixed(2)}`,
+          body: `${newestOrder.customerName} ordered ${newestOrder.items.length} items (${newestOrder.diningMode}) • ${(newestOrder.total || 0).toFixed(2)}`,
           tag: `kitchen-order-${newestOrder.id}`,
         });
       }

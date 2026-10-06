@@ -112,7 +112,7 @@ export const RestaurantBar: React.FC<RestaurantBarProps> = ({
                 <div className="flex items-center justify-between gap-1 text-[11px]">
                   <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 font-extrabold rounded-md">
                     <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                    <span>{restaurant.rating.toFixed(1)}</span>
+                    <span>{(restaurant.rating ?? 5.0).toFixed(1)}</span>
                   </span>
 
                   <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">

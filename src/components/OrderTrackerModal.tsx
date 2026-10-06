@@ -642,7 +642,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                     <span>💵 Cash Payment on Delivery</span>
                   </div>
                   <p className="text-[11px] text-emerald-800 leading-relaxed">
-                    Please have exact cash ready (<strong>{selectedPaymentMethod === 'cod-usd' ? `$${order.total.toFixed(2)} USD` : `L$${Math.round(order.total * USD_TO_LRD_RATE).toLocaleString()} LRD`}</strong>) to hand to your courier upon delivery.
+                    Please have exact cash ready (<strong>{selectedPaymentMethod === 'cod-usd' ? `${(order.total || 0).toFixed(2)} USD` : `L${Math.round((order.total || 0) * USD_TO_LRD_RATE).toLocaleString()} LRD`}</strong>) to hand to your courier upon delivery.
                   </p>
                 </div>
               )}

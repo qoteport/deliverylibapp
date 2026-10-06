@@ -364,7 +364,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       if (newest) {
         sendBrowserNotification({
           title: `🔔 [Admin Live] New Order #${newest.id}`,
-          body: `${newest.customerName} ordered at ${newest.restaurantName || 'Monrovia Spot'} ($${newest.total.toFixed(2)})`,
+          body: `${newest.customerName} ordered at ${newest.restaurantName || 'Monrovia Spot'} (${(newest.total || 0).toFixed(2)})`,
           tag: `admin-order-${newest.id}`,
         });
       }
@@ -2571,7 +2571,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                         collectionName: 'orders',
                                         selectedIds: [o.id],
                                         title: `Delete Order #${o.id}`,
-                                        description: `Are you sure you want to permanently delete order #${o.id} placed by ${o.customerName} ($${o.total.toFixed(2)}) from Firestore?`,
+                                        description: `Are you sure you want to permanently delete order #${o.id} placed by ${o.customerName} (${(o.total || 0).toFixed(2)}) from Firestore?`,
                                         count: 1,
                                       })}
                                       className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
@@ -3769,7 +3769,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <span className="text-[10px] uppercase font-bold text-gray-400">Rating</span>
                 <div className="text-lg font-bold text-amber-500 flex items-center gap-1">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{selectedDriverForDetails.rating.toFixed(1)}</span>
+                  <span>{(selectedDriverForDetails.rating ?? 5.0).toFixed(1)}</span>
                 </div>
               </div>
               <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">

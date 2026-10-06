@@ -113,7 +113,7 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
               <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
                 <div className="flex items-center justify-center gap-1 text-[#048747] font-extrabold text-sm">
                   <Star className="w-3.5 h-3.5 fill-[#06C167] text-[#06C167]" />
-                  <span>{restaurant.rating.toFixed(1)}</span>
+                  <span>{(restaurant.rating ?? 5.0).toFixed(1)}</span>
                 </div>
                 <div className="text-[10px] text-gray-500 font-medium mt-0.5">
                   {restaurant.reviewCount} {restaurant.reviewCount === 1 ? 'review' : 'reviews'}
