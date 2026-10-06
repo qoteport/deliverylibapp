@@ -151,3 +151,69 @@ export async function saveMenuItemToApi(item: MenuItem): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteOrderFromApi(orderId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function bulkDeleteOrdersFromApi(ids: string[]): Promise<boolean> {
+  try {
+    const res = await fetch('/api/orders/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function deleteDriverFromApi(driverId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/drivers/${driverId}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function bulkDeleteDriversFromApi(ids: string[]): Promise<boolean> {
+  try {
+    const res = await fetch('/api/drivers/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function deleteRestaurantFromApi(restaurantId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/restaurants/${restaurantId}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function bulkDeleteRestaurantsFromApi(ids: string[]): Promise<boolean> {
+  try {
+    const res = await fetch('/api/restaurants/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}

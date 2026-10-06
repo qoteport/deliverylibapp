@@ -126,6 +126,25 @@ app.patch('/api/orders/:id', (req: Request, res: Response) => {
   res.json({ success: true, order: created });
 });
 
+app.delete('/api/orders/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  ordersStore = ordersStore.filter((o) => o.id !== id);
+  writeData('orders.json', ordersStore);
+  console.log(`🗑️ [API Order Deleted]: #${id}`);
+  res.json({ success: true, deletedId: id });
+});
+
+app.post('/api/orders/bulk-delete', (req: Request, res: Response) => {
+  const { ids } = req.body || {};
+  if (Array.isArray(ids)) {
+    const idSet = new Set(ids);
+    ordersStore = ordersStore.filter((o) => !idSet.has(o.id));
+    writeData('orders.json', ordersStore);
+    console.log(`🗑️ [API Bulk Orders Deleted]: ${ids.length} orders`);
+  }
+  res.json({ success: true });
+});
+
 /**
  * Drivers Endpoints
  */
@@ -169,6 +188,25 @@ app.patch('/api/drivers/:id', (req: Request, res: Response) => {
   res.json({ success: true, driver: created });
 });
 
+app.delete('/api/drivers/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  driversStore = driversStore.filter((d) => d.id !== id);
+  writeData('drivers.json', driversStore);
+  console.log(`🗑️ [API Driver Deleted]: #${id}`);
+  res.json({ success: true, deletedId: id });
+});
+
+app.post('/api/drivers/bulk-delete', (req: Request, res: Response) => {
+  const { ids } = req.body || {};
+  if (Array.isArray(ids)) {
+    const idSet = new Set(ids);
+    driversStore = driversStore.filter((d) => !idSet.has(d.id));
+    writeData('drivers.json', driversStore);
+    console.log(`🗑️ [API Bulk Drivers Deleted]: ${ids.length} drivers`);
+  }
+  res.json({ success: true });
+});
+
 /**
  * Restaurants Endpoints
  */
@@ -191,6 +229,24 @@ app.post('/api/restaurants', (req: Request, res: Response) => {
   res.json({ success: true, restaurant: rest });
 });
 
+app.delete('/api/restaurants/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  restaurantsStore = restaurantsStore.filter((r) => r.id !== id);
+  writeData('restaurants.json', restaurantsStore);
+  console.log(`🗑️ [API Restaurant Deleted]: #${id}`);
+  res.json({ success: true, deletedId: id });
+});
+
+app.post('/api/restaurants/bulk-delete', (req: Request, res: Response) => {
+  const { ids } = req.body || {};
+  if (Array.isArray(ids)) {
+    const idSet = new Set(ids);
+    restaurantsStore = restaurantsStore.filter((r) => !idSet.has(r.id));
+    writeData('restaurants.json', restaurantsStore);
+  }
+  res.json({ success: true });
+});
+
 /**
  * Menu Endpoints
  */
@@ -211,6 +267,13 @@ app.post('/api/menu', (req: Request, res: Response) => {
   }
   writeData('menu.json', menuStore);
   res.json({ success: true, menuItem: item });
+});
+
+app.delete('/api/menu/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  menuStore = menuStore.filter((m) => m.id !== id);
+  writeData('menu.json', menuStore);
+  res.json({ success: true, deletedId: id });
 });
 
 /**

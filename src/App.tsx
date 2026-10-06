@@ -225,21 +225,12 @@ export default function App() {
           }
         });
 
-        setDrivers((prev) => {
-          const remoteMap = new Map(remoteDrivers.map((rd) => [rd.id, rd]));
-          const merged = [...remoteDrivers];
-          for (const localD of prev) {
-            if (localD && localD.id && !remoteMap.has(localD.id)) {
-              merged.push(localD);
-            }
-          }
-          try {
-            localStorage.setItem('aura_monrovia_drivers', JSON.stringify(merged));
-          } catch (e) {
-            console.warn('LocalStorage drivers cache error:', e);
-          }
-          return merged;
-        });
+        setDrivers(remoteDrivers);
+        try {
+          localStorage.setItem('aura_monrovia_drivers', JSON.stringify(remoteDrivers));
+        } catch (e) {
+          console.warn('LocalStorage drivers cache error:', e);
+        }
       },
       (error) => {
         console.warn('Firestore drivers snapshot notice:', error);
@@ -264,24 +255,15 @@ export default function App() {
           }
         });
 
-        setOrders((prev) => {
-          const remoteMap = new Map(remoteOrders.map((ro) => [ro.id, ro]));
-          const merged = [...remoteOrders];
-          for (const localO of prev) {
-            if (localO && localO.id && !remoteMap.has(localO.id)) {
-              merged.push(localO);
-            }
-          }
-          const sorted = merged.sort(
-            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-          );
-          try {
-            localStorage.setItem('aura_orders', JSON.stringify(sorted));
-          } catch (e) {
-            console.warn('LocalStorage orders cache error:', e);
-          }
-          return sorted;
-        });
+        const sorted = remoteOrders.sort(
+          (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+        );
+        setOrders(sorted);
+        try {
+          localStorage.setItem('aura_orders', JSON.stringify(sorted));
+        } catch (e) {
+          console.warn('LocalStorage orders cache error:', e);
+        }
       },
       (error) => {
         console.warn('Firestore orders snapshot notice:', error);
@@ -299,18 +281,13 @@ export default function App() {
       const apiOrders = await fetchOrdersFromApi();
       if (apiOrders && isMounted) {
         setOrders((prev) => {
-          const apiMap = new Map(apiOrders.map((o) => [o.id, o]));
-          const merged = [...apiOrders];
-          for (const localO of prev) {
-            if (localO && localO.id && !apiMap.has(localO.id)) {
-              merged.push(localO);
-              saveOrderToApi(localO).catch(() => {});
-            }
+          if (prev.length === 0) {
+            const sorted = apiOrders.sort(
+              (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+            );
+            return sorted;
           }
-          const sorted = merged.sort(
-            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-          );
-          return sorted;
+          return prev;
         });
       }
 
@@ -318,33 +295,28 @@ export default function App() {
       const apiDrivers = await fetchDriversFromApi();
       if (apiDrivers && isMounted) {
         setDrivers((prev) => {
-          const apiMap = new Map(apiDrivers.map((d) => [d.id, d]));
-          const merged = [...apiDrivers];
-          for (const localD of prev) {
-            if (localD && localD.id && !apiMap.has(localD.id)) {
-              merged.push(localD);
-              saveDriverToApi(localD).catch(() => {});
-            }
+          if (prev.length === 0) {
+            return apiDrivers;
           }
-          return merged;
+          return prev;
         });
       }
 
       // 3. Sync Restaurants
       const apiRestaurants = await fetchRestaurantsFromApi();
       if (apiRestaurants && apiRestaurants.length > 0 && isMounted) {
-        setRestaurants(apiRestaurants);
+        setRestaurants((prev) => (prev.length === 0 ? apiRestaurants : prev));
       }
 
       // 4. Sync Menu
       const apiMenu = await fetchMenuFromApi();
       if (apiMenu && apiMenu.length > 0 && isMounted) {
-        setMenuItems(apiMenu);
+        setMenuItems((prev) => (prev.length === 0 ? apiMenu : prev));
       }
     };
 
     syncWithApi();
-    const interval = setInterval(syncWithApi, 2500);
+    const interval = setInterval(syncWithApi, 5000);
     return () => {
       isMounted = false;
       clearInterval(interval);

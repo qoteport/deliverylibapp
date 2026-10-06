@@ -48,6 +48,14 @@ import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver,
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, deleteDoc, setDoc, collection, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
+import { 
+  deleteOrderFromApi, 
+  bulkDeleteOrdersFromApi, 
+  deleteDriverFromApi, 
+  bulkDeleteDriversFromApi, 
+  deleteRestaurantFromApi, 
+  bulkDeleteRestaurantsFromApi 
+} from '../utils/apiSync';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
@@ -111,14 +119,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [prevOrdersCount, setPrevOrdersCount] = useState(orders.length);
 
+  // Database Explorer Sub-tab State
+  const [dbExplorerTab, setDbExplorerTab] = useState<'orders' | 'restaurants' | 'drivers' | 'users' | 'tools'>('orders');
+  const [dbSearchQuery, setDbSearchQuery] = useState<string>('');
+  const [dbSelectedRowIds, setDbSelectedRowIds] = useState<string[]>([]);
+
   // Database Deletion & Confirmation Modal State
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState<{
     isOpen: boolean;
-    target: 'all-orders' | 'inactive-orders' | 'drivers' | 'restaurants' | 'users' | 'all-data' | 'local-cache';
+    target: 'all-orders' | 'inactive-orders' | 'drivers' | 'restaurants' | 'users' | 'all-data' | 'local-cache' | 'selection';
     title: string;
     description: string;
     count: number;
     requireTextMatch?: string;
+    selectedIds?: string[];
+    collectionName?: 'orders' | 'drivers' | 'restaurants' | 'users';
   } | null>(null);
 
   const [confirmInputText, setConfirmInputText] = useState('');
@@ -130,43 +145,106 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setIsDeletingData(true);
 
     try {
-      if (deleteConfirmationModal.target === 'all-orders') {
-        const querySnapshot = await getDocs(collection(db, 'orders'));
+      if (deleteConfirmationModal.target === 'selection' && deleteConfirmationModal.selectedIds && deleteConfirmationModal.collectionName) {
+        const ids = deleteConfirmationModal.selectedIds;
+        const colName = deleteConfirmationModal.collectionName;
+
         const batch = writeBatch(db);
-        querySnapshot.forEach((docSnap) => {
-          batch.delete(docSnap.ref);
+        ids.forEach((id) => {
+          batch.delete(doc(db, colName, id));
         });
         await batch.commit();
-        setDeleteSuccessMessage(`Successfully deleted all ${querySnapshot.size} orders from Firestore.`);
+
+        if (colName === 'orders') {
+          await bulkDeleteOrdersFromApi(ids);
+          try {
+            const saved = localStorage.getItem('aura_orders');
+            if (saved) {
+              const parsed: Order[] = JSON.parse(saved);
+              const filtered = parsed.filter((o) => !ids.includes(o.id));
+              localStorage.setItem('aura_orders', JSON.stringify(filtered));
+            }
+          } catch {}
+        } else if (colName === 'drivers') {
+          await bulkDeleteDriversFromApi(ids);
+          try {
+            const saved = localStorage.getItem('aura_monrovia_drivers');
+            if (saved) {
+              const parsed: DeliveryDriver[] = JSON.parse(saved);
+              const filtered = parsed.filter((d) => !ids.includes(d.id));
+              localStorage.setItem('aura_monrovia_drivers', JSON.stringify(filtered));
+            }
+          } catch {}
+        } else if (colName === 'restaurants') {
+          await bulkDeleteRestaurantsFromApi(ids);
+          try {
+            const saved = localStorage.getItem('aura_monrovia_restaurants');
+            if (saved) {
+              const parsed: Restaurant[] = JSON.parse(saved);
+              const filtered = parsed.filter((r) => !ids.includes(r.id));
+              localStorage.setItem('aura_monrovia_restaurants', JSON.stringify(filtered));
+            }
+          } catch {}
+        }
+
+        setDeleteSuccessMessage(`Successfully deleted ${ids.length} record(s) from "${colName}".`);
+        setDbSelectedRowIds([]);
+      } else if (deleteConfirmationModal.target === 'all-orders') {
+        const querySnapshot = await getDocs(collection(db, 'orders'));
+        const batch = writeBatch(db);
+        const allIds: string[] = [];
+        querySnapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+          allIds.push(docSnap.id);
+        });
+        await batch.commit();
+        await bulkDeleteOrdersFromApi(allIds);
+        localStorage.removeItem('aura_orders');
+        setDeleteSuccessMessage(`Successfully deleted all ${querySnapshot.size} orders.`);
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'inactive-orders') {
         const querySnapshot = await getDocs(collection(db, 'orders'));
         const batch = writeBatch(db);
         let count = 0;
+        const inactiveIds: string[] = [];
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data.status === 'completed' || data.status === 'cancelled') {
             batch.delete(docSnap.ref);
+            inactiveIds.push(docSnap.id);
             count++;
           }
         });
         await batch.commit();
+        await bulkDeleteOrdersFromApi(inactiveIds);
         setDeleteSuccessMessage(`Successfully deleted ${count} completed/cancelled orders.`);
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'drivers') {
         const querySnapshot = await getDocs(collection(db, 'drivers'));
         const batch = writeBatch(db);
+        const allIds: string[] = [];
         querySnapshot.forEach((docSnap) => {
           batch.delete(docSnap.ref);
+          allIds.push(docSnap.id);
         });
         await batch.commit();
+        await bulkDeleteDriversFromApi(allIds);
+        localStorage.removeItem('aura_monrovia_drivers');
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} couriers from fleet.`);
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'restaurants') {
         const querySnapshot = await getDocs(collection(db, 'restaurants'));
         const batch = writeBatch(db);
+        const allIds: string[] = [];
         querySnapshot.forEach((docSnap) => {
           batch.delete(docSnap.ref);
+          allIds.push(docSnap.id);
         });
         await batch.commit();
+        await bulkDeleteRestaurantsFromApi(allIds);
+        localStorage.removeItem('aura_monrovia_restaurants');
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and menus.`);
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'users') {
         const querySnapshot = await getDocs(collection(db, 'users'));
         const batch = writeBatch(db);
@@ -175,8 +253,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         });
         await batch.commit();
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} customer accounts.`);
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'all-data') {
-        // Nuke all collections
         const orderSnaps = await getDocs(collection(db, 'orders'));
         const restSnaps = await getDocs(collection(db, 'restaurants'));
         const driverSnaps = await getDocs(collection(db, 'drivers'));
@@ -190,8 +268,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
         await batch.commit();
 
+        localStorage.clear();
+        sessionStorage.clear();
         if (onPurgeDemoData) onPurgeDemoData();
         setDeleteSuccessMessage('Full database reset completed. All live Firestore collections emptied.');
+        setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'local-cache') {
         localStorage.clear();
         sessionStorage.clear();
@@ -2157,246 +2238,1101 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         )}
 
         {/* ============================================================ */}
-        {/* TAB 4: DATABASE & DATA MAINTENANCE                          */}
+        {/* TAB 4: DATABASE & DATA TABLES MANAGEMENT                    */}
         {/* ============================================================ */}
         {activeTab === 'system' && (
           <div className="space-y-6">
             
             {/* Header & Status Banner */}
-            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
                     <Trash2 className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-[#111827]">
-                      Database &amp; Data Deletion Console
+                      Database Explorer &amp; Data Control
                     </h3>
                     <p className="text-xs text-gray-500">
-                      Manage live Firestore collections, purge test orders, couriers, kitchens, and accounts with verified confirmation dialogues.
+                      View live collection documents in interactive tables, delete individual records, or multi-select records for bulk removal.
                     </p>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-emerald-50 text-[#048747] font-bold text-xs rounded-xl border border-emerald-200">
+                    Live Firestore Connected
+                  </span>
                 </div>
               </div>
 
               {deleteSuccessMessage && (
-                <div className="mt-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2 animate-in fade-in">
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{deleteSuccessMessage}</span>
                 </div>
               )}
             </div>
 
-            {/* Live Collection Counters */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Orders Collection</span>
-                <div className="text-xl font-mono font-black text-gray-900">{orders.length} docs</div>
-                <div className="text-[10px] text-gray-400 font-medium">{activeOrdersCount} live • {completedOrders.length} completed</div>
-              </div>
+            {/* Collection Explorer Sub-Navigation */}
+            <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => {
+                  setDbExplorerTab('orders');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'orders'
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200/60'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Orders Table ({orders.length})</span>
+              </button>
 
-              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Kitchens Collection</span>
-                <div className="text-xl font-mono font-black text-gray-900">{restaurants.length} docs</div>
-                <div className="text-[10px] text-gray-400 font-medium">{restaurants.length - pendingRestaurantsCount} verified</div>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDbExplorerTab('restaurants');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'restaurants'
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200/60'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Kitchens Table ({restaurants.length})</span>
+              </button>
 
-              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Couriers Collection</span>
-                <div className="text-xl font-mono font-black text-gray-900">{drivers.length} docs</div>
-                <div className="text-[10px] text-gray-400 font-medium">{onlineDriversCount} online</div>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDbExplorerTab('drivers');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'drivers'
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200/60'
+                }`}
+              >
+                <Bike className="w-3.5 h-3.5" />
+                <span>Fleet Drivers Table ({drivers.length})</span>
+              </button>
 
-              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Users Collection</span>
-                <div className="text-xl font-mono font-black text-gray-900">{dbUsers.length} docs</div>
-                <div className="text-[10px] text-gray-400 font-medium">{allCustomers.length} total customers</div>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDbExplorerTab('users');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'users'
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200/60'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Users Table ({dbUsers.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDbExplorerTab('tools');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'tools'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'bg-white text-red-600 hover:bg-red-50 border border-red-200'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Danger Zone &amp; Bulk Purge</span>
+              </button>
             </div>
 
-            {/* Deletion Operations Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Card 1: Orders Collection Management */}
-              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="w-4 h-4 text-[#06C167]" />
-                    <h4 className="font-extrabold text-sm text-gray-900">Orders Collection Management</h4>
+            {/* ============================================================ */}
+            {/* SUB-VIEW 1: ORDERS COLLECTION TABLE                          */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'orders' && (
+              <div className="space-y-4">
+                
+                {/* Table Filter & Multi-Select Bulk Action Bar */}
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={dbSearchQuery}
+                      onChange={(e) => setDbSearchQuery(e.target.value)}
+                      placeholder="Search order ID, customer, phone, restaurant..."
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Clear finished demo orders or wipe the entire live orders feed from the database.
-                  </p>
+
+                  {dbSelectedRowIds.length > 0 ? (
+                    <div className="flex items-center gap-2 animate-in fade-in">
+                      <span className="text-xs font-bold text-gray-700 font-mono">
+                        {dbSelectedRowIds.length} order(s) selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'selection',
+                          collectionName: 'orders',
+                          selectedIds: dbSelectedRowIds,
+                          title: `Delete ${dbSelectedRowIds.length} Selected Orders`,
+                          description: `You are about to permanently delete ${dbSelectedRowIds.length} order document(s) from Firestore and local cache. This action cannot be undone.`,
+                          count: dbSelectedRowIds.length,
+                        })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({dbSelectedRowIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbSelectedRowIds([])}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 font-medium">
+                      Select checkboxes to enable multi-record deletion
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmationModal({
-                      isOpen: true,
-                      target: 'inactive-orders',
-                      title: 'Purge Completed & Cancelled Orders',
-                      description: 'This will permanently delete all completed and cancelled orders from Firestore. Live active orders currently being cooked or delivered will NOT be touched.',
-                      count: completedOrders.length + cancelledOrders.length,
-                    })}
-                    className="w-full py-2.5 px-4 bg-gray-50 hover:bg-amber-50 hover:text-amber-900 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all flex items-center justify-between cursor-pointer"
-                  >
-                    <span>Purge Inactive Orders ({completedOrders.length + cancelledOrders.length})</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-black">Clean</span>
-                  </button>
+                {/* Orders Data Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                        <tr>
+                          <th className="p-3.5 sm:p-4 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                orders.length > 0 &&
+                                orders.every((o) => dbSelectedRowIds.includes(o.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDbSelectedRowIds(orders.map((o) => o.id));
+                                } else {
+                                  setDbSelectedRowIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                            />
+                          </th>
+                          <th className="p-3.5 sm:p-4">Order ID</th>
+                          <th className="p-3.5 sm:p-4">Customer</th>
+                          <th className="p-3.5 sm:p-4">Kitchen Spot</th>
+                          <th className="p-3.5 sm:p-4">Delivery Address</th>
+                          <th className="p-3.5 sm:p-4">Total &amp; Payment</th>
+                          <th className="p-3.5 sm:p-4">Status</th>
+                          <th className="p-3.5 sm:p-4 text-right">Row Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {orders
+                          .filter((o) => {
+                            if (!dbSearchQuery) return true;
+                            const q = dbSearchQuery.toLowerCase().trim();
+                            return (
+                              o.id.toLowerCase().includes(q) ||
+                              (o.customerName || '').toLowerCase().includes(q) ||
+                              (o.customerPhone || '').includes(q) ||
+                              (o.restaurantName || '').toLowerCase().includes(q) ||
+                              (o.deliveryArea || '').toLowerCase().includes(q)
+                            );
+                          })
+                          .map((o) => {
+                            const isSelected = dbSelectedRowIds.includes(o.id);
+                            return (
+                              <tr key={o.id} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDbSelectedRowIds((prev) => [...prev, o.id]);
+                                      } else {
+                                        setDbSelectedRowIds((prev) => prev.filter((id) => id !== o.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                                  />
+                                </td>
 
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmationModal({
-                      isOpen: true,
-                      target: 'all-orders',
-                      title: 'Delete ALL Orders Feed',
-                      description: 'This will permanently erase ALL order documents from Firestore. Live orders, tracking links, and order history will be deleted.',
-                      count: orders.length,
-                    })}
-                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
-                  >
-                    <span>Delete All Orders ({orders.length} docs)</span>
-                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                  </button>
-                </div>
-              </div>
+                                <td className="p-3.5 sm:p-4 font-mono font-black text-gray-900">
+                                  #{o.id}
+                                  <div className="text-[10px] text-gray-400 font-sans font-normal">{o.createdAt}</div>
+                                </td>
 
-              {/* Card 2: Couriers / Drivers Fleet Deletion */}
-              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Bike className="w-4 h-4 text-blue-600" />
-                    <h4 className="font-extrabold text-sm text-gray-900">Courier Fleet Collection</h4>
+                                <td className="p-3.5 sm:p-4">
+                                  <div className="font-extrabold text-gray-900">{o.customerName}</div>
+                                  <a href={`tel:${o.customerPhone}`} className="text-[10px] text-[#048747] font-mono hover:underline block">
+                                    📞 {o.customerPhone}
+                                  </a>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-bold text-gray-800">
+                                  {o.restaurantName || 'Kitchen'}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-xs">
+                                  <div className="font-medium text-gray-800">{o.deliveryArea || 'Monrovia'}</div>
+                                  <div className="text-[10px] text-gray-400 truncate max-w-[160px]">{o.deliveryAddress}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono">
+                                  <div className="font-black text-gray-900">{formatPrice(o.total)}</div>
+                                  <div className="text-[10px] text-gray-400 uppercase font-sans font-bold">{o.paymentMethod}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                                    o.status === 'completed'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : o.status === 'cancelled'
+                                        ? 'bg-red-50 text-red-700 border-red-200'
+                                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}>
+                                    {o.status}
+                                  </span>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedOrderForDetails(o)}
+                                      className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer"
+                                      title="View Order Details"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmationModal({
+                                        isOpen: true,
+                                        target: 'selection',
+                                        collectionName: 'orders',
+                                        selectedIds: [o.id],
+                                        title: `Delete Order #${o.id}`,
+                                        description: `Are you sure you want to permanently delete order #${o.id} placed by ${o.customerName} ($${o.total.toFixed(2)}) from Firestore?`,
+                                        count: 1,
+                                      })}
+                                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete single order"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Manage the couriers roster. You can delete individual riders from the Fleet tab or clear the whole fleet here.
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmationModal({
-                      isOpen: true,
-                      target: 'drivers',
-                      title: 'Delete All Couriers from Fleet',
-                      description: 'This will permanently delete all registered delivery driver profiles from Firestore. Riders will need to be re-onboarded.',
-                      count: drivers.length,
-                    })}
-                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
-                  >
-                    <span>Delete All Drivers ({drivers.length} couriers)</span>
-                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                  </button>
                 </div>
               </div>
+            )}
 
-              {/* Card 3: Restaurants & Kitchens Deletion */}
-              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Store className="w-4 h-4 text-orange-500" />
-                    <h4 className="font-extrabold text-sm text-gray-900">Kitchens &amp; Menus Collection</h4>
+            {/* ============================================================ */}
+            {/* SUB-VIEW 2: RESTAURANTS COLLECTION TABLE                      */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'restaurants' && (
+              <div className="space-y-4">
+                
+                {/* Table Filter & Multi-Select Bulk Action Bar */}
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={dbSearchQuery}
+                      onChange={(e) => setDbSearchQuery(e.target.value)}
+                      placeholder="Search kitchen name, neighborhood, cuisine, phone..."
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Permanently delete all restaurant profiles, menus, dish prices, and operating hours from the database.
-                  </p>
+
+                  {dbSelectedRowIds.length > 0 ? (
+                    <div className="flex items-center gap-2 animate-in fade-in">
+                      <span className="text-xs font-bold text-gray-700 font-mono">
+                        {dbSelectedRowIds.length} kitchen(s) selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'selection',
+                          collectionName: 'restaurants',
+                          selectedIds: dbSelectedRowIds,
+                          title: `Delete ${dbSelectedRowIds.length} Selected Kitchens`,
+                          description: `You are about to permanently delete ${dbSelectedRowIds.length} restaurant profile(s) and their menus from Firestore. This cannot be undone.`,
+                          count: dbSelectedRowIds.length,
+                        })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({dbSelectedRowIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbSelectedRowIds([])}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 font-medium">
+                      Select checkboxes to enable multi-record deletion
+                    </div>
+                  )}
                 </div>
 
-                <div className="pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmationModal({
-                      isOpen: true,
-                      target: 'restaurants',
-                      title: 'Delete All Restaurants & Menus',
-                      description: 'This will permanently remove all restaurant documents and their dishes from Firestore. Kitchens will need to be re-onboarded.',
-                      count: restaurants.length,
-                    })}
-                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
-                  >
-                    <span>Delete All Kitchens ({restaurants.length} spots)</span>
-                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                  </button>
-                </div>
-              </div>
+                {/* Restaurants Data Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                        <tr>
+                          <th className="p-3.5 sm:p-4 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                restaurants.length > 0 &&
+                                restaurants.every((r) => dbSelectedRowIds.includes(r.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDbSelectedRowIds(restaurants.map((r) => r.id));
+                                } else {
+                                  setDbSelectedRowIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                            />
+                          </th>
+                          <th className="p-3.5 sm:p-4">Kitchen Name &amp; ID</th>
+                          <th className="p-3.5 sm:p-4">Neighborhood</th>
+                          <th className="p-3.5 sm:p-4">Cuisine</th>
+                          <th className="p-3.5 sm:p-4">Primary Phone</th>
+                          <th className="p-3.5 sm:p-4">Verification</th>
+                          <th className="p-3.5 sm:p-4">Status</th>
+                          <th className="p-3.5 sm:p-4 text-right">Row Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {restaurants
+                          .filter((r) => {
+                            if (!dbSearchQuery) return true;
+                            const q = dbSearchQuery.toLowerCase().trim();
+                            return (
+                              r.id.toLowerCase().includes(q) ||
+                              r.name.toLowerCase().includes(q) ||
+                              r.neighborhood.toLowerCase().includes(q) ||
+                              r.cuisine.toLowerCase().includes(q) ||
+                              r.phone.includes(q)
+                            );
+                          })
+                          .map((r) => {
+                            const isSelected = dbSelectedRowIds.includes(r.id);
+                            const isVerified = r.isVerified !== false && r.verificationStatus !== 'pending';
 
-              {/* Card 4: Customer Users Collection */}
-              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-purple-600" />
-                    <h4 className="font-extrabold text-sm text-gray-900">Customer Accounts Collection</h4>
+                            return (
+                              <tr key={r.id} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDbSelectedRowIds((prev) => [...prev, r.id]);
+                                      } else {
+                                        setDbSelectedRowIds((prev) => prev.filter((id) => id !== r.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                                  />
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-bold text-gray-900">
+                                  {r.name}
+                                  <div className="text-[10px] text-gray-400 font-mono font-normal">ID: {r.id}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-semibold text-gray-800">
+                                  {r.neighborhood}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-gray-600">
+                                  {r.cuisine}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono font-bold text-gray-900">
+                                  {r.phone}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  {isVerified ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Verified
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                                      Pending
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    r.isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                    {r.isOpen ? 'Open' : 'Closed'}
+                                  </span>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedRestaurantForDetails(r)}
+                                      className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer"
+                                      title="View Kitchen Details"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmationModal({
+                                        isOpen: true,
+                                        target: 'selection',
+                                        collectionName: 'restaurants',
+                                        selectedIds: [r.id],
+                                        title: `Delete Kitchen: ${r.name}`,
+                                        description: `Are you sure you want to permanently delete "${r.name}" (${r.neighborhood}) and its menus from Firestore?`,
+                                        count: 1,
+                                      })}
+                                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete single restaurant"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Delete customer profile records, saved addresses, and login phone associations stored in Firestore.
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* SUB-VIEW 3: FLEET DRIVERS COLLECTION TABLE                   */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'drivers' && (
+              <div className="space-y-4">
+                
+                {/* Table Filter & Multi-Select Bulk Action Bar */}
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={dbSearchQuery}
+                      onChange={(e) => setDbSearchQuery(e.target.value)}
+                      placeholder="Search rider name, phone, plate, zone, vehicle..."
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  {dbSelectedRowIds.length > 0 ? (
+                    <div className="flex items-center gap-2 animate-in fade-in">
+                      <span className="text-xs font-bold text-gray-700 font-mono">
+                        {dbSelectedRowIds.length} courier(s) selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'selection',
+                          collectionName: 'drivers',
+                          selectedIds: dbSelectedRowIds,
+                          title: `Delete ${dbSelectedRowIds.length} Selected Couriers`,
+                          description: `You are about to permanently delete ${dbSelectedRowIds.length} courier profile(s) from Firestore. This cannot be undone.`,
+                          count: dbSelectedRowIds.length,
+                        })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({dbSelectedRowIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbSelectedRowIds([])}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 font-medium">
+                      Select checkboxes to enable multi-record deletion
+                    </div>
+                  )}
+                </div>
+
+                {/* Drivers Data Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                        <tr>
+                          <th className="p-3.5 sm:p-4 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                drivers.length > 0 &&
+                                drivers.every((d) => dbSelectedRowIds.includes(d.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDbSelectedRowIds(drivers.map((d) => d.id));
+                                } else {
+                                  setDbSelectedRowIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                            />
+                          </th>
+                          <th className="p-3.5 sm:p-4">Rider Name &amp; ID</th>
+                          <th className="p-3.5 sm:p-4">Phone / Contact</th>
+                          <th className="p-3.5 sm:p-4">Base Zone</th>
+                          <th className="p-3.5 sm:p-4">Vehicle / Plate</th>
+                          <th className="p-3.5 sm:p-4">Verification</th>
+                          <th className="p-3.5 sm:p-4">Dispatch Status</th>
+                          <th className="p-3.5 sm:p-4 text-right">Row Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {drivers
+                          .filter((d) => {
+                            if (!d) return false;
+                            if (!dbSearchQuery) return true;
+                            const q = dbSearchQuery.toLowerCase().trim();
+                            return (
+                              d.id.toLowerCase().includes(q) ||
+                              (d.name || '').toLowerCase().includes(q) ||
+                              (d.phone || '').includes(q) ||
+                              (d.baseZone || '').toLowerCase().includes(q) ||
+                              (d.plateNumber || '').toLowerCase().includes(q)
+                            );
+                          })
+                          .map((d) => {
+                            const isSelected = dbSelectedRowIds.includes(d.id);
+                            const isVerified = d.isVerified !== false && d.verificationStatus !== 'pending';
+
+                            return (
+                              <tr key={d.id} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDbSelectedRowIds((prev) => [...prev, d.id]);
+                                      } else {
+                                        setDbSelectedRowIds((prev) => prev.filter((id) => id !== d.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                                  />
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-bold text-gray-900">
+                                  {d.name}
+                                  <div className="text-[10px] text-gray-400 font-mono font-normal">ID: {d.id}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono font-bold text-gray-900">
+                                  {d.phone}
+                                  <div className="text-[10px] text-emerald-600 font-mono font-bold">MoMo: {d.momoNumber || d.phone}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-semibold text-gray-800">
+                                  {d.baseZone}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-xs">
+                                  <div className="font-semibold text-gray-800">{d.vehicleType}</div>
+                                  <div className="text-[10px] text-gray-400 font-mono">{d.plateNumber || 'No plate'}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  {isVerified ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Verified
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                                      Pending
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    d.isOnline ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                    {d.isOnline ? '🟢 Online' : '⚪ Offline'}
+                                  </span>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedDriverForDetails(d)}
+                                      className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer"
+                                      title="View Courier Details"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmationModal({
+                                        isOpen: true,
+                                        target: 'selection',
+                                        collectionName: 'drivers',
+                                        selectedIds: [d.id],
+                                        title: `Delete Courier: ${d.name}`,
+                                        description: `Are you sure you want to permanently delete courier "${d.name}" (${d.phone}) from Firestore?`,
+                                        count: 1,
+                                      })}
+                                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete single driver"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* SUB-VIEW 4: CUSTOMER USERS COLLECTION TABLE                  */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'users' && (
+              <div className="space-y-4">
+                
+                {/* Table Filter & Multi-Select Bulk Action Bar */}
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={dbSearchQuery}
+                      onChange={(e) => setDbSearchQuery(e.target.value)}
+                      placeholder="Search customer name, phone, location, UID..."
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  {dbSelectedRowIds.length > 0 ? (
+                    <div className="flex items-center gap-2 animate-in fade-in">
+                      <span className="text-xs font-bold text-gray-700 font-mono">
+                        {dbSelectedRowIds.length} user(s) selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'selection',
+                          collectionName: 'users',
+                          selectedIds: dbSelectedRowIds,
+                          title: `Delete ${dbSelectedRowIds.length} Selected Users`,
+                          description: `You are about to permanently delete ${dbSelectedRowIds.length} user account record(s) from Firestore. This cannot be undone.`,
+                          count: dbSelectedRowIds.length,
+                        })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({dbSelectedRowIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbSelectedRowIds([])}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 font-medium">
+                      Select checkboxes to enable multi-record deletion
+                    </div>
+                  )}
+                </div>
+
+                {/* Users Data Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                        <tr>
+                          <th className="p-3.5 sm:p-4 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                allCustomers.length > 0 &&
+                                allCustomers.every((c) => dbSelectedRowIds.includes(c.uid || c.phone))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDbSelectedRowIds(allCustomers.map((c) => c.uid || c.phone));
+                                } else {
+                                  setDbSelectedRowIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                            />
+                          </th>
+                          <th className="p-3.5 sm:p-4">Customer Name</th>
+                          <th className="p-3.5 sm:p-4">Phone / Contact</th>
+                          <th className="p-3.5 sm:p-4">Location &amp; Address</th>
+                          <th className="p-3.5 sm:p-4">Role</th>
+                          <th className="p-3.5 sm:p-4">Orders &amp; Spend</th>
+                          <th className="p-3.5 sm:p-4 text-right">Row Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {allCustomers
+                          .filter((c) => {
+                            if (!dbSearchQuery) return true;
+                            const q = dbSearchQuery.toLowerCase().trim();
+                            return (
+                              (c.uid || '').toLowerCase().includes(q) ||
+                              c.name.toLowerCase().includes(q) ||
+                              c.phone.includes(q) ||
+                              c.location.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((c) => {
+                            const rowId = c.uid || c.phone;
+                            const isSelected = dbSelectedRowIds.includes(rowId);
+
+                            return (
+                              <tr key={rowId} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDbSelectedRowIds((prev) => [...prev, rowId]);
+                                      } else {
+                                        setDbSelectedRowIds((prev) => prev.filter((id) => id !== rowId));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                                  />
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-bold text-gray-900">
+                                  {c.name}
+                                  <div className="text-[10px] text-gray-400 font-mono font-normal">UID: {c.uid || rowId}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono font-bold text-gray-900">
+                                  {c.phone}
+                                  <a href={`tel:${c.phone}`} className="text-[10px] text-emerald-600 hover:underline font-sans font-bold block">
+                                    📞 Call Customer
+                                  </a>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-xs">
+                                  <div className="font-semibold text-gray-800">{c.location}</div>
+                                  <div className="text-[10px] text-gray-400 truncate max-w-[160px]">{c.address}</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                                    {c.role || 'customer'}
+                                  </span>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono">
+                                  <div className="font-black text-gray-900">{formatPrice(c.totalSpend)}</div>
+                                  <div className="text-[10px] text-gray-400 font-sans font-bold">{c.ordersCount} orders</div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedUserForOrders(c)}
+                                      className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer"
+                                      title="View User Order History"
+                                    >
+                                      <ShoppingBag className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmationModal({
+                                        isOpen: true,
+                                        target: 'selection',
+                                        collectionName: 'users',
+                                        selectedIds: [rowId],
+                                        title: `Delete User: ${c.name}`,
+                                        description: `Are you sure you want to permanently delete user record "${c.name}" (${c.phone}) from Firestore?`,
+                                        count: 1,
+                                      })}
+                                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete single user account"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* SUB-VIEW 5: DANGER ZONE & BULK PURGE TOOLS                   */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'tools' && (
+              <div className="space-y-6">
+                
+                {/* Deletion Operations Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Card 1: Orders Collection Management */}
+                  <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-[#06C167]" />
+                        <h4 className="font-extrabold text-sm text-gray-900">Orders Collection Management</h4>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Clear finished demo orders or wipe the entire live orders feed from the database.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'inactive-orders',
+                          title: 'Purge Completed & Cancelled Orders',
+                          description: 'This will permanently delete all completed and cancelled orders from Firestore. Live active orders currently being cooked or delivered will NOT be touched.',
+                          count: completedOrders.length + cancelledOrders.length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-gray-50 hover:bg-amber-50 hover:text-amber-900 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Purge Inactive Orders ({completedOrders.length + cancelledOrders.length})</span>
+                        <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-black">Clean</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'all-orders',
+                          title: 'Delete ALL Orders Feed',
+                          description: 'This will permanently erase ALL order documents from Firestore. Live orders, tracking links, and order history will be deleted.',
+                          count: orders.length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Delete All Orders ({orders.length} docs)</span>
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Couriers / Drivers Fleet Deletion */}
+                  <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Bike className="w-4 h-4 text-blue-600" />
+                        <h4 className="font-extrabold text-sm text-gray-900">Courier Fleet Collection</h4>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Manage the couriers roster. You can delete individual riders from the Fleet tab or clear the whole fleet here.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'drivers',
+                          title: 'Delete All Couriers from Fleet',
+                          description: 'This will permanently delete all registered delivery driver profiles from Firestore. Riders will need to be re-onboarded.',
+                          count: drivers.length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Delete All Drivers ({drivers.length} couriers)</span>
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Restaurants & Kitchens Deletion */}
+                  <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Store className="w-4 h-4 text-orange-500" />
+                        <h4 className="font-extrabold text-sm text-gray-900">Kitchens &amp; Menus Collection</h4>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Permanently delete all restaurant profiles, menus, dish prices, and operating hours from the database.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'restaurants',
+                          title: 'Delete All Restaurants & Menus',
+                          description: 'This will permanently remove all restaurant documents and their dishes from Firestore. Kitchens will need to be re-onboarded.',
+                          count: restaurants.length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Delete All Kitchens ({restaurants.length} spots)</span>
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Customer Users Collection */}
+                  <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <h4 className="font-extrabold text-sm text-gray-900">Customer Accounts Collection</h4>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Delete customer profile records, saved addresses, and login phone associations stored in Firestore.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'users',
+                          title: 'Delete All Customer Profiles',
+                          description: 'This will permanently delete all user records from Firestore "users" collection. Saved addresses and login history will be reset.',
+                          count: dbUsers.length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Delete All User Accounts ({dbUsers.length} profiles)</span>
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Danger Zone: Full Factory Reset */}
+                <div className="p-6 sm:p-7 bg-red-500/5 rounded-3xl border-2 border-red-200 space-y-4">
+                  <div className="flex items-center gap-2.5 text-red-700">
+                    <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+                    <h4 className="font-black text-base">Danger Zone: Full Platform Reset</h4>
+                  </div>
+                  <p className="text-xs text-gray-600 max-w-xl">
+                    Wipe all Firestore collections (Orders, Kitchens, Couriers, and Users) simultaneously and purge local browser caches. Requires typing <strong>"DELETE"</strong> to prevent accidental execution.
                   </p>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmationModal({
+                        isOpen: true,
+                        target: 'all-data',
+                        title: 'FULL DATABASE RESET (NUCLEAR)',
+                        description: 'WARNING: This will permanently wipe ALL collections in Firestore (Orders, Restaurants, Drivers, and Users). The platform will be completely empty. This cannot be undone!',
+                        count: orders.length + restaurants.length + drivers.length + dbUsers.length,
+                        requireTextMatch: 'DELETE',
+                      })}
+                      className="px-5 py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Wipe All Collections (Full DB Reset)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmationModal({
+                        isOpen: true,
+                        target: 'local-cache',
+                        title: 'Purge Local Storage & Session State',
+                        description: 'This will reset localStorage keys, auth sessions, and demo caches in this browser.',
+                        count: 1,
+                      })}
+                      className="px-4 py-3 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all cursor-pointer"
+                    >
+                      Clear Browser Cache &amp; Storage
+                    </button>
+                  </div>
                 </div>
 
-                <div className="pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmationModal({
-                      isOpen: true,
-                      target: 'users',
-                      title: 'Delete All Customer Profiles',
-                      description: 'This will permanently delete all user records from Firestore "users" collection. Saved addresses and login history will be reset.',
-                      count: dbUsers.length,
-                    })}
-                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
-                  >
-                    <span>Delete All User Accounts ({dbUsers.length} profiles)</span>
-                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                  </button>
-                </div>
               </div>
-
-            </div>
-
-            {/* Danger Zone: Full Factory Reset */}
-            <div className="p-6 sm:p-7 bg-red-500/5 rounded-3xl border-2 border-red-200 space-y-4">
-              <div className="flex items-center gap-2.5 text-red-700">
-                <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
-                <h4 className="font-black text-base">Danger Zone: Full Platform Reset</h4>
-              </div>
-              <p className="text-xs text-gray-600 max-w-xl">
-                Wipe all Firestore collections (Orders, Kitchens, Couriers, and Users) simultaneously and purge local browser caches. Requires typing <strong>"DELETE"</strong> to prevent accidental execution.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmationModal({
-                    isOpen: true,
-                    target: 'all-data',
-                    title: 'FULL DATABASE RESET (NUCLEAR)',
-                    description: 'WARNING: This will permanently wipe ALL collections in Firestore (Orders, Restaurants, Drivers, and Users). The platform will be completely empty. This cannot be undone!',
-                    count: orders.length + restaurants.length + drivers.length + dbUsers.length,
-                    requireTextMatch: 'DELETE',
-                  })}
-                  className="px-5 py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Wipe All Collections (Full DB Reset)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmationModal({
-                    isOpen: true,
-                    target: 'local-cache',
-                    title: 'Purge Local Storage & Session State',
-                    description: 'This will reset localStorage keys, auth sessions, and demo caches in this browser.',
-                    count: 1,
-                  })}
-                  className="px-4 py-3 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all cursor-pointer"
-                >
-                  Clear Browser Cache &amp; Storage
-                </button>
-              </div>
-            </div>
+            )}
 
           </div>
         )}
