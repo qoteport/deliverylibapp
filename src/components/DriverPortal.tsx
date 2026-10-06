@@ -412,7 +412,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                 </h3>
               </div>
               <div className="text-right">
-                <span className="text-[11px] text-gray-400 font-bold uppercase">Estimated MoMo Payout</span>
+                <span className="text-[11px] text-gray-400 font-bold uppercase">Earnings</span>
                 <div className="font-mono text-xl font-black text-[#048747]">
                   +{formatMoney(activeDelivery.deliveryFee || 2.5)}
                 </div>
@@ -495,7 +495,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                   onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'delivered')}
                   className="w-full py-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  Step 3: Complete Delivery &amp; Collect MoMo Payout &rarr;
+                  Step 3: Complete Delivery &amp; Collect Earnings &rarr;
                 </button>
               )}
             </div>
