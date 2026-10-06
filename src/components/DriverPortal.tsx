@@ -35,7 +35,8 @@ interface DriverPortalProps {
     orderId: string, 
     status: Order['status'], 
     cancelledBy?: 'customer' | 'restaurant' | 'admin', 
-    cancellationReason?: string
+    cancellationReason?: string,
+    extra?: Partial<Order>
   ) => void;
   onUpdateDriver: (driver: DeliveryDriver) => void;
   onDriverRejectOrder: (orderId: string, driverId: string) => void;
@@ -98,18 +99,23 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   };
 
   const handleAcceptOffer = async (order: Order) => {
-    const updatedOrder: Order = {
-      ...order,
+    const driverDetails: Partial<Order> = {
       assignedDriverId: driver.id,
       assignedDriverName: driver.name,
       assignedDriverPhone: driver.phone,
       driverVehicle: driver.vehicleType,
       driverLocation: driver.currentLocation,
       delegationStatus: 'heading_to_restaurant',
+    };
+
+    const updatedOrder: Order = {
+      ...order,
+      ...driverDetails,
       status: 'preparing',
     };
 
-    onUpdateOrderStatus(order.id, 'preparing');
+    // Immediate reactive state and API/Firestore sync via App handler
+    onUpdateOrderStatus(order.id, 'preparing', undefined, undefined, driverDetails);
 
     const updatedDriver: DeliveryDriver = {
       ...driver,
@@ -166,7 +172,10 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       orderStatus = 'completed';
     }
 
-    onUpdateOrderStatus(order.id, orderStatus);
+    onUpdateOrderStatus(order.id, orderStatus, undefined, undefined, {
+      delegationStatus: nextStage,
+      driverLocation: driver.currentLocation,
+    });
 
     if (nextStage === 'delivered') {
       const updatedDriver: DeliveryDriver = {

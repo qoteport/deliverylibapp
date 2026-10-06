@@ -388,17 +388,11 @@ export default function App() {
     } catch {}
   }, [orders]);
 
-  // Keep active tracking order in sync with incoming Firestore updates
+  // Keep active tracking order in sync with incoming Firestore updates, API syncs, and driver acceptance
   useEffect(() => {
     if (activeTrackingOrder) {
       const freshOrder = orders.find((o) => o.id === activeTrackingOrder.id);
-      if (
-        freshOrder &&
-        (freshOrder.status !== activeTrackingOrder.status ||
-          freshOrder.confirmedAtTimestamp !== activeTrackingOrder.confirmedAtTimestamp ||
-          freshOrder.targetEtaTimestamp !== activeTrackingOrder.targetEtaTimestamp ||
-          freshOrder.delegationStatus !== activeTrackingOrder.delegationStatus)
-      ) {
+      if (freshOrder && JSON.stringify(freshOrder) !== JSON.stringify(activeTrackingOrder)) {
         setActiveTrackingOrder(freshOrder);
       }
     }
@@ -580,7 +574,8 @@ export default function App() {
     orderId: string, 
     status: Order['status'],
     cancelledBy?: 'customer' | 'restaurant' | 'admin',
-    cancellationReason?: string
+    cancellationReason?: string,
+    extra?: Partial<Order>
   ) => {
     const now = Date.now();
     let updatedConfirmedAt: number | undefined;
@@ -593,10 +588,11 @@ export default function App() {
       prev.map((o) => {
         if (o.id !== orderId) return o;
         const prepMins = o.prepDurationMinutes || (o.diningMode === 'pickup' ? 15 : o.diningMode === 'dine-in' ? 12 : 25);
-        updatedConfirmedAt = o.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
-        updatedTargetEta = o.targetEtaTimestamp || (status !== 'received' ? (updatedConfirmedAt || now) + prepMins * 60000 : undefined);
+        updatedConfirmedAt = extra?.confirmedAtTimestamp || o.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
+        updatedTargetEta = extra?.targetEtaTimestamp || o.targetEtaTimestamp || (status !== 'received' ? (updatedConfirmedAt || now) + prepMins * 60000 : undefined);
         return {
           ...o,
+          ...extra,
           status,
           confirmedAtTimestamp: updatedConfirmedAt,
           targetEtaTimestamp: updatedTargetEta,
@@ -612,10 +608,11 @@ export default function App() {
       setActiveTrackingOrder((prev) => {
         if (!prev) return null;
         const prepMins = prev.prepDurationMinutes || (prev.diningMode === 'pickup' ? 15 : prev.diningMode === 'dine-in' ? 12 : 25);
-        const confAt = prev.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
-        const etaAt = prev.targetEtaTimestamp || (status !== 'received' ? (confAt || now) + prepMins * 60000 : undefined);
+        const confAt = extra?.confirmedAtTimestamp || prev.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
+        const etaAt = extra?.targetEtaTimestamp || prev.targetEtaTimestamp || (status !== 'received' ? (confAt || now) + prepMins * 60000 : undefined);
         return {
           ...prev,
+          ...extra,
           status,
           confirmedAtTimestamp: confAt,
           targetEtaTimestamp: etaAt,
@@ -677,12 +674,14 @@ export default function App() {
     updateOrderStatusApi(orderId, status, cancelledBy, cancellationReason, {
       confirmedAtTimestamp: updatedConfirmedAt,
       targetEtaTimestamp: updatedTargetEta,
+      ...extra,
     }).catch((e) => console.warn('API status update notice:', e));
 
     // 2. Sync in realtime to Firestore
     try {
       const updatePayload: Record<string, any> = { 
         status,
+        ...(extra ? sanitizeForFirestore(extra) : {}),
         ...(status === 'cancelled' ? { 
           cancelledBy: cancelledBy || 'customer', 
           cancellationReason: cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Customer cancellation request') 
