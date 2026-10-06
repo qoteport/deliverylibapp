@@ -148,6 +148,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [isDeletingData, setIsDeletingData] = useState(false);
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
+  // Order Cancellation Reason Modal State
+  const [cancelOrderModal, setCancelOrderModal] = useState<{
+    isOpen: boolean;
+    orderId: string;
+    customerName?: string;
+    presetReason: string;
+    customReasonText: string;
+  } | null>(null);
+
   const handleExecuteDelete = async () => {
     if (!deleteConfirmationModal) return;
     setIsDeletingData(true);
@@ -297,7 +306,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       }
     } catch (err: any) {
       console.error('Data deletion error:', err);
-      alert(`Error deleting data: ${err.message || err}`);
+      setDeleteSuccessMessage(`Error deleting data: ${err.message || err}`);
     } finally {
       setIsDeletingData(false);
       setDeleteConfirmationModal(null);
@@ -2235,10 +2244,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const reason = window.prompt('Enter cancellation reason (e.g. Customer requested, kitchen issue, or unfulfillable):', 'Admin cancellation');
-                                  if (reason) {
-                                    onUpdateOrderStatus(o.id, 'cancelled', 'admin', reason);
-                                  }
+                                  setCancelOrderModal({
+                                    isOpen: true,
+                                    orderId: o.id,
+                                    customerName: o.customerName,
+                                    presetReason: 'Customer requested cancellation',
+                                    customReasonText: '',
+                                  });
                                 }}
                                 className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl border border-red-200 transition-colors cursor-pointer"
                               >
@@ -4186,11 +4198,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        const reason = window.prompt('Enter cancellation reason:', 'Admin cancellation');
-                        if (reason) {
-                          onUpdateOrderStatus(selectedOrderForDetails.id, 'cancelled', 'admin', reason);
-                          setSelectedOrderForDetails(null);
-                        }
+                        setCancelOrderModal({
+                          isOpen: true,
+                          orderId: selectedOrderForDetails.id,
+                          customerName: selectedOrderForDetails.customerName,
+                          presetReason: 'Customer requested cancellation',
+                          customReasonText: '',
+                        });
                       }}
                       className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl border border-red-200 cursor-pointer"
                     >
@@ -4454,6 +4468,102 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 8: ORDER CANCELLATION REASON DIALOGUE                        */}
+      {/* ========================================================================= */}
+      {cancelOrderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-red-100 space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-sm">
+                <XCircle className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-gray-900 leading-tight">
+                  Cancel Order #{cancelOrderModal.orderId}
+                </h3>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                  {cancelOrderModal.customerName ? `Customer: ${cancelOrderModal.customerName}` : 'Dispatch Cancellation'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <label className="font-extrabold text-gray-800 block">Select Cancellation Reason *</label>
+              
+              <div className="space-y-2">
+                {[
+                  'Customer requested cancellation',
+                  'Kitchen out of stock / unable to prepare',
+                  'Courier unavailable for delivery dispatch',
+                  'Unreachable phone / unfulfillable address',
+                  'Custom / Other Reason',
+                ].map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition-all ${
+                      cancelOrderModal.presetReason === reason
+                        ? 'bg-red-50/80 border-red-300 font-bold text-red-900 shadow-xs'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cancellationReasonRadio"
+                      checked={cancelOrderModal.presetReason === reason}
+                      onChange={() => setCancelOrderModal((prev) => prev ? { ...prev, presetReason: reason } : null)}
+                      className="w-4 h-4 text-red-600 focus:ring-red-500"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              {cancelOrderModal.presetReason === 'Custom / Other Reason' && (
+                <div className="space-y-1 pt-1">
+                  <label className="font-bold text-gray-700 block">Specific Reason Details</label>
+                  <textarea
+                    rows={2}
+                    value={cancelOrderModal.customReasonText}
+                    onChange={(e) => setCancelOrderModal((prev) => prev ? { ...prev, customReasonText: e.target.value } : null)}
+                    placeholder="Describe specific cancellation reason..."
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-red-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const finalReason = cancelOrderModal.presetReason === 'Custom / Other Reason'
+                    ? (cancelOrderModal.customReasonText.trim() || 'Admin cancellation')
+                    : cancelOrderModal.presetReason;
+                  
+                  onUpdateOrderStatus(cancelOrderModal.orderId, 'cancelled', 'admin', finalReason);
+                  if (selectedOrderForDetails?.id === cancelOrderModal.orderId) {
+                    setSelectedOrderForDetails(null);
+                  }
+                  setCancelOrderModal(null);
+                }}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Confirm Cancel Order</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCancelOrderModal(null)}
+                className="py-3 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-2xl cursor-pointer"
+              >
+                Keep Order
+              </button>
+            </div>
           </div>
         </div>
       )}
