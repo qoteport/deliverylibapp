@@ -698,63 +698,43 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
               </div>
             </div>
 
-            {/* 2. Delivery Driver Contact Information (Shown when driver is assigned) */}
-            {order.diningMode === 'delivery' && (
+            {/* 2. Delivery Driver Contact Information (Only shown once a driver actually confirms & accepts) */}
+            {order.diningMode === 'delivery' && Boolean(driverName) && (
               <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2 text-xs">
-                {driverName ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
-                          <Bike className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-black text-gray-900 text-xs flex items-center gap-1.5">
-                            <span>{driverName}</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
-                              {driverVehicle}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-emerald-700">
-                            {order.delegationStatus === 'out_for_delivery'
-                              ? '🛵 Courier is on the way to you'
-                              : '🛵 Assigned Monrovia Courier'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {driverPhone && (
-                        <a
-                          href={`tel:${driverPhone}`}
-                          className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95"
-                          title="Call Courier"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>Call Driver</span>
-                        </a>
-                      )}
-                    </div>
-                    {driverPhone && (
-                      <div className="text-[11px] text-gray-600 font-mono pl-9">
-                        Rider Phone: <strong className="text-gray-900">{driverPhone}</strong>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2.5 py-1 text-gray-600">
-                    <div className="w-7 h-7 rounded-xl bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
                       <Bike className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="font-extrabold text-xs text-gray-900">
-                        {order.status === 'received' || order.status === 'preparing' || order.status === 'plating'
-                          ? 'Dispatching nearest available Monrovia courier...'
-                          : 'Awaiting courier assignment'}
+                      <div className="font-black text-gray-900 text-xs flex items-center gap-1.5">
+                        <span>{driverName}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
+                          {driverVehicle}
+                        </span>
                       </div>
-                      <div className="text-[10px] text-gray-500">
-                        Courier details will appear as soon as a driver accepts your delivery
+                      <div className="text-[10px] text-emerald-700">
+                        {order.delegationStatus === 'out_for_delivery'
+                          ? '🛵 Courier is on the way to you'
+                          : '🛵 Assigned Monrovia Courier'}
                       </div>
                     </div>
+                  </div>
+
+                  {driverPhone && (
+                    <a
+                      href={`tel:${driverPhone}`}
+                      className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95 cursor-pointer"
+                      title="Call Courier"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call Driver</span>
+                    </a>
+                  )}
+                </div>
+                {driverPhone && (
+                  <div className="text-[11px] text-gray-600 font-mono pl-9">
+                    Rider Phone: <strong className="text-gray-900">{driverPhone}</strong>
                   </div>
                 )}
               </div>
