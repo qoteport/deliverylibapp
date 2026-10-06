@@ -71,12 +71,14 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
           icon: ChefHat,
           color: 'from-emerald-500 to-teal-600',
         };
-      case 'en-route':
+      case 'en-route': {
+        const isDriverConfirmed = Boolean(order.assignedDriverName && order.delegationStatus && order.delegationStatus !== 'offered');
         return {
-          label: order.assignedDriverName ? `${order.assignedDriverName.split(' ')[0]} En Route` : 'Courier En Route',
+          label: isDriverConfirmed ? `${order.assignedDriverName!.split(' ')[0]} En Route` : 'Courier En Route',
           icon: Bike,
           color: 'from-blue-600 to-indigo-600',
         };
+      }
       default:
         return {
           label: 'Order Active',

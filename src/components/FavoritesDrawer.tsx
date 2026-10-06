@@ -173,7 +173,7 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                             ? 'bg-red-50 text-red-600 border border-red-200'
                             : order.status === 'completed'
                             ? 'bg-emerald-50 text-[#048747] border border-emerald-200'
-                            : 'bg-orange-50 text-[#FF4B26]'
+                            : 'bg-emerald-50 text-[#048747] border border-emerald-200'
                         }`}
                       >
                         {order.status}
@@ -197,13 +197,13 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => onSelectOrderToTrack(order)}
-                          className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
+                          className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                         >
                           Track
                         </button>
                         <button
                           onClick={() => onReorder(order)}
-                          className="px-3 py-1.5 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1"
+                          className="px-3 py-1.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
                         >
                           <RotateCcw className="w-3 h-3 stroke-[2.5]" />
                           <span>Reorder</span>

@@ -8,6 +8,7 @@ import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
+import { saveRestaurantToApi, saveMenuItemToApi } from '../utils/apiSync';
 
 interface RestaurantPortalProps {
   restaurant: Restaurant;
@@ -446,6 +447,13 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
 
     onAddMenuItem(targetDish);
 
+    // Save to Backend API Store
+    try {
+      await saveMenuItemToApi(targetDish);
+    } catch (e) {
+      console.warn('API dish sync notice:', e);
+    }
+
     // Save to Firestore in Real Time
     try {
       await setDoc(doc(db, 'menu_items', targetDish.id), {
@@ -493,6 +501,23 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       );
 
       const finalLocation = restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || { lat: 6.2907, lng: -10.7818 };
+
+      const updatedRestaurant: Restaurant = {
+        ...restaurant,
+        name: restName,
+        neighborhood: restNeighborhood,
+        address: restAddress,
+        phone: restPhone,
+        momoNumber: restMomoNumber,
+        deliveryFeeUsd: parseFloat(restDeliveryFee) || 2.0,
+        deliveryTimeMinutes: parseInt(restPrepTime) || 25,
+        isOpen: restIsOpen,
+        allowedPhoneNumbers: phonesList,
+        location: finalLocation,
+      };
+
+      // Save to Backend API Store
+      await saveRestaurantToApi(updatedRestaurant).catch(() => {});
 
       await updateDoc(doc(db, 'restaurants', restaurant.id), {
         name: restName,
