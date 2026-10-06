@@ -160,20 +160,18 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
   const handleAdvanceDeliveryStage = async (
     order: Order,
-    nextStage: 'at_restaurant' | 'out_for_delivery' | 'delivered'
+    nextStage: 'out_for_delivery' | 'delivered' | 'at_restaurant'
   ) => {
     let orderStatus: Order['status'] = order.status;
 
-    if (nextStage === 'at_restaurant') {
-      orderStatus = 'plating';
-    } else if (nextStage === 'out_for_delivery') {
+    if (nextStage === 'out_for_delivery' || nextStage === 'at_restaurant') {
       orderStatus = 'en-route';
     } else if (nextStage === 'delivered') {
       orderStatus = 'completed';
     }
 
     onUpdateOrderStatus(order.id, orderStatus, undefined, undefined, {
-      delegationStatus: nextStage,
+      delegationStatus: nextStage === 'at_restaurant' ? 'out_for_delivery' : nextStage,
       driverLocation: driver.currentLocation,
     });
 
@@ -212,15 +210,22 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         tag: `delivered-${order.id}`,
       });
     } else {
-      updateOrderStatusApi(order.id, orderStatus, undefined, undefined, { delegationStatus: nextStage }).catch(() => {});
+      const finalDelegation = nextStage === 'at_restaurant' ? 'out_for_delivery' : nextStage;
+      updateOrderStatusApi(order.id, 'en-route', undefined, undefined, { delegationStatus: finalDelegation }).catch(() => {});
       try {
         await updateDoc(doc(db, 'orders', order.id), {
-          delegationStatus: nextStage,
-          status: orderStatus,
+          delegationStatus: finalDelegation,
+          status: 'en-route',
         });
       } catch (e) {
         console.warn('Firestore stage update notice:', e);
       }
+
+      sendBrowserNotification({
+        title: `🛵 Order #${order.id} Picked Up!`,
+        body: `Head to customer at ${order.deliveryArea || order.deliveryAddress || 'customer address'}.`,
+        tag: `driver-pickup-${order.id}`,
+      });
     }
   };
 
@@ -419,6 +424,47 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
             </div>
 
+            {/* 3-Step Rider Progress Stepper */}
+            <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className={`p-2.5 rounded-xl text-center transition-all ${
+                activeDelivery.delegationStatus === 'heading_to_restaurant' || activeDelivery.delegationStatus === 'accepted'
+                  ? 'bg-white shadow-xs border border-emerald-300 text-emerald-950 ring-2 ring-emerald-500/20'
+                  : 'text-gray-500 bg-emerald-50/50'
+              }`}>
+                <div className="flex items-center justify-center gap-1 text-[11px] font-black">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>1. Accepted</span>
+                </div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-medium truncate">Heading to kitchen</div>
+              </div>
+
+              <div className={`p-2.5 rounded-xl text-center transition-all ${
+                activeDelivery.delegationStatus === 'out_for_delivery' || activeDelivery.delegationStatus === 'at_restaurant'
+                  ? 'bg-white shadow-xs border border-emerald-300 text-emerald-950 ring-2 ring-emerald-500/20'
+                  : activeDelivery.delegationStatus === 'delivered' || activeDelivery.status === 'completed'
+                  ? 'text-gray-500 bg-emerald-50/50'
+                  : 'text-gray-400 opacity-60'
+              }`}>
+                <div className="flex items-center justify-center gap-1 text-[11px] font-black">
+                  <Bike className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>2. Picked Up</span>
+                </div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-medium truncate">On the way</div>
+              </div>
+
+              <div className={`p-2.5 rounded-xl text-center transition-all ${
+                activeDelivery.delegationStatus === 'delivered' || activeDelivery.status === 'completed'
+                  ? 'bg-white shadow-xs border border-emerald-300 text-emerald-950 ring-2 ring-emerald-500/20'
+                  : 'text-gray-400 opacity-60'
+              }`}>
+                <div className="flex items-center justify-center gap-1 text-[11px] font-black">
+                  <Award className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>3. Delivered</span>
+                </div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-medium truncate">Arrived &amp; done</div>
+              </div>
+            </div>
+
             {/* Interactive Google Map with Route Pin */}
             <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
               <MonroviaDeliveryMap
@@ -470,32 +516,25 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
             </div>
 
-            {/* Delegation Stage Step Actions */}
+            {/* 3-Stage Step Actions */}
             <div className="pt-2 flex flex-col gap-2">
-              {activeDelivery.delegationStatus === 'heading_to_restaurant' && (
-                <button
-                  onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'at_restaurant')}
-                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  Step 1: I've Arrived at the Kitchen &rarr;
-                </button>
-              )}
-
-              {activeDelivery.delegationStatus === 'at_restaurant' && (
+              {(activeDelivery.delegationStatus === 'heading_to_restaurant' || activeDelivery.delegationStatus === 'accepted') && (
                 <button
                   onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'out_for_delivery')}
-                  className="w-full py-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/25 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Step 2: Food Collected, Heading to Customer &rarr;
+                  <Bike className="w-4 h-4" />
+                  <span>Step 2: Picked Up &amp; On the Way &rarr;</span>
                 </button>
               )}
 
-              {activeDelivery.delegationStatus === 'out_for_delivery' && (
+              {(activeDelivery.delegationStatus === 'out_for_delivery' || activeDelivery.delegationStatus === 'at_restaurant') && (
                 <button
                   onClick={() => handleAdvanceDeliveryStage(activeDelivery, 'delivered')}
-                  className="w-full py-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-4 bg-gradient-to-r from-[#06C167] to-[#048747] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/25 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Step 3: Complete Delivery &amp; Collect Earnings &rarr;
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Step 3: Arrived &amp; Delivered &rarr;</span>
                 </button>
               )}
             </div>
