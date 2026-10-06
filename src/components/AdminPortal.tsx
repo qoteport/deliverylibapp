@@ -47,7 +47,7 @@ import {
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
-import { doc, updateDoc, deleteDoc, setDoc, collection, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, setDoc, collection, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
@@ -110,6 +110,104 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [prevOrdersCount, setPrevOrdersCount] = useState(orders.length);
+
+  // Database Deletion & Confirmation Modal State
+  const [deleteConfirmationModal, setDeleteConfirmationModal] = useState<{
+    isOpen: boolean;
+    target: 'all-orders' | 'inactive-orders' | 'drivers' | 'restaurants' | 'users' | 'all-data' | 'local-cache';
+    title: string;
+    description: string;
+    count: number;
+    requireTextMatch?: string;
+  } | null>(null);
+
+  const [confirmInputText, setConfirmInputText] = useState('');
+  const [isDeletingData, setIsDeletingData] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
+
+  const handleExecuteDelete = async () => {
+    if (!deleteConfirmationModal) return;
+    setIsDeletingData(true);
+
+    try {
+      if (deleteConfirmationModal.target === 'all-orders') {
+        const querySnapshot = await getDocs(collection(db, 'orders'));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+        setDeleteSuccessMessage(`Successfully deleted all ${querySnapshot.size} orders from Firestore.`);
+      } else if (deleteConfirmationModal.target === 'inactive-orders') {
+        const querySnapshot = await getDocs(collection(db, 'orders'));
+        const batch = writeBatch(db);
+        let count = 0;
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.status === 'completed' || data.status === 'cancelled') {
+            batch.delete(docSnap.ref);
+            count++;
+          }
+        });
+        await batch.commit();
+        setDeleteSuccessMessage(`Successfully deleted ${count} completed/cancelled orders.`);
+      } else if (deleteConfirmationModal.target === 'drivers') {
+        const querySnapshot = await getDocs(collection(db, 'drivers'));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+        setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} couriers from fleet.`);
+      } else if (deleteConfirmationModal.target === 'restaurants') {
+        const querySnapshot = await getDocs(collection(db, 'restaurants'));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+        setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and menus.`);
+      } else if (deleteConfirmationModal.target === 'users') {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        const batch = writeBatch(db);
+        querySnapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+        setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} customer accounts.`);
+      } else if (deleteConfirmationModal.target === 'all-data') {
+        // Nuke all collections
+        const orderSnaps = await getDocs(collection(db, 'orders'));
+        const restSnaps = await getDocs(collection(db, 'restaurants'));
+        const driverSnaps = await getDocs(collection(db, 'drivers'));
+        const userSnaps = await getDocs(collection(db, 'users'));
+
+        const batch = writeBatch(db);
+        orderSnaps.forEach((d) => batch.delete(d.ref));
+        restSnaps.forEach((d) => batch.delete(d.ref));
+        driverSnaps.forEach((d) => batch.delete(d.ref));
+        userSnaps.forEach((d) => batch.delete(d.ref));
+
+        await batch.commit();
+
+        if (onPurgeDemoData) onPurgeDemoData();
+        setDeleteSuccessMessage('Full database reset completed. All live Firestore collections emptied.');
+      } else if (deleteConfirmationModal.target === 'local-cache') {
+        localStorage.clear();
+        sessionStorage.clear();
+        if (onPurgeDemoData) onPurgeDemoData();
+        setDeleteSuccessMessage('Local storage and cache cleared successfully.');
+      }
+    } catch (err: any) {
+      console.error('Data deletion error:', err);
+      alert(`Error deleting data: ${err.message || err}`);
+    } finally {
+      setIsDeletingData(false);
+      setDeleteConfirmationModal(null);
+      setConfirmInputText('');
+      setTimeout(() => setDeleteSuccessMessage(null), 6000);
+    }
+  };
 
   // Large Popup Details State
   const [selectedDriverForDetails, setSelectedDriverForDetails] = useState<DeliveryDriver | null>(null);
@@ -2059,37 +2157,247 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         )}
 
         {/* ============================================================ */}
-        {/* TAB 4: DATABASE MAINTENANCE                                  */}
+        {/* TAB 4: DATABASE & DATA MAINTENANCE                          */}
         {/* ============================================================ */}
         {activeTab === 'system' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-xs space-y-6 max-w-2xl">
-            <div>
-              <h3 className="text-lg font-extrabold text-[#111827]">
-                Database &amp; Platform Maintenance
-              </h3>
-              <p className="text-xs text-gray-500">
-                Manage live Firestore collections, purge test orders, and configure system rules.
-              </p>
+          <div className="space-y-6">
+            
+            {/* Header & Status Banner */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-gray-100 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-[#111827]">
+                      Database &amp; Data Deletion Console
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Manage live Firestore collections, purge test orders, couriers, kitchens, and accounts with verified confirmation dialogues.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {deleteSuccessMessage && (
+                <div className="mt-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{deleteSuccessMessage}</span>
+                </div>
+              )}
             </div>
 
-            {onPurgeDemoData && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-2">
-                <div className="font-extrabold text-xs text-red-700 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Purge All Mock / Demo Data</span>
+            {/* Live Collection Counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Orders Collection</span>
+                <div className="text-xl font-mono font-black text-gray-900">{orders.length} docs</div>
+                <div className="text-[10px] text-gray-400 font-medium">{activeOrdersCount} live • {completedOrders.length} completed</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Kitchens Collection</span>
+                <div className="text-xl font-mono font-black text-gray-900">{restaurants.length} docs</div>
+                <div className="text-[10px] text-gray-400 font-medium">{restaurants.length - pendingRestaurantsCount} verified</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Couriers Collection</span>
+                <div className="text-xl font-mono font-black text-gray-900">{drivers.length} docs</div>
+                <div className="text-[10px] text-gray-400 font-medium">{onlineDriversCount} online</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">Users Collection</span>
+                <div className="text-xl font-mono font-black text-gray-900">{dbUsers.length} docs</div>
+                <div className="text-[10px] text-gray-400 font-medium">{allCustomers.length} total customers</div>
+              </div>
+            </div>
+
+            {/* Deletion Operations Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Card 1: Orders Collection Management */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-[#06C167]" />
+                    <h4 className="font-extrabold text-sm text-gray-900">Orders Collection Management</h4>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Clear finished demo orders or wipe the entire live orders feed from the database.
+                  </p>
                 </div>
-                <p className="text-xs text-red-600">
-                  Reset local state and ensure no hardcoded dummy items exist in the app.
-                </p>
+
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmationModal({
+                      isOpen: true,
+                      target: 'inactive-orders',
+                      title: 'Purge Completed & Cancelled Orders',
+                      description: 'This will permanently delete all completed and cancelled orders from Firestore. Live active orders currently being cooked or delivered will NOT be touched.',
+                      count: completedOrders.length + cancelledOrders.length,
+                    })}
+                    className="w-full py-2.5 px-4 bg-gray-50 hover:bg-amber-50 hover:text-amber-900 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Purge Inactive Orders ({completedOrders.length + cancelledOrders.length})</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg font-black">Clean</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmationModal({
+                      isOpen: true,
+                      target: 'all-orders',
+                      title: 'Delete ALL Orders Feed',
+                      description: 'This will permanently erase ALL order documents from Firestore. Live orders, tracking links, and order history will be deleted.',
+                      count: orders.length,
+                    })}
+                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Delete All Orders ({orders.length} docs)</span>
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: Couriers / Drivers Fleet Deletion */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Bike className="w-4 h-4 text-blue-600" />
+                    <h4 className="font-extrabold text-sm text-gray-900">Courier Fleet Collection</h4>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Manage the couriers roster. You can delete individual riders from the Fleet tab or clear the whole fleet here.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmationModal({
+                      isOpen: true,
+                      target: 'drivers',
+                      title: 'Delete All Couriers from Fleet',
+                      description: 'This will permanently delete all registered delivery driver profiles from Firestore. Riders will need to be re-onboarded.',
+                      count: drivers.length,
+                    })}
+                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Delete All Drivers ({drivers.length} couriers)</span>
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 3: Restaurants & Kitchens Deletion */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Store className="w-4 h-4 text-orange-500" />
+                    <h4 className="font-extrabold text-sm text-gray-900">Kitchens &amp; Menus Collection</h4>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Permanently delete all restaurant profiles, menus, dish prices, and operating hours from the database.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmationModal({
+                      isOpen: true,
+                      target: 'restaurants',
+                      title: 'Delete All Restaurants & Menus',
+                      description: 'This will permanently remove all restaurant documents and their dishes from Firestore. Kitchens will need to be re-onboarded.',
+                      count: restaurants.length,
+                    })}
+                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Delete All Kitchens ({restaurants.length} spots)</span>
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 4: Customer Users Collection */}
+              <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-purple-600" />
+                    <h4 className="font-extrabold text-sm text-gray-900">Customer Accounts Collection</h4>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Delete customer profile records, saved addresses, and login phone associations stored in Firestore.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmationModal({
+                      isOpen: true,
+                      target: 'users',
+                      title: 'Delete All Customer Profiles',
+                      description: 'This will permanently delete all user records from Firestore "users" collection. Saved addresses and login history will be reset.',
+                      count: dbUsers.length,
+                    })}
+                    className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Delete All User Accounts ({dbUsers.length} profiles)</span>
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Danger Zone: Full Factory Reset */}
+            <div className="p-6 sm:p-7 bg-red-500/5 rounded-3xl border-2 border-red-200 space-y-4">
+              <div className="flex items-center gap-2.5 text-red-700">
+                <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+                <h4 className="font-black text-base">Danger Zone: Full Platform Reset</h4>
+              </div>
+              <p className="text-xs text-gray-600 max-w-xl">
+                Wipe all Firestore collections (Orders, Kitchens, Couriers, and Users) simultaneously and purge local browser caches. Requires typing <strong>"DELETE"</strong> to prevent accidental execution.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={onPurgeDemoData}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs cursor-pointer"
+                  onClick={() => setDeleteConfirmationModal({
+                    isOpen: true,
+                    target: 'all-data',
+                    title: 'FULL DATABASE RESET (NUCLEAR)',
+                    description: 'WARNING: This will permanently wipe ALL collections in Firestore (Orders, Restaurants, Drivers, and Users). The platform will be completely empty. This cannot be undone!',
+                    count: orders.length + restaurants.length + drivers.length + dbUsers.length,
+                    requireTextMatch: 'DELETE',
+                  })}
+                  className="px-5 py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  Clear Demo Data Now
+                  <Trash2 className="w-4 h-4" />
+                  <span>Wipe All Collections (Full DB Reset)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmationModal({
+                    isOpen: true,
+                    target: 'local-cache',
+                    title: 'Purge Local Storage & Session State',
+                    description: 'This will reset localStorage keys, auth sessions, and demo caches in this browser.',
+                    count: 1,
+                  })}
+                  className="px-4 py-3 bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-2xl border border-gray-200 transition-all cursor-pointer"
+                >
+                  Clear Browser Cache &amp; Storage
                 </button>
               </div>
-            )}
+            </div>
+
           </div>
         )}
 
@@ -3088,6 +3396,105 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Close Directory
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 7: DATA DELETION CONFIRMATION DIALOGUE                         */}
+      {/* ========================================================================= */}
+      {deleteConfirmationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-red-100 space-y-5">
+            
+            {/* Warning Icon & Header */}
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-sm">
+                <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-gray-900 leading-tight">
+                  {deleteConfirmationModal.title}
+                </h3>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                  Irreversible Action
+                </span>
+              </div>
+            </div>
+
+            {/* Description & Impact */}
+            <div className="p-4 bg-red-50/70 border border-red-100 rounded-2xl space-y-2 text-xs text-gray-700">
+              <p className="leading-relaxed font-medium">
+                {deleteConfirmationModal.description}
+              </p>
+              <div className="pt-2 border-t border-red-200/60 flex items-center justify-between font-mono">
+                <span className="text-gray-500 font-bold">Affected records:</span>
+                <span className="font-black text-red-700">{deleteConfirmationModal.count} documents</span>
+              </div>
+            </div>
+
+            {/* Optional Verification Text Input for Nuclear Reset */}
+            {deleteConfirmationModal.requireTextMatch && (
+              <div className="space-y-1.5 text-xs">
+                <label className="font-bold text-gray-700 block">
+                  To confirm this deletion, type <strong className="text-red-600 font-mono font-black">{deleteConfirmationModal.requireTextMatch}</strong> below:
+                </label>
+                <input
+                  type="text"
+                  value={confirmInputText}
+                  onChange={(e) => setConfirmInputText(e.target.value)}
+                  placeholder={`Type "${deleteConfirmationModal.requireTextMatch}"`}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-red-300 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-red-600"
+                />
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                disabled={
+                  isDeletingData ||
+                  Boolean(
+                    deleteConfirmationModal.requireTextMatch &&
+                    confirmInputText.trim() !== deleteConfirmationModal.requireTextMatch
+                  )
+                }
+                onClick={handleExecuteDelete}
+                className={`flex-1 py-3 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  isDeletingData ||
+                  (deleteConfirmationModal.requireTextMatch &&
+                    confirmInputText.trim() !== deleteConfirmationModal.requireTextMatch)
+                    ? 'bg-red-300 cursor-not-allowed opacity-60'
+                    : 'bg-red-600 hover:bg-red-700 active:scale-95'
+                }`}
+              >
+                {isDeletingData ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Deleting from Firestore...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Permanently Delete</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeletingData}
+                onClick={() => {
+                  setDeleteConfirmationModal(null);
+                  setConfirmInputText('');
+                }}
+                className="py-3 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-2xl cursor-pointer transition-colors"
+              >
+                Cancel
               </button>
             </div>
 
