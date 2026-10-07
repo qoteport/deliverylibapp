@@ -533,39 +533,39 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         )}
 
         {/* Navigation Tabs (Live Dispatch, Delivery History, Earnings) */}
-        <div className="bg-white p-1.5 rounded-2xl border border-gray-200/80 grid grid-cols-3 gap-1.5 shadow-2xs">
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('dispatch')}
-            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'dispatch'
-                ? 'bg-gray-900 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
             <Bike className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Live Dispatch</span>
+            <span>Live Dispatch</span>
             {offeredOrder ? (
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0 ml-0.5" />
             ) : activeDelivery ? (
-              <span className="w-2 h-2 rounded-full bg-[#06C167] animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-0.5" />
             ) : null}
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'history'
-                ? 'bg-gray-900 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
             <History className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Trip History</span>
+            <span>Trip History</span>
             {completedDriverOrders.length > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ml-0.5 ${
+                activeTab === 'history' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-800'
               }`}>
                 {completedDriverOrders.length}
               </span>
@@ -575,14 +575,14 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('earnings')}
-            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'earnings'
-                ? 'bg-gray-900 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
             <Wallet className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Earnings</span>
+            <span>Earnings</span>
           </button>
         </div>
 
