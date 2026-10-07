@@ -57,11 +57,11 @@ const PRESET_PREP_TIMES = [
 ];
 
 const PRESET_SPICE_LEVELS = [
+  { id: 'No Pepper', label: 'No Pepper', badge: '🥗 Zero Spice' },
   { id: 'Mild', label: 'Mild', badge: '🌶️ Gentle' },
   { id: 'Medium', label: 'Medium', badge: '🌶️🌶️ Classic' },
   { id: 'Monrovia Hot', label: 'Monrovia Hot', badge: '🔥 Local Fire' },
   { id: 'Extreme Pepper', label: 'Extreme Pepper', badge: '💥 Fire' },
-  { id: 'No Pepper', label: 'No Pepper', badge: '🥗 Zero Spice' },
 ];
 
 const PRESET_ADDON_SUGGESTIONS = [
@@ -207,10 +207,14 @@ Status: ${orderToCopy.status.toUpperCase()}
   const [dishDescription, setDishDescription] = useState('');
   const [dishPrepTime, setDishPrepTime] = useState<number>(15);
   const [isCustomPrepTime, setIsCustomPrepTime] = useState(false);
-  const [customPrepTimeText, setCustomPrepTimeText] = useState('');
-  const [dishSpice, setDishSpice] = useState<string>('Monrovia Hot');
-  const [isCustomSpice, setIsCustomSpice] = useState(false);
-  const [customSpiceText, setCustomSpiceText] = useState('');
+  const [selectedSpiceLevels, setSelectedSpiceLevels] = useState<string[]>([
+    'No Pepper',
+    'Mild',
+    'Medium',
+    'Monrovia Hot',
+    'Extreme Pepper',
+  ]);
+  const [customSpiceInput, setCustomSpiceInput] = useState('');
   const [dishAddons, setDishAddons] = useState<AddonOption[]>([]);
   const [newAddonName, setNewAddonName] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState('1.50');
@@ -309,9 +313,8 @@ Status: ${orderToCopy.status.toUpperCase()}
     setDishPrepTime(15);
     setIsCustomPrepTime(false);
     setCustomPrepTimeText('');
-    setDishSpice('Monrovia Hot');
-    setIsCustomSpice(false);
-    setCustomSpiceText('');
+    setSelectedSpiceLevels(['No Pepper', 'Mild', 'Medium', 'Monrovia Hot', 'Extreme Pepper']);
+    setCustomSpiceInput('');
     setDishAddons([]);
     setNewAddonName('');
     setNewAddonPrice('1.50');
@@ -319,6 +322,37 @@ Status: ${orderToCopy.status.toUpperCase()}
     setUploadedImages([]);
     setImageUrlInput('');
     setEditingDish(null);
+  };
+
+  const handleToggleSpiceLevel = (spiceId: string) => {
+    setSelectedSpiceLevels((prev) =>
+      prev.includes(spiceId) ? prev.filter((s) => s !== spiceId) : [...prev, spiceId]
+    );
+  };
+
+  const handleAddCustomSpice = () => {
+    const raw = customSpiceInput.trim();
+    if (!raw) return;
+    if (!selectedSpiceLevels.includes(raw)) {
+      setSelectedSpiceLevels((prev) => [...prev, raw]);
+    }
+    setCustomSpiceInput('');
+  };
+
+  const handleRemoveSpice = (spiceName: string) => {
+    setSelectedSpiceLevels((prev) => prev.filter((s) => s !== spiceName));
+  };
+
+  const handleSelectAllSpices = () => {
+    const presetIds = PRESET_SPICE_LEVELS.map((s) => s.id);
+    setSelectedSpiceLevels((prev) => {
+      const customOnes = prev.filter((s) => !presetIds.includes(s));
+      return [...presetIds, ...customOnes];
+    });
+  };
+
+  const handleClearAllSpices = () => {
+    setSelectedSpiceLevels([]);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -440,21 +474,15 @@ Status: ${orderToCopy.status.toUpperCase()}
       setCustomPrepTimeText((dish.prepTimeMinutes || 15).toString());
     }
 
-    // Check spice level
-    const isStandardSpice = PRESET_SPICE_LEVELS.some((s) => s.id === dish.spiceLevel);
-    if (isStandardSpice) {
-      setDishSpice(dish.spiceLevel || 'Monrovia Hot');
-      setIsCustomSpice(false);
-      setCustomSpiceText('');
+    // Set spice levels
+    if (dish.availableSpiceLevels && Array.isArray(dish.availableSpiceLevels) && dish.availableSpiceLevels.length > 0) {
+      setSelectedSpiceLevels([...dish.availableSpiceLevels]);
     } else if (dish.spiceLevel) {
-      setDishSpice('custom');
-      setIsCustomSpice(true);
-      setCustomSpiceText(dish.spiceLevel);
+      setSelectedSpiceLevels([dish.spiceLevel]);
     } else {
-      setDishSpice('Monrovia Hot');
-      setIsCustomSpice(false);
-      setCustomSpiceText('');
+      setSelectedSpiceLevels([]);
     }
+    setCustomSpiceInput('');
 
     // Set Addons
     setDishAddons(dish.availableAddons ? [...dish.availableAddons] : []);
@@ -481,10 +509,6 @@ Status: ${orderToCopy.status.toUpperCase()}
       ? Math.max(1, parseInt(customPrepTimeText, 10) || 15)
       : (Number(dishPrepTime) || 15);
 
-    const finalSpice = isCustomSpice && customSpiceText.trim()
-      ? customSpiceText.trim()
-      : dishSpice;
-
     const targetDish: MenuItem = {
       id: dishId,
       restaurantId: restaurant.id,
@@ -496,25 +520,24 @@ Status: ${orderToCopy.status.toUpperCase()}
       priceLrd: priceNum * USD_TO_LRD_RATE,
       calories: 500,
       prepTimeMinutes: finalPrepTime,
-      dietary: ['Spicy'],
+      dietary: selectedSpiceLevels.some((s) => s !== 'No Pepper') ? ['Spicy'] : [],
       ingredients: ['Local ingredients', 'Liberian spices'],
       provenance: restaurant.neighborhood,
       illustrationType: 'jollof',
       images: uploadedImages.length > 0 ? uploadedImages : undefined,
       image: uploadedImages.length > 0 ? uploadedImages[0] : undefined,
       availableAddons: dishAddons.length > 0 ? dishAddons : undefined,
-      spiceLevel: finalSpice,
+      availableSpiceLevels: selectedSpiceLevels.length > 0 ? selectedSpiceLevels : undefined,
+      spiceLevel: selectedSpiceLevels[0] || undefined,
       isAvailable: editingDish ? editingDish.isAvailable !== false : true,
     };
 
     onAddMenuItem(targetDish);
+    resetDishForm();
+    setIsAddDishOpen(false);
 
     // Save to Backend API Store
-    try {
-      await saveMenuItemToApi(targetDish);
-    } catch (e) {
-      console.warn('API dish sync notice:', e);
-    }
+    saveMenuItemToApi(targetDish).catch((e) => console.warn('API dish sync notice:', e));
 
     // Save to Firestore in Real Time (both 'menu' and 'menu_items' for compatibility)
     try {
@@ -524,9 +547,6 @@ Status: ${orderToCopy.status.toUpperCase()}
     } catch (err) {
       console.warn('Firestore dish write notice:', err);
     }
-
-    resetDishForm();
-    setIsAddDishOpen(false);
   };
 
   const handleDeleteDish = async (dishId: string) => {
@@ -1961,68 +1981,138 @@ Status: ${orderToCopy.status.toUpperCase()}
                 </div>
               </div>
 
-              {/* SECTION 4: SPICE PREFERENCE */}
-              <div className="space-y-2 pt-3 border-t border-gray-100">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-gray-700 flex items-center gap-1.5">
-                    <Flame className="w-3.5 h-3.5 text-red-500" />
-                    <span>Spice Preference &amp; Pepper Level</span>
-                  </label>
-                  <span className="text-[10px] font-bold text-red-600">
-                    {isCustomSpice ? (customSpiceText || 'Custom') : dishSpice}
-                  </span>
+              {/* SECTION 4: SPICE PREFERENCE & PEPPER LEVELS */}
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div>
+                    <label className="font-bold text-gray-700 flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-red-500" />
+                      <span>Spice Preference &amp; Pepper Levels Available to Customers</span>
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                      Select which pepper options customers can choose when ordering this dish.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllSpices}
+                      className="text-[10px] font-bold text-[#06C167] bg-[#E8F8EE] hover:bg-[#d2f3df] px-2.5 py-1 rounded-lg border border-[#A7F3D0] transition-colors cursor-pointer"
+                    >
+                      Select All Presets
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllSpices}
+                      className="text-[10px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg border border-gray-200 transition-colors cursor-pointer"
+                      title="Disable spice selection for drinks, desserts, or non-spicy foods"
+                    >
+                      None (Not Applicable)
+                    </button>
+                  </div>
                 </div>
 
+                {/* Preset Spice Options Multi-Select */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {PRESET_SPICE_LEVELS.map((spice) => {
-                    const isSelected = !isCustomSpice && dishSpice === spice.id;
+                    const isSelected = selectedSpiceLevels.includes(spice.id);
                     return (
                       <button
                         key={spice.id}
                         type="button"
-                        onClick={() => {
-                          setIsCustomSpice(false);
-                          setDishSpice(spice.id);
-                        }}
+                        onClick={() => handleToggleSpiceLevel(spice.id)}
                         className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                           isSelected
-                            ? 'bg-red-50 border-red-400 text-red-800 ring-1 ring-red-400 shadow-xs'
-                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                            ? 'bg-red-50/90 border-red-500 text-red-900 ring-2 ring-red-500/20 shadow-xs'
+                            : 'bg-gray-50/60 text-gray-400 border-gray-200 hover:border-gray-300 opacity-60 hover:opacity-100'
                         }`}
                       >
-                        <span className="text-[10px] text-gray-500 font-semibold">{spice.badge}</span>
-                        <span className="text-xs font-extrabold mt-0.5 truncate">{spice.label}</span>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] font-semibold text-gray-500">{spice.badge}</span>
+                          <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-black ${
+                            isSelected ? 'bg-red-500 text-white' : 'border border-gray-300 bg-white'
+                          }`}>
+                            {isSelected && '✓'}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-black mt-1 truncate ${isSelected ? 'text-red-900' : 'text-gray-600'}`}>
+                          {spice.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCustomSpice(!isCustomSpice);
-                      if (!isCustomSpice && !customSpiceText) {
-                        setCustomSpiceText(dishSpice);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
-                      isCustomSpice ? 'bg-red-600 text-white border-red-600' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
-                    }`}
-                  >
-                    {isCustomSpice ? '✓ Custom Spice Active' : '+ Custom Spice Note'}
-                  </button>
+                {/* Custom Spice Levels List & Add Input */}
+                <div className="p-3 bg-gray-50/80 rounded-2xl border border-gray-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-gray-700">Custom Spice Options:</span>
+                    <span className="text-[10px] text-gray-400">
+                      {selectedSpiceLevels.length} total {selectedSpiceLevels.length === 1 ? 'option' : 'options'} enabled for customer
+                    </span>
+                  </div>
 
-                  {isCustomSpice && (
+                  {/* Badges for custom spice options */}
+                  {selectedSpiceLevels.filter((s) => !PRESET_SPICE_LEVELS.some((p) => p.id === s)).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {selectedSpiceLevels
+                        .filter((s) => !PRESET_SPICE_LEVELS.some((p) => p.id === s))
+                        .map((customSpice) => (
+                          <span
+                            key={customSpice}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-100 text-orange-900 border border-orange-200 text-xs font-bold"
+                          >
+                            <span>🌶️ {customSpice}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSpice(customSpice)}
+                              className="p-0.5 hover:bg-orange-200 rounded-full text-orange-700 transition-colors cursor-pointer"
+                              title="Remove custom option"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Input to add custom spice option */}
+                  <div className="flex gap-2">
                     <input
                       type="text"
-                      value={customSpiceText}
-                      onChange={(e) => setCustomSpiceText(e.target.value)}
-                      placeholder="e.g. Pepper on the side, Habanero dip..."
-                      className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-red-500"
+                      value={customSpiceInput}
+                      onChange={(e) => setCustomSpiceInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomSpice();
+                        }
+                      }}
+                      placeholder="Add custom option (e.g. Pepper on the Side, Extra Habanero Dip, Sweet Suya Sauce)..."
+                      className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#FF4B26]"
                     />
-                  )}
+                    <button
+                      type="button"
+                      onClick={handleAddCustomSpice}
+                      disabled={!customSpiceInput.trim()}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        customSpiceInput.trim()
+                          ? 'bg-[#FF4B26] hover:bg-[#E03A16] text-white shadow-xs'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Add Option</span>
+                    </button>
+                  </div>
                 </div>
+
+                {selectedSpiceLevels.length === 0 && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2 font-medium">
+                    ⚠️ No spice options selected. The spice preference selector will be hidden for customers ordering this dish (recommended for beverages, baked goods, desserts, and non-spicy dishes).
+                  </p>
+                )}
               </div>
 
               {/* SECTION 5: SIDE ITEMS & EXTRAS (ADDONS) WITH PRICES */}

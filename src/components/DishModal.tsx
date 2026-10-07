@@ -14,12 +14,13 @@ interface DishModalProps {
   allMenuItems?: MenuItem[];
 }
 
-const SPICE_OPTIONS = [
-  { value: 'Mild', label: 'Mild (Low Pepper)', badge: '🌶️ Gentle' },
-  { value: 'Medium', label: 'Medium (Balanced Pepper)', badge: '🌶️🌶️ Classic' },
-  { value: 'Monrovia Hot', label: 'Monrovia Hot (Local Style)', badge: '🔥 Hot' },
-  { value: 'Extreme Pepper', label: 'Extreme Pepper (Extra Fire)', badge: '💥 Fire' },
-];
+const SPICE_PRESET_META: Record<string, { label: string; badge: string }> = {
+  'No Pepper': { label: 'No Pepper', badge: '🥗 Zero Spice' },
+  'Mild': { label: 'Mild (Low Pepper)', badge: '🌶️ Gentle' },
+  'Medium': { label: 'Medium (Balanced Pepper)', badge: '🌶️🌶️ Classic' },
+  'Monrovia Hot': { label: 'Monrovia Hot (Local Style)', badge: '🔥 Local Fire' },
+  'Extreme Pepper': { label: 'Extreme Pepper (Extra Fire)', badge: '💥 Extra Fire' },
+};
 
 export const DishModal: React.FC<DishModalProps> = ({
   dish,
@@ -32,14 +33,25 @@ export const DishModal: React.FC<DishModalProps> = ({
 }) => {
   if (!dish) return null;
 
+  // Resolve allowed spice levels for this dish configured by the restaurant
+  const configuredSpiceLevels: string[] = (dish.availableSpiceLevels && Array.isArray(dish.availableSpiceLevels) && dish.availableSpiceLevels.length > 0)
+    ? dish.availableSpiceLevels
+    : (dish.spiceLevel ? [dish.spiceLevel] : []);
+
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
   const [selectedTemperature, setSelectedTemperature] = useState<string>(
     dish.cookingTemperatures ? dish.cookingTemperatures[1] || dish.cookingTemperatures[0] : ''
   );
-  const [selectedSpiceLevel, setSelectedSpiceLevel] = useState<string>(
-    dish.spiceLevel || 'Monrovia Hot'
-  );
+  const [selectedSpiceLevel, setSelectedSpiceLevel] = useState<string>(() => {
+    if (configuredSpiceLevels.length > 0) {
+      if (dish.spiceLevel && configuredSpiceLevels.includes(dish.spiceLevel)) {
+        return dish.spiceLevel;
+      }
+      return configuredSpiceLevels[0];
+    }
+    return '';
+  });
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -276,40 +288,43 @@ export const DishModal: React.FC<DishModalProps> = ({
           </div>
 
           {/* SPICE PREFERENCE SECTION */}
-          <div className="space-y-2 pt-3 border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-[#06C167]" />
-                <span>Spice Preference</span>
-              </label>
-              <span className="text-[11px] font-bold text-[#06C167]">
-                {selectedSpiceLevel}
-              </span>
-            </div>
+          {configuredSpiceLevels.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Spice Preference</span>
+                </label>
+                <span className="text-[11px] font-bold text-[#06C167]">
+                  {selectedSpiceLevel}
+                </span>
+              </div>
 
-            {/* Custom Segmented Buttons for Spice */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SPICE_OPTIONS.map((opt) => {
-                const isSelected = selectedSpiceLevel === opt.value;
+              {/* Custom Segmented Buttons for Spice */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {configuredSpiceLevels.map((spice) => {
+                  const isSelected = selectedSpiceLevel === spice;
+                  const meta = SPICE_PRESET_META[spice] || { label: spice, badge: '🌶️ Pepper' };
 
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setSelectedSpiceLevel(opt.value)}
-                    className={`py-2 px-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-                      isSelected
-                        ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs ring-1 ring-[#06C167]'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold text-gray-400">{opt.badge}</span>
-                    <span className="text-xs font-extrabold mt-0.5 truncate">{opt.value}</span>
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={spice}
+                      type="button"
+                      onClick={() => setSelectedSpiceLevel(spice)}
+                      className={`py-2 px-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs ring-1 ring-[#06C167]'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold text-gray-400">{meta.badge}</span>
+                      <span className="text-xs font-extrabold mt-0.5 truncate">{spice}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* TEMPERATURE SELECTION (FOR MEATS / STEAKS) */}
           {dish.cookingTemperatures && dish.cookingTemperatures.length > 0 && (

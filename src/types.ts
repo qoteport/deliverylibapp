@@ -98,6 +98,7 @@ export interface MenuItem {
   availableAddons?: AddonOption[];
   cookingTemperatures?: string[];
   spiceLevel?: 'Mild' | 'Medium' | 'Monrovia Hot' | 'Extreme Pepper' | 'No Pepper' | string;
+  availableSpiceLevels?: string[];
   isAvailable?: boolean;
 }
 
