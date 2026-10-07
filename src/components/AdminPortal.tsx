@@ -1872,11 +1872,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </button>
                 </div>
               </div>
-
-              <MonroviaDeliveryMap
-                driverLocation={drivers[0]?.currentLocation}
-                height="260px"
-              />
             </div>
 
             {/* Drivers Roster Table */}
