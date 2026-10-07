@@ -207,6 +207,7 @@ Status: ${orderToCopy.status.toUpperCase()}
   const [dishDescription, setDishDescription] = useState('');
   const [dishPrepTime, setDishPrepTime] = useState<number>(15);
   const [isCustomPrepTime, setIsCustomPrepTime] = useState(false);
+  const [customPrepTimeText, setCustomPrepTimeText] = useState('');
   const [selectedSpiceLevels, setSelectedSpiceLevels] = useState<string[]>([
     'No Pepper',
     'Mild',
