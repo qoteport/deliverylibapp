@@ -37,9 +37,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [momoNumber, setMomoNumber] = useState('');
   const [momoProvider, setMomoProvider] = useState<'mtn' | 'orange' | 'both'>('mtn');
   const [kitchenPin, setKitchenPin] = useState('');
-  const [hasOwnDelivery, setHasOwnDelivery] = useState(false);
   const [deliveryTimeMinutes, setDeliveryTimeMinutes] = useState(25);
-  const [deliveryFeeUsd, setDeliveryFeeUsd] = useState(2.00);
   const [minOrderUsd, setMinOrderUsd] = useState(5.00);
   const [tagline, setTagline] = useState('');
 
@@ -142,11 +140,10 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       momoNumber: momoNumber.trim() || cleanPhone,
       momoProvider,
       kitchenPin: cleanPin,
-      hasOwnDelivery,
       rating: 5.0,
       reviewCount: 1,
       deliveryTimeMinutes: Number(deliveryTimeMinutes) || 25,
-      deliveryFeeUsd: Number(deliveryFeeUsd) || 2.0,
+      deliveryFeeUsd: 2.0,
       minOrderUsd: Number(minOrderUsd) || 5.0,
       isOpen: true,
       isVerified,
@@ -591,51 +588,36 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
               </div>
             </div>
 
-            {/* 3. Delivery Settings */}
+            {/* 3. Kitchen & Prep Settings */}
             <div className="space-y-3 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-extrabold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#06C167]" />
-                  <span>3. Delivery Settings</span>
+                  <span>3. Kitchen Prep &amp; Dispatch</span>
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                  Optional (Defaults Applied)
+                  Automated Fleet
                 </span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                Specify whether your kitchen dispatches its own delivery couriers or uses AURA Fleet.
-              </p>
 
-              {/* Own Delivery Toggle */}
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-800 block">Do you have your own delivery couriers / fleet?</label>
-                    <p className="text-[10px] text-gray-500">If YES, set your custom delivery fee. If NO, AURA Dispatch handles delivery.</p>
+              {/* Centralized Fleet Info Banner */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-start gap-3 text-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#06C167] text-white flex items-center justify-center shrink-0 shadow-xs font-bold mt-0.5">
+                  <Bike className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="font-black text-[#048747] text-xs sm:text-sm">
+                    Centralized AURA Fleet Delivery
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVal = !hasOwnDelivery;
-                      setHasOwnDelivery(nextVal);
-                      if (!nextVal) setDeliveryFeeUsd(0);
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      hasOwnDelivery ? 'bg-[#06C167]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        hasOwnDelivery ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    All customer deliveries are fulfilled by verified AURA platform couriers. Delivery fees are set and calculated dynamically by the platform based on customer distance—your kitchen only focuses on cooking!
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
+              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
                 <div className="space-y-1">
-                  <label className="text-gray-600 font-bold">Prep Time (mins)</label>
+                  <label className="text-gray-600 font-bold">Avg Kitchen Prep Time (mins)</label>
                   <input
                     type="number"
                     value={deliveryTimeMinutes}
@@ -644,28 +626,8 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
                   />
                 </div>
-                {hasOwnDelivery ? (
-                  <div className="space-y-1 animate-fade-in">
-                    <label className="text-gray-600 font-bold">Delivery Fee ($)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={deliveryFeeUsd}
-                      onChange={(e) => setDeliveryFeeUsd(Number(e.target.value))}
-                      placeholder="2.00"
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-1 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100 flex flex-col justify-center">
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Courier Dispatch</span>
-                    <span className="text-xs text-[#06C167] font-extrabold flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" /> AURA Dispatch
-                    </span>
-                  </div>
-                )}
                 <div className="space-y-1">
-                  <label className="text-gray-600 font-bold">Min Order ($)</label>
+                  <label className="text-gray-600 font-bold">Minimum Order Amount ($ USD)</label>
                   <input
                     type="number"
                     value={minOrderUsd}

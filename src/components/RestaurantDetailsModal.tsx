@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle, Bike } from 'lucide-react';
 import { Restaurant, MenuItem, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { formatDisplayPhoneNumber } from '../utils/phoneUtils';
@@ -129,11 +129,11 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
               </div>
 
               <div className="p-3 bg-gray-50 border border-gray-100 rounded-2xl text-center">
-                <div className="flex items-center justify-center gap-1 text-gray-900 font-extrabold text-sm">
-                  <DollarSign className="w-3.5 h-3.5 text-[#06C167]" />
-                  <span>{formatPrice(restaurant.deliveryFeeUsd)}</span>
+                <div className="flex items-center justify-center gap-1 text-[#048747] font-extrabold text-sm">
+                  <Bike className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>AURA Fleet</span>
                 </div>
-                <div className="text-[10px] text-gray-500 font-medium mt-0.5">Delivery Fee</div>
+                <div className="text-[10px] text-gray-500 font-medium mt-0.5">Live Courier Dispatch</div>
               </div>
             </div>
           </div>

@@ -155,7 +155,6 @@ Status: ${orderToCopy.status.toUpperCase()}
   });
   const [newStaffPhoneInput, setNewStaffPhoneInput] = useState('');
   const [staffPhoneError, setStaffPhoneError] = useState('');
-  const [restDeliveryFee, setRestDeliveryFee] = useState((restaurant?.deliveryFeeUsd ?? 2.0).toString());
   const [restPrepTime, setRestPrepTime] = useState((restaurant?.deliveryTimeMinutes ?? 25).toString());
   const [restIsOpen, setRestIsOpen] = useState(restaurant?.isOpen ?? true);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
@@ -173,7 +172,6 @@ Status: ${orderToCopy.status.toUpperCase()}
           ? restaurant.allowedPhoneNumbers
           : (restaurant.phone ? [restaurant.phone] : [])
       );
-      setRestDeliveryFee((restaurant.deliveryFeeUsd ?? 2.0).toString());
       setRestPrepTime((restaurant.deliveryTimeMinutes ?? 25).toString());
       setRestIsOpen(restaurant.isOpen ?? true);
     }
@@ -565,7 +563,7 @@ Status: ${orderToCopy.status.toUpperCase()}
         address: restAddress,
         phone: restPhone,
         momoNumber: restMomoNumber,
-        deliveryFeeUsd: parseFloat(restDeliveryFee) || 2.0,
+        deliveryFeeUsd: restaurant.deliveryFeeUsd || 2.0,
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
@@ -581,7 +579,7 @@ Status: ${orderToCopy.status.toUpperCase()}
         address: restAddress,
         phone: restPhone,
         momoNumber: restMomoNumber,
-        deliveryFeeUsd: parseFloat(restDeliveryFee) || 2.0,
+        deliveryFeeUsd: restaurant.deliveryFeeUsd || 2.0,
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
@@ -1699,16 +1697,14 @@ Status: ${orderToCopy.status.toUpperCase()}
                   </p>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-gray-700">Delivery Fee ($ USD)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    value={restDeliveryFee}
-                    onChange={(e) => setRestDeliveryFee(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold"
-                  />
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-1 text-xs">
+                  <div className="font-extrabold text-[#048747] flex items-center gap-1.5">
+                    <Bike className="w-4 h-4 text-[#06C167]" />
+                    <span>AURA Centralized Fleet Delivery</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Customer delivery fees and courier dispatch are managed automatically by the platform based on distance. Registered riders fulfill all deliveries.
+                  </p>
                 </div>
 
                 <div className="space-y-1">

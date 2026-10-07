@@ -3962,8 +3962,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-gray-400">Delivery Fee</span>
-                <div className="text-lg font-mono font-black text-gray-900">${(selectedRestaurantForDetails.deliveryFeeUsd ?? 2.0).toFixed(2)}</div>
+                <span className="text-[10px] uppercase font-bold text-gray-400">Fleet Dispatch</span>
+                <div className="text-sm font-extrabold text-[#048747] flex items-center gap-1 mt-1">
+                  <Bike className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>AURA Fleet</span>
+                </div>
               </div>
               <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-gray-400">Prep Time</span>
