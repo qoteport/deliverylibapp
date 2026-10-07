@@ -5,6 +5,7 @@ import { LocationCoords } from '../types';
 interface LocationPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  title?: string;
   initialCoords?: LocationCoords | null;
   initialArea?: string;
   initialAddress?: string;
@@ -29,6 +30,7 @@ const MONROVIA_LANDMARKS = [
 export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   isOpen,
   onClose,
+  title,
   initialCoords,
   initialArea,
   initialAddress,

@@ -2271,6 +2271,7 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
       <LocationPickerModal
         isOpen={isMapPickerOpen}
         onClose={() => setIsMapPickerOpen(false)}
+        title="Pick Kitchen Location"
         initialCoords={restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood]}
         initialArea={restNeighborhood}
         initialAddress={restAddress}
