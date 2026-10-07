@@ -47,6 +47,7 @@ import {
   deleteRestaurantFromApi,
   fetchMenuFromApi,
   saveMenuItemToApi,
+  deleteMenuItemFromApi,
 } from './utils/apiSync';
 import { Check, Store, Bike } from 'lucide-react';
 
@@ -210,12 +211,21 @@ export default function App() {
       (snapshot) => {
         const remoteItems: MenuItem[] = [];
         snapshot.forEach((docSnap) => {
-          remoteItems.push(docSnap.data() as MenuItem);
+          const data = docSnap.data() as MenuItem;
+          if (data && data.name) {
+            remoteItems.push({
+              ...data,
+              id: data.id || docSnap.id,
+            });
+          }
         });
-        if (remoteItems.length > 0) {
-          setMenuItems(remoteItems);
-          remoteItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+        setMenuItems(remoteItems);
+        try {
+          localStorage.setItem('aura_monrovia_menu', JSON.stringify(remoteItems));
+        } catch (e) {
+          console.warn('LocalStorage menu cache error:', e);
         }
+        remoteItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
       },
       (error) => {
         console.warn('Firestore menu snapshot notice:', error);
@@ -834,10 +844,6 @@ export default function App() {
     setMenuItems((prev) => prev.filter((m) => !ids.includes(m.restaurantId || '')));
   };
 
-  const handleDeleteMenuItem = (itemId: string) => {
-    setMenuItems((prev) => prev.filter((m) => m.id !== itemId));
-  };
-
   const handleUpdateDriver = async (updatedDriver: DeliveryDriver) => {
     setDrivers((prev) =>
       prev.map((d) => (d.id === updatedDriver.id ? updatedDriver : d))
@@ -871,23 +877,74 @@ export default function App() {
   };
 
   const handleAddMenuItem = async (item: MenuItem) => {
-    setMenuItems((prev) => [item, ...prev]);
-    showToast(`Added "${item.name}" to menu`);
+    setMenuItems((prev) => {
+      const exists = prev.some((m) => m.id === item.id);
+      const updated = exists ? prev.map((m) => (m.id === item.id ? item : m)) : [item, ...prev];
+      try {
+        localStorage.setItem('aura_monrovia_menu', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage menu write notice:', e);
+      }
+      return updated;
+    });
+    showToast(`Saved "${item.name}"`);
     saveMenuItemToApi(item).catch((e) => console.warn('API save menu notice:', e));
     try {
       await setDoc(doc(db, 'menu', item.id), item);
+      await setDoc(doc(db, 'menu_items', item.id), item);
     } catch (e) {
       console.warn('Firestore setDoc menu notice:', e);
     }
   };
 
-  const handleToggleItemAvailability = (itemId: string) => {
-    setMenuItems((prev) =>
-      prev.map((m) =>
-        m.id === itemId ? { ...m, isAvailable: m.isAvailable !== false ? false : true } : m
-      )
-    );
+  const handleDeleteMenuItem = async (itemId: string) => {
+    setMenuItems((prev) => {
+      const updated = prev.filter((m) => m.id !== itemId);
+      try {
+        localStorage.setItem('aura_monrovia_menu', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage menu write notice:', e);
+      }
+      return updated;
+    });
+    showToast('Dish removed from menu');
+    deleteMenuItemFromApi(itemId).catch((e) => console.warn('API delete menu notice:', e));
+    try {
+      await deleteDoc(doc(db, 'menu', itemId));
+      await deleteDoc(doc(db, 'menu_items', itemId));
+    } catch (e) {
+      console.warn('Firestore deleteDoc menu notice:', e);
+    }
+  };
+
+  const handleToggleItemAvailability = async (itemId: string) => {
+    let updatedItem: MenuItem | undefined;
+    setMenuItems((prev) => {
+      const updated = prev.map((m) => {
+        if (m.id === itemId) {
+          const toggled = { ...m, isAvailable: m.isAvailable !== false ? false : true };
+          updatedItem = toggled;
+          return toggled;
+        }
+        return m;
+      });
+      try {
+        localStorage.setItem('aura_monrovia_menu', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage menu write notice:', e);
+      }
+      return updated;
+    });
     showToast('Updated item stock availability in real time');
+    if (updatedItem) {
+      saveMenuItemToApi(updatedItem).catch(() => {});
+      try {
+        await setDoc(doc(db, 'menu', itemId), updatedItem, { merge: true });
+        await setDoc(doc(db, 'menu_items', itemId), updatedItem, { merge: true });
+      } catch (e) {
+        console.warn('Firestore toggle availability notice:', e);
+      }
+    }
   };
 
   const handlePurgeAllDemoData = async () => {
@@ -1016,14 +1073,14 @@ export default function App() {
     }
 
     const restaurantDishes = menuItems.filter(
-      (m) => !m.restaurantId || m.restaurantId === currentRestaurant.id
+      (m) => m.restaurantId === currentRestaurant.id
     );
 
     return (
       <ErrorBoundary>
         <RestaurantPortal
           restaurant={currentRestaurant}
-          menuItems={restaurantDishes.length > 0 ? restaurantDishes : menuItems}
+          menuItems={restaurantDishes}
           orders={orders}
           onExitPortal={() => navigateTo({ name: 'home' })}
           onUpdateOrderStatus={handleUpdateOrderStatus}
