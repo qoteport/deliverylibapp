@@ -316,7 +316,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               <MapPin className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="font-extrabold text-[#111827] text-sm">Pinpoint Delivery Spot</h3>
+              <h3 className="font-extrabold text-[#111827] text-sm">{title || "Pinpoint Delivery Spot"}</h3>
               <p className="text-[11px] text-gray-500">Google Places &amp; GPS Area Detection</p>
             </div>
           </div>
@@ -446,8 +446,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono px-1">
-            <span>📍 Pin Lat: {selectedCoords.lat.toFixed(5)}, Lng: {selectedCoords.lng.toFixed(5)}</span>
+          <div className="flex items-center justify-end text-[11px] text-gray-500 font-mono px-1">
             <a
               href={`https://www.google.com/maps?q=${selectedCoords.lat},${selectedCoords.lng}`}
               target="_blank"
