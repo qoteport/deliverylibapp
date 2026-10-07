@@ -137,6 +137,7 @@ export interface Restaurant {
   verificationStatus?: 'pending' | 'verified' | 'rejected';
   allowedPhoneNumbers?: string[];
   kitchenPin?: string;
+  hasOwnDelivery?: boolean;
   tagline: string;
   ownerId?: string;
   ownerEmail?: string;
