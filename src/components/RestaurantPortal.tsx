@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award, LogOut } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award, LogOut, Printer, Copy, ExternalLink, ShoppingBag, Receipt } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, MONROVIA_NEIGHBORHOODS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -92,8 +92,52 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
   const [isAddDishOpen, setIsAddDishOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<MenuItem | null>(null);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<Order | null>(null);
+  const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
 
-  // Audio State
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedOrderForModal) setSelectedOrderForModal(null);
+        if (isAddDishOpen) setIsAddDishOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedOrderForModal, isAddDishOpen]);
+
+  const handleCopyTicketText = (orderToCopy: Order) => {
+    const itemsText = (orderToCopy.items || []).map((item, i) => {
+      const name = item.menuItem?.name || 'Dish';
+      const qty = item.quantity || 1;
+      const addons = item.selectedAddons && item.selectedAddons.length > 0 
+        ? ` (+${item.selectedAddons.map(a => `${a.name} $${a.price.toFixed(2)}`).join(', ')})` 
+        : '';
+      const notes = item.specialInstructions ? ` [Kitchen Note: "${item.specialInstructions}"]` : '';
+      const spice = item.selectedSpiceLevel ? ` [Spice: ${item.selectedSpiceLevel}]` : '';
+      return `${i + 1}. ${qty}x ${name}${addons}${spice}${notes}`;
+    }).join('\n');
+
+    const ticketText = `================================================
+KITCHEN ORDER TICKET #${orderToCopy.id}
+Restaurant: ${restaurant.name}
+Time Placed: ${orderToCopy.createdAt ? new Date(orderToCopy.createdAt).toLocaleTimeString() : 'Recent'}
+Dining Mode: ${orderToCopy.diningMode.toUpperCase()}${orderToCopy.tableNumber ? ` (Table ${orderToCopy.tableNumber})` : ''}
+Customer: ${orderToCopy.customerName} (${orderToCopy.customerPhone || 'No Phone'})
+${orderToCopy.deliveryArea ? `Delivery Location: ${orderToCopy.deliveryArea} - ${orderToCopy.deliveryAddress || ''}\n` : ''}------------------------------------------------
+ORDER ITEMS:
+${itemsText}
+------------------------------------------------
+Subtotal: $${(orderToCopy.subtotal || 0).toFixed(2)}
+Delivery Fee: $${(orderToCopy.deliveryFee || 0).toFixed(2)}
+TOTAL AMOUNT: $${(orderToCopy.total || 0).toFixed(2)} (~L$${Math.round((orderToCopy.total || 0) * USD_TO_LRD_RATE).toLocaleString()} LRD)
+Payment: ${orderToCopy.paymentMethod}${orderToCopy.paymentNumber ? ` (MoMo: ${orderToCopy.paymentNumber})` : ''}
+Status: ${orderToCopy.status.toUpperCase()}
+================================================`;
+
+    navigator.clipboard.writeText(ticketText);
+    setCopiedTicketId(orderToCopy.id);
+    setTimeout(() => setCopiedTicketId(null), 2500);
+  };
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Restaurant Profile Edit State
@@ -2292,6 +2336,395 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Interactive Kitchen Order Ticket / Order Slip Modal */}
+      {selectedOrderForModal && (() => {
+        const modalOrder = orders.find(o => o.id === selectedOrderForModal.id) || selectedOrderForModal;
+        const isDelivery = modalOrder.diningMode === 'delivery';
+        const isDineIn = modalOrder.diningMode === 'dine-in';
+        const isPickup = modalOrder.diningMode === 'pickup';
+        const waModalUrl = getWhatsAppDispatchUrl(modalOrder, restaurant.name);
+
+        return (
+          <div 
+            className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-overlay-fade"
+            onClick={() => setSelectedOrderForModal(null)}
+          >
+            <div 
+              className="relative bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-none border-t sm:border-2 sm:border-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-modal-sheet sm:animate-in sm:zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="px-5 py-4 border-b border-gray-200 bg-gray-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#FF4B26] text-white flex items-center justify-center font-black shadow-md shrink-0">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-black text-amber-300">
+                        #{modalOrder.id}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        modalOrder.status === 'completed'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : modalOrder.status === 'en-route'
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                          : modalOrder.status === 'plating'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : modalOrder.status === 'preparing'
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                          : modalOrder.status === 'cancelled'
+                          ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                          : 'bg-gray-700 text-gray-200 border border-gray-600'
+                      }`}>
+                        {modalOrder.status === 'plating' ? (isDelivery ? 'Ready for Courier' : 'Ready / Plated') : modalOrder.status}
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white truncate">
+                      Kitchen Order Ticket &middot; {restaurant.name}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForModal(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+                  title="Close Ticket"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="px-5 py-2.5 bg-gray-100 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-gray-600 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-gray-500" />
+                  <span>
+                    Placed: {modalOrder.createdAt ? new Date(modalOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                  </span>
+                  <span className="text-gray-300">&bull;</span>
+                  <span className="font-bold text-gray-900 capitalize">
+                    {isDelivery ? '🛵 Delivery' : isDineIn ? `🍽️ Table ${modalOrder.tableNumber || '1'}` : '🛍️ Takeaway'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Print Button */}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-2.5 py-1 bg-white hover:bg-gray-200 text-gray-800 border border-gray-300 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs text-[11px]"
+                    title="Print kitchen order ticket"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-gray-600" />
+                    <span>Print</span>
+                  </button>
+
+                  {/* Copy Slip Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyTicketText(modalOrder)}
+                    className="px-2.5 py-1 bg-white hover:bg-gray-200 text-gray-800 border border-gray-300 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs text-[11px]"
+                    title="Copy full ticket text"
+                  >
+                    {copiedTicketId === modalOrder.id ? (
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Copied!</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Copy className="w-3.5 h-3.5 text-gray-600" />
+                        <span>Copy Text</span>
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Customer Call Button */}
+                  {modalOrder.customerPhone && (
+                    <a
+                      href={`tel:${modalOrder.customerPhone}`}
+                      className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-[#048747] border border-emerald-300 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs text-[11px]"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call Customer</span>
+                    </a>
+                  )}
+
+                  {/* WhatsApp Link */}
+                  <a
+                    href={waModalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 bg-[#25D366] hover:bg-[#1EBE5D] text-white rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs text-[11px]"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Modal Body / Kitchen Ticket Contents */}
+              <div className="p-5 overflow-y-auto space-y-4">
+                
+                {/* 1. Customer & Delivery/Table Card */}
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-gray-400 block tracking-wider">
+                      Customer Info
+                    </span>
+                    <div className="font-extrabold text-sm text-gray-900 mt-0.5">
+                      {modalOrder.customerName}
+                    </div>
+                    {modalOrder.customerPhone && (
+                      <div className="font-mono text-gray-600 mt-0.5">
+                        📞 {modalOrder.customerPhone}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-gray-400 block tracking-wider">
+                      {isDelivery ? 'Delivery Destination' : isDineIn ? 'Dine-In Table' : 'Pickup Order'}
+                    </span>
+                    <div className="font-bold text-gray-900 mt-0.5">
+                      {isDelivery
+                        ? `${modalOrder.deliveryArea || 'Monrovia'} ${modalOrder.deliveryAddress ? `(${modalOrder.deliveryAddress})` : ''}`
+                        : isDineIn
+                        ? `Table #${modalOrder.tableNumber || 'General Dining'}`
+                        : 'Customer Pick Up at Counter'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Itemized Kitchen Slip Table */}
+                <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="bg-gray-100 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-gray-600 flex justify-between">
+                    <span>Order Items ({modalOrder.items?.reduce((acc, i) => acc + (i.quantity || 1), 0) || 0})</span>
+                    <span>Amount</span>
+                  </div>
+
+                  <div className="divide-y divide-gray-100 bg-white">
+                    {(modalOrder.items || []).map((item, idx) => {
+                      const itemTitle = item.menuItem?.name || 'Dish Item';
+                      const itemPrice = item.menuItem?.price || 0;
+                      const itemQty = item.quantity || 1;
+                      const lineTotal = item.itemTotal || (itemPrice * itemQty);
+
+                      return (
+                        <div key={item.cartItemId || idx} className="p-3.5 hover:bg-gray-50/50 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <span className="px-2 py-1 rounded-lg bg-gray-900 text-white font-mono text-xs font-black shrink-0">
+                                {itemQty}x
+                              </span>
+                              <div className="min-w-0">
+                                <div className="font-extrabold text-sm text-gray-900">
+                                  {itemTitle}
+                                </div>
+
+                                {item.menuItem?.provenance && (
+                                  <div className="text-[11px] text-gray-500 font-medium">
+                                    {item.menuItem.provenance}
+                                  </div>
+                                )}
+
+                                {/* Selected Addons List */}
+                                {item.selectedAddons && item.selectedAddons.length > 0 && (
+                                  <div className="mt-1 space-y-0.5">
+                                    {item.selectedAddons.map((addon) => (
+                                      <div key={addon.id} className="text-[11px] text-gray-600 flex items-center gap-1 font-medium">
+                                        <span className="text-emerald-600 font-bold">+</span>
+                                        <span>{addon.name}</span>
+                                        <span className="text-gray-400 font-mono">(${addon.price.toFixed(2)})</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Spice Level */}
+                                {item.selectedSpiceLevel && (
+                                  <div className="mt-1 inline-block text-[10px] px-2 py-0.5 rounded-md bg-orange-50 text-orange-800 border border-orange-200 font-bold">
+                                    🌶️ {item.selectedSpiceLevel}
+                                  </div>
+                                )}
+
+                                {/* Kitchen Special Request Notes */}
+                                {item.specialInstructions && (
+                                  <div className="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold flex items-start gap-1.5">
+                                    <span className="shrink-0 text-amber-600">📝 Note:</span>
+                                    <span>&ldquo;{item.specialInstructions}&rdquo;</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <div className="font-mono text-sm font-black text-gray-900">
+                                ${lineTotal.toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-mono">
+                                (${itemPrice.toFixed(2)} ea)
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Pricing Breakdown Footer */}
+                  <div className="bg-gray-50 p-4 border-t border-gray-200 space-y-1.5 text-xs">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal</span>
+                      <span className="font-mono font-bold text-gray-800">${(modalOrder.subtotal || 0).toFixed(2)}</span>
+                    </div>
+
+                    {isDelivery && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>Delivery Fee</span>
+                        <span className="font-mono font-bold text-gray-800">${(modalOrder.deliveryFee || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {modalOrder.discount ? (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Discount</span>
+                        <span className="font-mono font-bold">-${modalOrder.discount.toFixed(2)}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
+                      <div>
+                        <span className="font-black text-sm text-gray-950 uppercase tracking-wider block">Grand Total</span>
+                        <span className="text-[10px] text-gray-500">
+                          Payment via {modalOrder.paymentMethod} {modalOrder.paymentNumber ? `(${modalOrder.paymentNumber})` : ''}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-lg sm:text-xl font-black text-[#048747]">
+                          ${(modalOrder.total || 0).toFixed(2)}
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-mono">
+                          ~L${Math.round((modalOrder.total || 0) * USD_TO_LRD_RATE).toLocaleString()} LRD
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Assigned Courier Info (If Delivery & Driver Assigned) */}
+                {isDelivery && (modalOrder.assignedDriverName || modalOrder.status === 'en-route') && (
+                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Bike className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-blue-950 truncate">
+                          {modalOrder.assignedDriverName || 'Fleet Courier Assigned'} &middot; {modalOrder.driverVehicle || 'Motorbike'}
+                        </div>
+                        <div className="text-[11px] text-blue-700 font-medium truncate">
+                          {modalOrder.status === 'en-route'
+                            ? '🛵 Courier is on the road delivering to customer'
+                            : 'Courier assigned &bull; Awaiting food packing'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {modalOrder.assignedDriverPhone && (
+                      <a
+                        href={`tel:${modalOrder.assignedDriverPhone}`}
+                        className="px-3 py-1.5 bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Call Rider</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Kitchen Quick Action Status Bar */}
+                {modalOrder.status !== 'completed' && modalOrder.status !== 'cancelled' && (
+                  <div className="pt-2 border-t border-gray-100 space-y-2">
+                    <div className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
+                      Update Order Status
+                    </div>
+
+                    {modalOrder.status === 'received' && (
+                      <button
+                        type="button"
+                        onClick={() => onUpdateOrderStatus(modalOrder.id, 'preparing')}
+                        className="w-full py-3 px-4 bg-gradient-to-r from-[#FF4B26] to-[#FF7A00] hover:opacity-95 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                      >
+                        <Flame className="w-4 h-4 fill-white" />
+                        <span>Accept &amp; Start Cooking</span>
+                      </button>
+                    )}
+
+                    {modalOrder.status === 'preparing' && (
+                      <button
+                        type="button"
+                        onClick={() => onUpdateOrderStatus(modalOrder.id, 'plating')}
+                        className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                      >
+                        <ChefHat className="w-4 h-4" />
+                        <span>Mark Food Ready &amp; Packed &rarr;</span>
+                      </button>
+                    )}
+
+                    {modalOrder.status === 'plating' && (
+                      <div>
+                        {isDelivery ? (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateOrderStatus(modalOrder.id, 'en-route')}
+                            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                          >
+                            <Bike className="w-4 h-4" />
+                            <span>Handed to Courier (Mark En Route) &rarr;</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateOrderStatus(modalOrder.id, 'completed')}
+                            className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Mark {isDineIn ? 'Served to Table' : 'Picked Up by Customer'} &rarr;</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {modalOrder.status === 'en-route' && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2 font-medium">
+                        <Bike className="w-4 h-4 text-blue-600 shrink-0 animate-bounce" />
+                        <span>🛵 Courier is en route &bull; Courier will confirm delivery completion upon arrival.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForModal(null)}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer"
+                >
+                  Close Ticket
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Interactive Monrovia Map Pinpoint Picker Modal */}
       <LocationPickerModal
