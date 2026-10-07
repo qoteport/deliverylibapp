@@ -10,6 +10,7 @@ import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 import { normalizeLiberianPhoneNumber } from '../utils/phoneUtils';
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { saveOrderToApi } from '../utils/apiSync';
+import { calculateDynamicDeliveryFee } from '../utils/pricingEngine';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -93,6 +94,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const targetRestaurant = restaurants?.find((r) => r.id === primaryRestaurantId);
   const restaurantName = targetRestaurant?.name || 'Monrovia Kitchen';
   const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '0886 554 123';
+
+  // Dynamic Uber/Bolt delivery fee calculation based on customer distance & wait time
+  const dynamicPricing = calculateDynamicDeliveryFee({
+    customerLocation: gpsCoords || undefined,
+    customerNeighborhood: destinationArea,
+    restaurantLocation: targetRestaurant?.location,
+    restaurantNeighborhood: targetRestaurant?.neighborhood,
+    prepDurationMinutes: diningMode === 'pickup' ? 15 : diningMode === 'dine-in' ? 12 : 25,
+  });
+
+  const calculatedDeliveryFee = diningMode === 'delivery' 
+    ? (cartTotals.subtotal > 35 ? 0 : dynamicPricing.finalFee) 
+    : 0;
+
+  const computedTotal = Math.max(
+    0,
+    cartTotals.subtotal - cartTotals.discount + calculatedDeliveryFee + cartTotals.serviceFee + cartTotals.tax + cartTotals.tip
+  );
 
   // Sync / prefill when currentUser updates or modal opens
   useEffect(() => {
@@ -207,10 +226,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       subtotal: cartTotals.subtotal,
       discount: cartTotals.discount,
       serviceFee: cartTotals.serviceFee,
-      deliveryFee: cartTotals.deliveryFee,
+      deliveryFee: calculatedDeliveryFee,
       tax: cartTotals.tax,
       tip: cartTotals.tip,
-      total: cartTotals.total,
+      total: computedTotal,
       currency,
       estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       paymentMethod,
@@ -236,10 +255,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         subtotal: newOrder.subtotal,
         discount: newOrder.discount || 0,
         serviceFee: newOrder.serviceFee || 0,
-        deliveryFee: newOrder.deliveryFee || 0,
+        deliveryFee: calculatedDeliveryFee,
         tax: newOrder.tax || 0,
         tip: newOrder.tip || 0,
-        total: newOrder.total,
+        total: computedTotal,
         status: newOrder.status,
         createdAt: newOrder.createdAt,
         createdAtTimestamp: nowTimestamp,
@@ -570,17 +589,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between text-xs font-semibold">
             <div>
               <span className="text-gray-900 font-extrabold">Total Amount</span>
-              <div className="text-[10px] text-gray-500 font-normal">
-                {items.length} items · Fast dispatch
+              <div className="text-[10px] text-gray-500 font-normal flex items-center gap-1.5 mt-0.5">
+                <span>{items.length} items</span>
+                {diningMode === 'delivery' && (
+                  <>
+                    <span>•</span>
+                    <span className="text-[#048747] font-bold">
+                      {calculatedDeliveryFee === 0
+                        ? 'Free Delivery'
+                        : `${formatPrice(calculatedDeliveryFee)} Delivery (~${dynamicPricing.distanceKm} km)`}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <div className="text-right">
               <span className="font-mono text-xl font-black text-[#111827] tabular-nums">
-                {formatPrice(cartTotals.total)}
+                {formatPrice(computedTotal)}
               </span>
               {currency === 'USD' && (
                 <div className="text-[10px] text-gray-500 font-mono">
-                  ~L${Math.round(cartTotals.total * USD_TO_LRD_RATE).toLocaleString()} LRD
+                  ~L${Math.round(computedTotal * USD_TO_LRD_RATE).toLocaleString()} LRD
                 </div>
               )}
             </div>
@@ -597,7 +626,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Place Order • {formatPrice(cartTotals.total)}</span>
+                <span>Place Order • {formatPrice(computedTotal)}</span>
               </span>
             )}
           </button>

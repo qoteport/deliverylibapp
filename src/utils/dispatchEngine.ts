@@ -4,6 +4,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { sendBrowserNotification } from './browserNotifications';
 import { sendTwilioOrderNotification, getSavedTwilioConfig } from './twilio';
 import { saveOrderToApi } from './apiSync';
+import { calculateDynamicDeliveryFee } from './pricingEngine';
 
 // Calculate Euclidean distance approximation between two lat/lng coords in km
 export function calculateDistanceKm(from: LocationCoords, to: LocationCoords): number {
@@ -67,12 +68,19 @@ export async function delegateOrderToDriver(
 
   const bestDriver = findBestDriverForOrder(order, drivers, restaurantCoords);
 
-  if (!bestDriver) {
-    return { success: false };
-  }
+  const dynamicFee = order.deliveryFee && order.deliveryFee >= 0.5
+    ? order.deliveryFee
+    : calculateDynamicDeliveryFee({
+        customerNeighborhood: order.deliveryArea,
+        customerLocation: order.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea] : undefined,
+        restaurantLocation: restaurantCoords,
+        driverLocation: bestDriver.currentLocation,
+        prepDurationMinutes: order.prepDurationMinutes || 20,
+      }).finalFee;
 
   const updatedOrder: Order = {
     ...order,
+    deliveryFee: dynamicFee,
     assignedDriverId: bestDriver.id,
     assignedDriverName: bestDriver.name,
     assignedDriverPhone: bestDriver.phone,
@@ -91,6 +99,7 @@ export async function delegateOrderToDriver(
   // Sync to Firestore
   try {
     await updateDoc(doc(db, 'orders', order.id), {
+      deliveryFee: dynamicFee,
       assignedDriverId: bestDriver.id,
       assignedDriverName: bestDriver.name,
       assignedDriverPhone: bestDriver.phone,
