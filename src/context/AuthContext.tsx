@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppUser } from '../types';
 import { auth, db } from '../firebase/config';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { requestNotificationPermission } from '../utils/browserNotifications';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setUser(customerUser);
+    requestNotificationPermission().catch(() => {});
 
     // Sync user profile to Firestore
     try {

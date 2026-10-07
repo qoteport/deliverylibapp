@@ -80,11 +80,11 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
           if (!previousVerified && nowVerified) {
             setJustVerifiedNotice(true);
             playOrderAlertSound();
-            sendBrowserNotification(
-              'Account Verified! 🚀',
-              'Your courier account has been verified by Monrovia Admin. You can now Go Online to receive orders!',
-              { tag: `driver-verified-${driver.id}` }
-            );
+            sendBrowserNotification({
+              title: 'Account Verified! 🚀',
+              body: 'Your courier account has been verified by Monrovia Admin. You can now Go Online to receive orders!',
+              tag: `driver-verified-${driver.id}`,
+            });
           }
           previousVerified = nowVerified;
           onUpdateDriver(data);

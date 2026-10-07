@@ -59,7 +59,8 @@ import {
 } from '../utils/apiSync';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
-import { sendBrowserNotification } from '../utils/browserNotifications';
+import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
+import { sendDriverVerificationSms } from '../utils/twilio';
 
 interface AdminPortalProps {
   restaurants: Restaurant[];
@@ -736,6 +737,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       setSelectedDriverForDetails(updated);
     }
     onUpdateDriver(updated);
+
+    if (newVerified) {
+      playOrderAlertSound();
+      sendBrowserNotification({
+        title: 'Account Verified! 🚀',
+        body: `Hello ${driver.name}, your courier profile has been VERIFIED by Monrovia Admin. You can now tap Go Online to accept deliveries.`,
+        tag: `driver-verified-${driver.id}`,
+      });
+      sendDriverVerificationSms(driver.phone, driver.name).catch((e) => console.warn('Driver verification SMS notice:', e));
+    }
+
     try {
       await setDoc(doc(db, 'drivers', driver.id), updated, { merge: true });
     } catch (e) {

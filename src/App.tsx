@@ -32,7 +32,7 @@ import { db } from './firebase/config';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
 import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
-import { sendBrowserNotification } from './utils/browserNotifications';
+import { sendBrowserNotification, requestNotificationPermission } from './utils/browserNotifications';
 import { delegateOrderToDriver } from './utils/dispatchEngine';
 import { sanitizeForFirestore } from './utils/cleanData';
 import {
@@ -172,6 +172,13 @@ export default function App() {
       window.removeEventListener('popstate', handleLocationChange);
       window.removeEventListener('hashchange', handleLocationChange);
     };
+  }, []);
+
+  // Prompt browser notification permissions on app mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      requestNotificationPermission().catch(() => {});
+    }
   }, []);
 
 
