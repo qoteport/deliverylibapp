@@ -175,7 +175,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left text-xs space-y-1.5 max-w-sm mx-auto">
               <div className="font-extrabold text-[#048747] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Verification Gate &amp; Login PIN</span>
+                <span>Login Details</span>
               </div>
               <p className="text-[11px] text-gray-700">
                 Your phone number (<strong>{registeredDriver.phone}</strong>) and security PIN (<strong>{registeredDriver.driverPin || '******'}</strong>) will be used to log into your driver dispatch portal.
@@ -183,25 +183,27 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             </div>
 
             <div className="pt-2 flex flex-col gap-2">
-              {onOpenDriverPortal && (
+              {onOpenDriverPortal ? (
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onOpenDriverPortal(registeredDriver.id);
                   }}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl transition-all cursor-pointer"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Preview Driver Portal &rarr;
+                  <span>Open Rider Portal</span>
+                  <span className="text-base">&rarr;</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-3 px-4 bg-gray-900 text-white text-xs font-bold uppercase tracking-wider rounded-2xl hover:bg-black transition-colors cursor-pointer"
+                >
+                  Done
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-2xl transition-colors cursor-pointer"
-              >
-                Done
-              </button>
             </div>
           </div>
         ) : (
