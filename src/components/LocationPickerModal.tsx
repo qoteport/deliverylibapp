@@ -13,8 +13,7 @@ interface LocationPickerModalProps {
 }
 
 const GOOGLE_MAPS_API_KEY =
-  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-  'AIzaSyBopYcwX6ywdAFbPlc0-dk3Gi1Hv7VqUPA';
+  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
 
 const MONROVIA_LANDMARKS = [
   { name: 'Sinkor (1st–24th St)', coords: { lat: 6.2907, lng: -10.7818 } },

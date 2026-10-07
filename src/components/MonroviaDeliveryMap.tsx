@@ -17,8 +17,7 @@ interface MonroviaDeliveryMapProps {
 }
 
 const GOOGLE_MAPS_API_KEY =
-  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-  'AIzaSyBopYcwX6ywdAFbPlc0-dk3Gi1Hv7VqUPA';
+  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
 
 export const MonroviaDeliveryMap: React.FC<MonroviaDeliveryMapProps> = ({
   driverLocation,
