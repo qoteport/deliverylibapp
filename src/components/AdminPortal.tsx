@@ -693,8 +693,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // Verify / Unverify Restaurant
   const handleToggleRestaurantVerification = async (restaurant: Restaurant) => {
-    const newVerified = !restaurant.isVerified;
+    const isCurrentlyVerified = restaurant.isVerified !== false && restaurant.verificationStatus !== 'pending';
+    const newVerified = !isCurrentlyVerified;
     const newStatus = newVerified ? 'verified' : 'pending';
+    const updated: Restaurant = {
+      ...restaurant,
+      isVerified: newVerified,
+      verificationStatus: newStatus,
+    };
+    if (selectedRestaurantForDetails && selectedRestaurantForDetails.id === restaurant.id) {
+      setSelectedRestaurantForDetails(updated);
+    }
     try {
       await updateDoc(doc(db, 'restaurants', restaurant.id), {
         isVerified: newVerified,
@@ -707,7 +716,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // Verify / Unverify Driver
   const handleToggleDriverVerification = async (driver: DeliveryDriver) => {
-    const newVerified = !driver.isVerified;
+    const isCurrentlyVerified = driver.isVerified !== false && driver.verificationStatus !== 'pending';
+    const newVerified = !isCurrentlyVerified;
     const newStatus = newVerified ? 'verified' : 'pending';
     const updated: DeliveryDriver = {
       ...driver,
@@ -716,6 +726,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       isOnline: newVerified ? driver.isOnline : false,
       status: newVerified ? driver.status : 'offline',
     };
+    if (selectedDriverForDetails && selectedDriverForDetails.id === driver.id) {
+      setSelectedDriverForDetails(updated);
+    }
     onUpdateDriver(updated);
     try {
       await setDoc(doc(db, 'drivers', driver.id), updated, { merge: true });
@@ -3853,7 +3866,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   onClick={() => handleToggleDriverVerification(selectedDriverForDetails)}
                   className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#048747] text-xs font-bold rounded-xl border border-emerald-200 cursor-pointer"
                 >
-                  {selectedDriverForDetails.isVerified ? 'Suspend Courier' : 'Approve Courier'}
+                  {selectedDriverForDetails.isVerified !== false && selectedDriverForDetails.verificationStatus !== 'pending' ? 'Suspend Courier' : 'Approve Courier'}
                 </button>
               </div>
 
@@ -3997,7 +4010,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   onClick={() => handleToggleRestaurantVerification(selectedRestaurantForDetails)}
                   className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#048747] text-xs font-bold rounded-xl border border-emerald-200 cursor-pointer"
                 >
-                  {selectedRestaurantForDetails.isVerified ? 'Suspend Kitchen' : 'Approve Kitchen'}
+                  {selectedRestaurantForDetails.isVerified !== false && selectedRestaurantForDetails.verificationStatus !== 'pending' ? 'Suspend Kitchen' : 'Approve Kitchen'}
                 </button>
               </div>
 
