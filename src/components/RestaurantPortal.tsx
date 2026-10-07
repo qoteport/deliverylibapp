@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award, LogOut, Printer, Copy, ExternalLink, ShoppingBag, Receipt } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award, LogOut, Printer, Copy, ExternalLink, ShoppingBag, Receipt, Calendar } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, MONROVIA_NEIGHBORHOODS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -157,6 +157,14 @@ Status: ${orderToCopy.status.toUpperCase()}
   const [staffPhoneError, setStaffPhoneError] = useState('');
   const [restPrepTime, setRestPrepTime] = useState((restaurant?.deliveryTimeMinutes ?? 25).toString());
   const [restIsOpen, setRestIsOpen] = useState(restaurant?.isOpen ?? true);
+  const [restOperatingDays, setRestOperatingDays] = useState<string[]>(
+    restaurant?.operatingDays && restaurant.operatingDays.length > 0
+      ? restaurant.operatingDays
+      : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  );
+  const [restIs24Hours, setRestIs24Hours] = useState<boolean>(restaurant?.is24Hours ?? false);
+  const [restOpeningTime, setRestOpeningTime] = useState<string>(restaurant?.openingTime || '08:00');
+  const [restClosingTime, setRestClosingTime] = useState<string>(restaurant?.closingTime || '22:00');
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
 
   useEffect(() => {
@@ -174,6 +182,14 @@ Status: ${orderToCopy.status.toUpperCase()}
       );
       setRestPrepTime((restaurant.deliveryTimeMinutes ?? 25).toString());
       setRestIsOpen(restaurant.isOpen ?? true);
+      setRestOperatingDays(
+        restaurant.operatingDays && restaurant.operatingDays.length > 0
+          ? restaurant.operatingDays
+          : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      );
+      setRestIs24Hours(restaurant.is24Hours ?? false);
+      setRestOpeningTime(restaurant.openingTime || '08:00');
+      setRestClosingTime(restaurant.closingTime || '22:00');
     }
   }, [restaurant]);
 
@@ -588,6 +604,10 @@ Status: ${orderToCopy.status.toUpperCase()}
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
+        operatingDays: restOperatingDays,
+        is24Hours: restIs24Hours,
+        openingTime: restIs24Hours ? '00:00' : restOpeningTime,
+        closingTime: restIs24Hours ? '23:59' : restClosingTime,
         location: finalLocation,
       };
 
@@ -604,6 +624,10 @@ Status: ${orderToCopy.status.toUpperCase()}
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
+        operatingDays: restOperatingDays,
+        is24Hours: restIs24Hours,
+        openingTime: restIs24Hours ? '00:00' : restOpeningTime,
+        closingTime: restIs24Hours ? '23:59' : restClosingTime,
         location: finalLocation,
       });
       setProfileSaveSuccess(true);
@@ -1726,6 +1750,114 @@ Status: ${orderToCopy.status.toUpperCase()}
                   <p className="text-[11px] text-emerald-800 leading-relaxed">
                     Customer delivery fees and courier dispatch are managed automatically by the platform based on distance. Registered riders fulfill all deliveries.
                   </p>
+                </div>
+
+                {/* Operating Days & Available Hours */}
+                <div className="space-y-3 pt-4 border-t border-gray-100 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-extrabold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                      <span>Operating Days &amp; Schedule</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRestIs24Hours(!restIs24Hours)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
+                        restIs24Hours
+                          ? 'bg-gradient-to-r from-emerald-500 to-[#06C167] text-white shadow-xs'
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>{restIs24Hours ? '✓ Open 24 Hours' : 'Set 24 Hours'}</span>
+                    </button>
+                  </div>
+
+                  {/* Available Days */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-gray-700 font-extrabold">Operating Days</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setRestOperatingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}
+                          className="text-[10px] font-bold text-[#06C167] hover:underline cursor-pointer"
+                        >
+                          Everyday (7d)
+                        </button>
+                        <span className="text-gray-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setRestOperatingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])}
+                          className="text-[10px] font-bold text-gray-500 hover:text-black cursor-pointer"
+                        >
+                          Weekdays
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                        const isSelected = restOperatingDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                if (restOperatingDays.length === 1) return; // keep at least 1 day
+                                setRestOperatingDays((prev) => prev.filter((d) => d !== day));
+                              } else {
+                                setRestOperatingDays((prev) => [...prev, day]);
+                              }
+                            }}
+                            className={`py-2 rounded-xl font-mono text-xs font-black transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-[#06C167] text-white shadow-xs'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Opening & Closing Hours */}
+                  {restIs24Hours ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs font-bold text-emerald-900">
+                      <Clock className="w-4 h-4 text-[#06C167] shrink-0" />
+                      <span>Open 24 Hours / 7 Days a Week (Always accepting orders)</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-gray-700 font-extrabold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-orange-500" />
+                          <span>Opening Time</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={restOpeningTime}
+                          onChange={(e) => setRestOpeningTime(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-gray-700 font-extrabold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-orange-500" />
+                          <span>Closing Time</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={restClosingTime}
+                          onChange={(e) => setRestClosingTime(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2 } from 'lucide-react';
+import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2, Calendar, Sparkles } from 'lucide-react';
 import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -40,6 +40,10 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [deliveryTimeMinutes, setDeliveryTimeMinutes] = useState(25);
   const [minOrderUsd, setMinOrderUsd] = useState(5.00);
   const [tagline, setTagline] = useState('');
+  const [operatingDays, setOperatingDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  const [is24Hours, setIs24Hours] = useState(false);
+  const [openingTime, setOpeningTime] = useState('08:00');
+  const [closingTime, setClosingTime] = useState('22:00');
 
   // Auto-detect Liberian MoMo provider from phone number
   const detectMomoNetwork = (phoneStr: any): 'mtn' | 'orange' | null => {
@@ -150,6 +154,10 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       verificationStatus,
       allowedPhoneNumbers: parsedAllowedPhones,
       tagline: tagline.trim() || `Authentic ${cuisine} in ${neighborhood}`,
+      operatingDays,
+      is24Hours,
+      openingTime: is24Hours ? '00:00' : openingTime,
+      closingTime: is24Hours ? '23:59' : closingTime,
       location: finalLocationCoords,
       createdAt: new Date().toISOString(),
     };
@@ -178,6 +186,10 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         verificationStatus: newRestaurant.verificationStatus,
         allowedPhoneNumbers: newRestaurant.allowedPhoneNumbers,
         tagline: newRestaurant.tagline,
+        operatingDays: newRestaurant.operatingDays,
+        is24Hours: newRestaurant.is24Hours,
+        openingTime: newRestaurant.openingTime,
+        closingTime: newRestaurant.closingTime,
         location: newRestaurant.location,
         createdAt: newRestaurant.createdAt,
       });
@@ -637,6 +649,115 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                   />
                 </div>
               </div>
+            </div>
+
+            {/* 4. Operating Days & Hours (24hrs / Custom Schedule) */}
+            <div className="space-y-3 pt-4 border-t border-gray-100 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-extrabold text-[#111827] uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                  <span>4. Operating Days &amp; Hours</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIs24Hours(!is24Hours)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
+                    is24Hours
+                      ? 'bg-gradient-to-r from-emerald-500 to-[#06C167] text-white shadow-xs'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>{is24Hours ? '✓ Open 24 Hours' : 'Set 24 Hours'}</span>
+                </button>
+              </div>
+
+              {/* Operating Days Selector */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-gray-700 font-extrabold">Available Days</label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setOperatingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}
+                      className="text-[10px] font-bold text-[#06C167] hover:underline cursor-pointer"
+                    >
+                      Everyday (7d)
+                    </button>
+                    <span className="text-gray-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setOperatingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])}
+                      className="text-[10px] font-bold text-gray-500 hover:text-black cursor-pointer"
+                    >
+                      Weekdays
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1.5">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                    const isSelected = operatingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            if (operatingDays.length === 1) return; // keep at least 1 day
+                            setOperatingDays((prev) => prev.filter((d) => d !== day));
+                          } else {
+                            setOperatingDays((prev) => [...prev, day]);
+                          }
+                        }}
+                        className={`py-2 rounded-xl font-mono text-xs font-black transition-all cursor-pointer text-center ${
+                          isSelected
+                            ? 'bg-[#06C167] text-white shadow-xs'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Opening & Closing Hours */}
+              {is24Hours ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs font-bold text-emerald-900">
+                  <Clock className="w-4 h-4 text-[#06C167] shrink-0" />
+                  <span>Open 24 Hours / 7 Days a Week (Always accepting orders)</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-gray-700 font-extrabold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-orange-500" />
+                      <span>Opening Time</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={openingTime}
+                      onChange={(e) => setOpeningTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-700 font-extrabold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-indigo-500" />
+                      <span>Closing Time</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={closingTime}
+                      onChange={(e) => setClosingTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Verification Notice */}

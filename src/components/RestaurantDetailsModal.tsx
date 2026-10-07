@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle, Bike } from 'lucide-react';
+import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle, Bike, Calendar } from 'lucide-react';
 import { Restaurant, MenuItem, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { formatDisplayPhoneNumber } from '../utils/phoneUtils';
@@ -40,6 +40,18 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
       return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
     }
     return `$${usd.toFixed(2)}`;
+  };
+
+  const formatTimeStr = (t?: string) => {
+    if (!t) return '';
+    try {
+      const [h, m] = t.split(':').map(Number);
+      const period = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${m < 10 ? '0' + m : m} ${period}`;
+    } catch {
+      return t;
+    }
   };
 
   const restaurantCoords =
@@ -142,6 +154,41 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
                 </div>
                 <div className="text-[10px] text-gray-500 font-medium mt-0.5">Live Courier Dispatch</div>
               </div>
+            </div>
+          </div>
+
+          {/* Operating Schedule & 24hr Availability */}
+          <div className="p-4 bg-orange-50/60 rounded-2xl border border-orange-200/80 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-orange-950 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                <span>Operating Schedule</span>
+              </span>
+              {restaurant.is24Hours ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                  <Sparkles className="w-3 h-3" />
+                  <span>24 Hours Open</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-mono font-extrabold text-gray-700 bg-white/90 px-2 py-0.5 rounded-lg border border-orange-200">
+                  {formatTimeStr(restaurant.openingTime || '08:00')} - {formatTimeStr(restaurant.closingTime || '22:00')}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 flex-wrap pt-0.5">
+              <span className="text-gray-500 font-medium text-[11px]">Available Days:</span>
+              {(restaurant.operatingDays && restaurant.operatingDays.length > 0 
+                ? restaurant.operatingDays 
+                : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+              ).map((day) => (
+                <span
+                  key={day}
+                  className="px-2 py-0.5 rounded-md bg-white border border-orange-200/90 text-orange-900 font-mono text-[10px] font-black"
+                >
+                  {day}
+                </span>
+              ))}
             </div>
           </div>
 

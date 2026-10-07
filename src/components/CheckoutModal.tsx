@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Lock, Bike, ShoppingBag, UtensilsCrossed, Phone, DollarSign, ShieldCheck, User as UserIcon, Copy, MapPin, Navigation } from 'lucide-react';
+import { X, Check, Lock, Bike, ShoppingBag, UtensilsCrossed, Phone, DollarSign, ShieldCheck, User as UserIcon, Copy, MapPin, Navigation, WifiOff, MessageSquare, Send, Smartphone } from 'lucide-react';
 import { CartItem, DiningMode, Order, Currency, PaymentMethod, MONROVIA_NEIGHBORHOODS, USD_TO_LRD_RATE, AppUser, Restaurant } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -82,6 +82,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo-mtn');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -187,6 +199,102 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
     }
     return `$${usd.toFixed(2)}`;
+  };
+
+  const handleSendOrderViaSms = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setIsSubmitting(true);
+
+    const now = new Date();
+    const nowTimestamp = now.getTime();
+    const prepMinutes = diningMode === 'pickup' ? 15 : diningMode === 'dine-in' ? 12 : 25;
+    const eta = new Date(nowTimestamp + prepMinutes * 60000);
+
+    const chosenDeliveryArea = destinationArea.trim() || 'Monrovia';
+    let fullAddress = address.trim();
+    if (gpsCoords) {
+      fullAddress = fullAddress ? `${fullAddress} (GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)})` : `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
+    }
+
+    const resolvedRestaurantId = primaryRestaurantId || targetRestaurant?.id;
+    const resolvedRestaurantName = targetRestaurant?.name || items[0]?.menuItem?.provenance || 'Monrovia Kitchen';
+    const customerNameStr = name.trim() || (currentUser?.name || 'Monrovia Customer');
+    const customerPhoneStr = normalizeLiberianPhoneNumber(phone.trim() || currentUser?.phone || '0886 000 000');
+
+    const itemsFormatted = items.map((i, idx) => {
+      const dishName = i.menuItem?.name || 'Dish';
+      const qty = i.quantity || 1;
+      const spice = i.selectedSpiceLevel ? ` [${i.selectedSpiceLevel}]` : '';
+      const addons = i.selectedAddons && i.selectedAddons.length > 0
+        ? ` (+${i.selectedAddons.map(a => `${a.name}`).join(', ')})`
+        : '';
+      const priceStr = `$${(i.itemTotal || (i.menuItem.price * qty)).toFixed(2)}`;
+      return `${idx + 1}. ${qty}x ${dishName}${spice}${addons} - ${priceStr}`;
+    }).join('\n');
+
+    const smsBody = `*AURA FOOD ORDER*
+Order ID: #${orderId}
+👤 Customer: ${customerNameStr} (${customerPhoneStr})
+🍽️ Kitchen: ${resolvedRestaurantName}
+🚲 Mode: ${diningMode.toUpperCase()}${diningMode === 'dine-in' ? ` (${tableNumber})` : ''}
+📍 Location: ${chosenDeliveryArea}${fullAddress ? ` - ${fullAddress}` : ''}
+
+ITEMS:
+${itemsFormatted}
+
+Subtotal: $${cartTotals.subtotal.toFixed(2)}
+Delivery Fee: $${calculatedDeliveryFee.toFixed(2)}
+💰 TOTAL: $${computedTotal.toFixed(2)} (~L$${Math.round(computedTotal * USD_TO_LRD_RATE).toLocaleString()} LRD)
+💳 Payment: ${paymentMethod.toUpperCase()}
+[Sent via Offline SMS Order]`;
+
+    const platformPhoneNumber = '+2310770400338';
+    const smsUri = `sms:${platformPhoneNumber}?&body=${encodeURIComponent(smsBody)}`;
+
+    const newOrder: Order = {
+      id: orderId,
+      createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAtTimestamp: nowTimestamp,
+      prepDurationMinutes: prepMinutes,
+      status: 'received',
+      items,
+      diningMode,
+      restaurantId: resolvedRestaurantId,
+      restaurantName: resolvedRestaurantName,
+      deliveryArea: chosenDeliveryArea,
+      deliveryAddress: diningMode === 'delivery' ? (fullAddress ? `${fullAddress}, ${chosenDeliveryArea}` : chosenDeliveryArea) : undefined,
+      tableNumber: diningMode === 'dine-in' ? tableNumber : undefined,
+      customerName: customerNameStr,
+      customerPhone: customerPhoneStr,
+      customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
+      subtotal: cartTotals.subtotal,
+      discount: cartTotals.discount,
+      serviceFee: 0,
+      deliveryFee: calculatedDeliveryFee,
+      tax: cartTotals.tax,
+      tip: cartTotals.tip,
+      total: computedTotal,
+      currency,
+      estimatedDeliveryTime: eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      paymentMethod,
+      paymentNumber: customerPhoneStr,
+      isOfflineOrder: true,
+    };
+
+    // Attempt background sync if possible
+    saveOrderToApi(newOrder).catch(() => {});
+    try {
+      setDoc(doc(db, 'orders', newOrder.id), sanitizeForFirestore(newOrder)).catch(() => {});
+    } catch {}
+
+    // Open native SMS messaging client
+    window.location.href = smsUri;
+
+    // Complete order in local state & close modal
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onOrderPlaced(newOrder);
+    }, 600);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -378,8 +486,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 pb-[calc(1.75rem+var(--sab))] overflow-y-auto space-y-4">
+        <form onSubmit={isOffline ? handleSendOrderViaSms : handleSubmit} className="p-5 pb-[calc(1.75rem+var(--sab))] overflow-y-auto space-y-4">
           
+          {/* Offline Mode Banner Alert */}
+          {isOffline && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950 animate-in fade-in">
+              <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                <WifiOff className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold text-amber-900 flex items-center gap-1.5">
+                  <span>Offline Mode Active</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-black uppercase">SMS Checkout</span>
+                </div>
+                <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                  No internet connection required. Tap <strong>Send Order via SMS</strong> to dispatch your order directly to our Monrovia desk via +2310770400338.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Customer Details */}
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between">
@@ -618,21 +744,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           </div>
 
-          {/* Place Order CTA */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
-          >
-            {isSubmitting ? (
-              <span>Transmitting Order to Kitchen...</span>
+          {/* Place Order & Offline SMS Order CTAs */}
+          <div className="space-y-2.5 pt-1">
+            {isOffline ? (
+              <button
+                type="button"
+                onClick={handleSendOrderViaSms}
+                disabled={isSubmitting}
+                className="w-full py-4 px-5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:opacity-95 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 stroke-[2.5]" />
+                <span>Send Order via SMS (+2310770400338)</span>
+              </button>
             ) : (
-              <span className="flex items-center justify-center gap-2">
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Place Order • {formatPrice(computedTotal)}</span>
-              </span>
+              <>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <span>Transmitting Order to Kitchen...</span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Place Order • {formatPrice(computedTotal)}</span>
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendOrderViaSms}
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-gray-500" />
+                  <span>Send Order via SMS (Offline Mode: +2310770400338)</span>
+                </button>
+              </>
             )}
-          </button>
+          </div>
 
         </form>
 

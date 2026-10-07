@@ -144,6 +144,11 @@ export interface Restaurant {
   ownerEmail?: string;
   location?: LocationCoords;
   createdAt?: string;
+  // Operating Schedule
+  operatingDays?: string[];
+  is24Hours?: boolean;
+  openingTime?: string;
+  closingTime?: string;
 }
 
 export interface Order {
@@ -194,4 +199,6 @@ export interface Order {
   // Cancellation Fields
   cancelledBy?: 'customer' | 'restaurant' | 'admin';
   cancellationReason?: string;
+  // Offline Support Field
+  isOfflineOrder?: boolean;
 }
