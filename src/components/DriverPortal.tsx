@@ -10,7 +10,6 @@ import {
   Power, 
   ShieldAlert, 
   Sparkles, 
-  Sparkles, 
   ShieldCheck, 
   ArrowLeft, 
   Wallet, 
@@ -32,6 +31,59 @@ import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { saveOrderToApi, saveDriverToApi, updateOrderStatusApi, updateDriverApi } from '../utils/apiSync';
+
+const getKitchenStatusInfo = (status: Order['status']) => {
+  switch (status) {
+    case 'received':
+      return {
+        label: 'Order Confirmed',
+        subtext: 'Kitchen confirmed the ticket',
+        badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+        dotColor: 'bg-blue-500',
+        icon: Clock,
+      };
+    case 'preparing':
+      return {
+        label: 'Cooking in Kitchen',
+        subtext: 'Kitchen is preparing the food',
+        badgeColor: 'bg-amber-50 text-amber-800 border-amber-300',
+        dotColor: 'bg-amber-500 animate-pulse',
+        icon: Flame,
+      };
+    case 'plating':
+      return {
+        label: 'Ready for Pickup',
+        subtext: 'Food is packed and ready for pickup!',
+        badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400/30',
+        dotColor: 'bg-emerald-500 animate-ping',
+        icon: ChefHat,
+      };
+    case 'en-route':
+      return {
+        label: 'Picked Up / In Transit',
+        subtext: 'Food handed to rider and on the way',
+        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+        dotColor: 'bg-purple-500',
+        icon: Bike,
+      };
+    case 'completed':
+      return {
+        label: 'Delivered',
+        subtext: 'Order completed and handed to customer',
+        badgeColor: 'bg-gray-100 text-gray-700 border-gray-200',
+        dotColor: 'bg-gray-400',
+        icon: CheckCircle2,
+      };
+    default:
+      return {
+        label: 'Processing',
+        subtext: 'Kitchen is handling the order',
+        badgeColor: 'bg-gray-50 text-gray-700 border-gray-200',
+        dotColor: 'bg-gray-400',
+        icon: Clock,
+      };
+  }
+};
 
 interface DriverPortalProps {
   driver: DeliveryDriver;
@@ -202,21 +254,67 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     onDriverRejectOrder(order.id, driver.id);
   };
 
-  const handleRiderSetOrderStatus = async (
+  const handleRiderSetStage = async (
     order: Order,
-    targetStatus: Order['status']
+    stage: 'accepted' | 'bringing_it' | 'delivered'
   ) => {
-    let delegationStatus = 'heading_to_restaurant';
-    if (targetStatus === 'plating') delegationStatus = 'at_restaurant';
-    if (targetStatus === 'en-route') delegationStatus = 'out_for_delivery';
-    if (targetStatus === 'completed') delegationStatus = 'delivered';
+    if (stage === 'accepted') {
+      const targetStatus: Order['status'] = (order.status === 'plating' || order.status === 'preparing') ? order.status : 'preparing';
+      const delegationStatus = 'heading_to_restaurant';
 
-    onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
-      delegationStatus,
-      driverLocation: driver.currentLocation,
-    });
+      onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
+        delegationStatus,
+        driverLocation: driver.currentLocation,
+      });
 
-    if (targetStatus === 'completed') {
+      updateOrderStatusApi(order.id, targetStatus, undefined, undefined, { delegationStatus }).catch(() => {});
+      try {
+        await updateDoc(doc(db, 'orders', order.id), {
+          delegationStatus,
+          status: targetStatus,
+        });
+      } catch (e) {
+        console.warn('Firestore rider stage notice:', e);
+      }
+
+      sendBrowserNotification({
+        title: `🛵 Order #${order.id}: Accepted`,
+        body: `Heading to ${order.restaurantName || 'the kitchen'} for pickup.`,
+        tag: `driver-status-${order.id}`,
+      });
+    } else if (stage === 'bringing_it') {
+      const targetStatus: Order['status'] = 'en-route';
+      const delegationStatus = 'out_for_delivery';
+
+      onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
+        delegationStatus,
+        driverLocation: driver.currentLocation,
+      });
+
+      updateOrderStatusApi(order.id, targetStatus, undefined, undefined, { delegationStatus }).catch(() => {});
+      try {
+        await updateDoc(doc(db, 'orders', order.id), {
+          delegationStatus,
+          status: targetStatus,
+        });
+      } catch (e) {
+        console.warn('Firestore rider stage notice:', e);
+      }
+
+      sendBrowserNotification({
+        title: `🛵 Order #${order.id}: Bringing It!`,
+        body: `Food picked up! On the way to ${order.customerName || 'customer'}.`,
+        tag: `driver-status-${order.id}`,
+      });
+    } else if (stage === 'delivered') {
+      const targetStatus: Order['status'] = 'completed';
+      const delegationStatus = 'delivered';
+
+      onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
+        delegationStatus,
+        driverLocation: driver.currentLocation,
+      });
+
       const updatedDriver: DeliveryDriver = {
         ...driver,
         status: 'available',
@@ -249,22 +347,6 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         title: `🎉 Delivery #${order.id} Completed!`,
         body: `Earned +$${(order.deliveryFee || 2.5).toFixed(2)} added to your MoMo balance.`,
         tag: `delivered-${order.id}`,
-      });
-    } else {
-      updateOrderStatusApi(order.id, targetStatus, undefined, undefined, { delegationStatus }).catch(() => {});
-      try {
-        await updateDoc(doc(db, 'orders', order.id), {
-          delegationStatus,
-          status: targetStatus,
-        });
-      } catch (e) {
-        console.warn('Firestore stage update notice:', e);
-      }
-
-      sendBrowserNotification({
-        title: `🛵 Order #${order.id} Updated: ${targetStatus}`,
-        body: `Delivery stage set to ${targetStatus}.`,
-        tag: `driver-status-${order.id}`,
       });
     }
   };
@@ -481,66 +563,140 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
             </div>
 
-            {/* Interactive Rider Order Timeline Stepper (1, 2, 3, 4, 5) */}
-            <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
-                  Delivery Stage Timeline (Tap any step to update)
-                </span>
-                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  Stage: {activeDelivery.status === 'plating' ? 'Ready for Pickup' : activeDelivery.status}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-5 gap-1.5">
-                {[
-                  { key: 'received', num: 1, label: 'Accepted', icon: Clock },
-                  { key: 'preparing', num: 2, label: 'Cooking', icon: Flame },
-                  { key: 'plating', num: 3, label: 'Ready', icon: ChefHat },
-                  { key: 'en-route', num: 4, label: 'En Route', icon: Bike },
-                  { key: 'completed', num: 5, label: 'Delivered', icon: CheckCircle2 },
-                ].map((step) => {
-                  const StepIcon = step.icon;
-                  const statusOrderList = ['received', 'preparing', 'plating', 'en-route', 'completed'];
-                  const currentIdx = statusOrderList.indexOf(activeDelivery.status);
-                  const stepIdx = statusOrderList.indexOf(step.key);
-                  const isCompleted = stepIdx < currentIdx;
-                  const isCurrent = stepIdx === currentIdx;
-
-                  return (
-                    <button
-                      key={step.key}
-                      type="button"
-                      onClick={() => handleRiderSetOrderStatus(activeDelivery, step.key as Order['status'])}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
-                        isCurrent
-                          ? 'bg-[#06C167] text-white border-[#06C167] shadow-sm ring-2 ring-[#06C167]/30'
-                          : isCompleted
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                      }`}
-                      title={`Tap to set order stage to: ${step.label}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
-                          isCurrent
-                            ? 'bg-white text-[#06C167]'
-                            : isCompleted
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {isCompleted ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : step.num}
-                        </span>
-                        <StepIcon className="w-3 h-3 shrink-0 hidden sm:inline-block" />
+            {/* Kitchen Live Status Display */}
+            {(() => {
+              const kitchenInfo = getKitchenStatusInfo(activeDelivery.status);
+              const KitchenIcon = kitchenInfo.icon;
+              return (
+                <div className="p-3.5 sm:p-4 bg-gradient-to-r from-orange-50/80 via-amber-50/60 to-white rounded-2xl border border-orange-200/80 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs shrink-0">
+                      <KitchenIcon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-orange-800/80 flex items-center gap-1.5">
+                        <span>Kitchen Status</span>
+                        <span className="text-gray-300">•</span>
+                        <span className="truncate max-w-[150px] sm:max-w-none">{activeDelivery.restaurantName || 'Kitchen'}</span>
                       </div>
-                      <span className="text-[10px] font-extrabold truncate max-w-full leading-tight">
-                        {step.label}
-                      </span>
+                      <div className="text-xs sm:text-sm font-black text-gray-900 truncate">
+                        {kitchenInfo.label}
+                      </div>
+                      <div className="text-[10px] text-gray-500 hidden sm:block truncate">
+                        {kitchenInfo.subtext}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold border flex items-center gap-1.5 shrink-0 ${kitchenInfo.badgeColor}`}>
+                    <span className={`w-2 h-2 rounded-full ${kitchenInfo.dotColor}`} />
+                    <span>{kitchenInfo.label}</span>
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Rider 3-State Stepper & Action Controls (Accepted -> Bringing It -> Delivered) */}
+            {(() => {
+              const currentRiderStep = (activeDelivery.status === 'completed' || activeDelivery.delegationStatus === 'delivered')
+                ? 3
+                : (activeDelivery.status === 'en-route' || activeDelivery.delegationStatus === 'out_for_delivery')
+                ? 2
+                : 1;
+
+              return (
+                <div className="p-3.5 sm:p-4 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500">
+                      Rider Delivery Status (3 Stages)
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Stage {currentRiderStep} of 3: {currentRiderStep === 1 ? 'Accepted' : currentRiderStep === 2 ? 'Bringing It' : 'Delivered'}
+                    </span>
+                  </div>
+
+                  {/* 3 State Pill Buttons */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { key: 'accepted' as const, num: 1, label: 'Accepted', sublabel: 'Heading to Kitchen', icon: CheckCircle2 },
+                      { key: 'bringing_it' as const, num: 2, label: 'Bringing It', sublabel: 'En Route to Customer', icon: Bike },
+                      { key: 'delivered' as const, num: 3, label: 'Delivered', sublabel: 'Order Handed Over', icon: Award },
+                    ].map((step) => {
+                      const StepIcon = step.icon;
+                      const isCurrent = currentRiderStep === step.num;
+                      const isCompleted = currentRiderStep > step.num;
+
+                      return (
+                        <button
+                          key={step.key}
+                          type="button"
+                          onClick={() => handleRiderSetStage(activeDelivery, step.key)}
+                          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 active:scale-95 ${
+                            isCurrent
+                              ? 'bg-[#06C167] text-white border-[#06C167] shadow-md shadow-[#06C167]/20 ring-2 ring-[#06C167]/30'
+                              : isCompleted
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                          }`}
+                          title={`Switch status to: ${step.label}`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
+                              isCurrent
+                                ? 'bg-white text-[#06C167]'
+                                : isCompleted
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {isCompleted ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : step.num}
+                            </span>
+                            <StepIcon className="w-3.5 h-3.5 shrink-0" />
+                          </div>
+                          <span className="text-xs font-black truncate max-w-full leading-tight">
+                            {step.label}
+                          </span>
+                          <span className={`text-[9px] truncate max-w-full hidden sm:block ${
+                            isCurrent ? 'text-white/80' : 'text-gray-400'
+                          }`}>
+                            {step.sublabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Contextual Action Button to Advance to Next State */}
+                  {currentRiderStep === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRiderSetStage(activeDelivery, 'bringing_it')}
+                      className="w-full py-3.5 px-4 bg-[#06C167] hover:bg-[#048747] text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-[#06C167]/20 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+                    >
+                      <Bike className="w-4 h-4 animate-pulse" />
+                      <span>Picked Up from Kitchen · Start Trip & Bringing It &rarr;</span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
+                  )}
+
+                  {currentRiderStep === 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRiderSetStage(activeDelivery, 'delivered')}
+                      className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Handed to Customer · Confirm Delivered & Complete &rarr;</span>
+                    </button>
+                  )}
+
+                  {currentRiderStep === 3 && (
+                    <div className="w-full py-2.5 px-4 bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-xs rounded-2xl text-center flex items-center justify-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Order Completed & MoMo Earnings Credited!</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Interactive Google Map with Route Pin */}
             <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
