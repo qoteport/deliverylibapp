@@ -70,23 +70,29 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     if (!driver?.id) return;
     let previousVerified = isDriverVerified;
 
-    const unsub = onSnapshot(doc(db, 'drivers', driver.id), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as DeliveryDriver;
-        const nowVerified = data.isVerified !== false && data.verificationStatus !== 'pending';
-        if (!previousVerified && nowVerified) {
-          setJustVerifiedNotice(true);
-          playOrderAlertSound();
-          sendBrowserNotification(
-            'Account Verified! 🚀',
-            'Your courier account has been verified by Monrovia Admin. You can now Go Online to receive orders!',
-            { tag: `driver-verified-${driver.id}` }
-          );
+    const unsub = onSnapshot(
+      doc(db, 'drivers', driver.id),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as DeliveryDriver;
+          const nowVerified = data.isVerified !== false && data.verificationStatus !== 'pending';
+          if (!previousVerified && nowVerified) {
+            setJustVerifiedNotice(true);
+            playOrderAlertSound();
+            sendBrowserNotification(
+              'Account Verified! 🚀',
+              'Your courier account has been verified by Monrovia Admin. You can now Go Online to receive orders!',
+              { tag: `driver-verified-${driver.id}` }
+            );
+          }
+          previousVerified = nowVerified;
+          onUpdateDriver(data);
         }
-        previousVerified = nowVerified;
-        onUpdateDriver(data);
+      },
+      (error) => {
+        console.warn('Driver realtime listener notice:', error?.message || error);
       }
-    });
+    );
 
     return () => unsub();
   }, [driver?.id]);

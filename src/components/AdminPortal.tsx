@@ -398,13 +398,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Listen to Firestore users collection in realtime
   useEffect(() => {
     try {
-      const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-        const list: AppUser[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as AppUser);
-        });
-        setDbUsers(list);
-      });
+      const unsub = onSnapshot(
+        collection(db, 'users'),
+        (snapshot) => {
+          const list: AppUser[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push(docSnap.data() as AppUser);
+          });
+          setDbUsers(list);
+        },
+        (error) => {
+          console.warn('Admin users listener notice:', error?.message || error);
+        }
+      );
       return () => unsub();
     } catch (e) {
       console.warn('Firestore users listen error:', e);

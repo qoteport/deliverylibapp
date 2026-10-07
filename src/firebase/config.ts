@@ -10,6 +10,7 @@ export const db = initializeFirestore(
   app,
   {
     experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
   },
   firebaseConfig.firestoreDatabaseId
 );
