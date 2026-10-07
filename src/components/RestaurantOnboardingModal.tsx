@@ -270,30 +270,32 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                 ))}
               </div>
               <p className="text-[10px] text-gray-500 pt-1">
-                Staff can log into the Kitchen Orders Display by entering any of the authorized phone numbers above.
+                Staff can log into the Kitchen Display by entering any of the authorized phone numbers above.
               </p>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
-              {onOpenKitchenPortal && (
+            <div className="pt-2 flex items-center justify-center">
+              {onOpenKitchenPortal ? (
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onOpenKitchenPortal(createdRestaurant.id);
                   }}
-                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl transition-all cursor-pointer"
+                  className="w-full py-4 px-6 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#FF4B26]/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Open Kitchen Orders Display &rarr;
+                  <span>Open Kitchen</span>
+                  <span className="text-base">&rarr;</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-4 px-6 bg-gray-900 text-white text-xs font-bold uppercase tracking-wider rounded-2xl hover:bg-black transition-colors cursor-pointer"
+                >
+                  Done
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full sm:w-auto px-6 py-3 bg-gray-900 text-white text-xs font-bold uppercase tracking-wider rounded-2xl hover:bg-black transition-colors cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
         ) : (
