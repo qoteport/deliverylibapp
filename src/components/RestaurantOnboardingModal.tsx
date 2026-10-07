@@ -217,7 +217,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       onClick={onClose}
     >
       <div 
-        className="relative bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-full sm:h-full animate-modal-sheet sm:animate-drawer-right"
+        className="relative bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-full sm:h-full animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0 cursor-pointer hover:bg-gray-300 transition-colors" onClick={onClose} title="Swipe down or tap to minimize" />

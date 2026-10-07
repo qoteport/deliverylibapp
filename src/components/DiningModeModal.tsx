@@ -50,7 +50,7 @@ export const DiningModeModal: React.FC<DiningModeModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade" onClick={onClose}>
       <div 
-        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl p-5 sm:p-6 pb-[calc(1.5rem+var(--sab))] sm:pb-6 space-y-4 max-h-[92vh] sm:max-h-full h-auto sm:h-full overflow-y-auto animate-modal-sheet sm:animate-drawer-right"
+        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl p-5 sm:p-6 pb-[calc(1.5rem+var(--sab))] sm:pb-6 space-y-4 max-h-[92vh] sm:max-h-full h-auto sm:h-full overflow-y-auto animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
         <div 

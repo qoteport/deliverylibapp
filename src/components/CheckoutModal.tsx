@@ -318,7 +318,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade" onClick={onClose}>
       <div 
-        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none sm:rounded-l-3xl border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right touch-pan-y"
+        className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right touch-pan-y"
         onClick={(e) => e.stopPropagation()}
         style={{
           transform: sheetDragY > 0 ? `translateY(${sheetDragY}px)` : undefined,
