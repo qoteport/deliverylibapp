@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle, Wallet, DollarSign, ShieldCheck, Navigation } from 'lucide-react';
 import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant, PaymentMethod } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
+import { calculateDistanceKm } from '../utils/pricingEngine';
 
 interface OrderTrackerModalProps {
   isOpen?: boolean;
@@ -42,7 +43,34 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const isCancelled = order.status === 'cancelled';
   const isConfirmed = order.status !== 'received' && !isCancelled;
   const isCompleted = order.status === 'completed';
+  const isDeliveryMode = order.diningMode !== 'pickup' && order.diningMode !== 'dine-in';
   const prepMinutes = order.prepDurationMinutes || (order.diningMode === 'pickup' ? 15 : order.diningMode === 'dine-in' ? 12 : 25);
+
+  // Dynamic Restaurant & Location Resolution
+  const targetRestaurant = restaurants?.find(
+    (r) => r.id === order.restaurantId || r.name.toLowerCase() === order.restaurantName?.toLowerCase()
+  ) || (order.items?.[0]?.menuItem?.restaurantId ? restaurants?.find(r => r.id === order.items[0].menuItem.restaurantId) : undefined);
+
+  const restaurantName = order.restaurantName || targetRestaurant?.name || order.items?.[0]?.menuItem?.provenance || 'Monrovia Kitchen';
+  const restaurantLocation = targetRestaurant?.address || targetRestaurant?.neighborhood || 'Monrovia, LR';
+  const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '+231 886 554 123';
+  const restaurantNeighborhood = targetRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
+  const restaurantCoords = targetRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restaurantNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+
+  const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
+
+  // Calculate Transit ETA in minutes based on distance between restaurant and customer (defaults to 15 mins if data not provided)
+  const calculateTransitMinutes = () => {
+    if (restaurantCoords && customerCoords) {
+      const distKm = calculateDistanceKm(restaurantCoords, customerCoords);
+      if (distKm && distKm > 0.1) {
+        return Math.max(5, Math.round((distKm / 20) * 60));
+      }
+    }
+    return 15;
+  };
+
+  const transitMinutes = calculateTransitMinutes();
 
   const handleCancelOrder = async () => {
     setIsCancelling(true);
@@ -54,6 +82,15 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const calculateSecondsLeft = () => {
     if (isCompleted || isCancelled) return 0;
     if (!isConfirmed) return prepMinutes * 60;
+
+    // When order is en route with courier, use transit ETA based on distance or 15 mins default
+    if (order.status === 'en-route' || order.delegationStatus === 'out_for_delivery') {
+      const transitStart = order.enRouteAtTimestamp || order.readyAtTimestamp || order.confirmedAtTimestamp || (order.createdAtTimestamp ? order.createdAtTimestamp + prepMinutes * 60000 : Date.now());
+      const targetArrival = order.targetEtaTimestamp || (transitStart + transitMinutes * 60000);
+      return Math.max(0, Math.floor((targetArrival - Date.now()) / 1000));
+    }
+
+    // When cooking / preparing in kitchen:
     const targetTimestamp = order.targetEtaTimestamp || (
       order.confirmedAtTimestamp 
         ? order.confirmedAtTimestamp + prepMinutes * 60000
@@ -82,7 +119,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
       setSecondsRemaining(calculateSecondsLeft());
     }, 1000);
     return () => clearInterval(timer);
-  }, [order.status, order.targetEtaTimestamp, order.confirmedAtTimestamp, order.createdAtTimestamp, isConfirmed, isCompleted]);
+  }, [order.status, order.targetEtaTimestamp, order.enRouteAtTimestamp, order.confirmedAtTimestamp, order.createdAtTimestamp, isConfirmed, isCompleted, transitMinutes]);
 
   const formatCountdown = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -116,19 +153,6 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
 
   const statusOrder: Order['status'][] = ['received', 'preparing', 'plating', 'en-route', 'completed'];
   const currentIndex = statusOrder.indexOf(order.status);
-
-  // Dynamic Restaurant Resolution
-  const targetRestaurant = restaurants?.find(
-    (r) => r.id === order.restaurantId || r.name.toLowerCase() === order.restaurantName?.toLowerCase()
-  ) || (order.items?.[0]?.menuItem?.restaurantId ? restaurants?.find(r => r.id === order.items[0].menuItem.restaurantId) : undefined);
-
-  const restaurantName = order.restaurantName || targetRestaurant?.name || order.items?.[0]?.menuItem?.provenance || 'Monrovia Kitchen';
-  const restaurantLocation = targetRestaurant?.address || targetRestaurant?.neighborhood || 'Monrovia, LR';
-  const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '+231 886 554 123';
-  const restaurantNeighborhood = targetRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
-  const restaurantCoords = targetRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restaurantNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
-
-  const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
 
   const [sheetDragY, setSheetDragY] = useState<number>(0);
   const [isDraggingSheet, setIsDraggingSheet] = useState<boolean>(false);
@@ -257,6 +281,11 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                       <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
                       <span>Awaiting Kitchen Confirmation</span>
                     </span>
+                  ) : order.status === 'en-route' ? (
+                    <span className="flex items-center gap-1.5">
+                      <Bike className="w-3.5 h-3.5 animate-bounce" />
+                      <span>Courier Approaching (~{transitMinutes} min transit)</span>
+                    </span>
                   ) : (
                     <span>Estimated Delivery Countdown</span>
                   )}
@@ -273,12 +302,18 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                 <div className="text-xs text-white/90 font-medium">
                   {!isConfirmed
                     ? `Timer starts upon kitchen accept (~${prepMinutes} mins)`
+                    : order.status === 'en-route'
+                    ? `En route to ${order.deliveryArea || order.deliveryAddress || 'your location'}`
                     : order.deliveryArea || 'Monrovia, LR'}
                 </div>
               </div>
 
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-                <Clock className="w-6 h-6 text-white stroke-[2.5]" />
+                {order.status === 'en-route' ? (
+                  <Bike className="w-6 h-6 text-white stroke-[2.5]" />
+                ) : (
+                  <Clock className="w-6 h-6 text-white stroke-[2.5]" />
+                )}
               </div>
             </div>
           )}
@@ -797,7 +832,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                         customerAddress={order.deliveryArea || order.deliveryAddress || 'Customer'}
                         driverName={driverName || 'Courier'}
                         driverVehicle={driverVehicle}
-                        height="h-56"
+                        height="280px"
                       />
                     </div>
                   </div>

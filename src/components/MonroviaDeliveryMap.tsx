@@ -49,10 +49,15 @@ export const MonroviaDeliveryMap: React.FC<MonroviaDeliveryMapProps> = ({
   // Google Maps navigation intent URL
   const navUrl = `https://www.google.com/maps/dir/?api=1&origin=${driverLocation ? `${driverLocation.lat},${driverLocation.lng}` : `${restaurantLocation.lat},${restaurantLocation.lng}`}&destination=${customerLocation.lat},${customerLocation.lng}&waypoints=${restaurantLocation.lat},${restaurantLocation.lng}&travelmode=driving`;
 
+  // Convert height prop (handles Tailwind classes like 'h-56', 'h-64' or CSS dimensions like '280px', '320px')
+  const isExplicitCssHeight = typeof height === 'string' && (height.endsWith('px') || height.endsWith('%') || height.endsWith('vh') || height.endsWith('rem'));
+  const containerStyle = isExplicitCssHeight ? { height, width: '100%' } : { minHeight: '260px', height: '260px', width: '100%' };
+  const heightClass = !isExplicitCssHeight ? (height.startsWith('h-') ? height : 'h-64') : '';
+
   return (
     <div className={`relative rounded-3xl overflow-hidden border border-gray-200 shadow-sm ${className}`}>
       {/* Map Container */}
-      <div style={{ height, width: '100%' }} className="relative bg-gray-100">
+      <div style={containerStyle} className={`relative bg-gray-100 ${heightClass}`}>
         <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
           <Map
             defaultCenter={mapCenter}

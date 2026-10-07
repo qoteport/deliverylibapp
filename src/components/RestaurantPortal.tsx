@@ -1143,19 +1143,34 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                               const isCompleted = stepIdx < currentIdx;
                               const isCurrent = stepIdx === currentIdx;
 
+                              const isDeliveryCompletedDisabled = order.diningMode === 'delivery' && step.key === 'completed';
+
                               return (
                                 <button
                                   key={step.key}
                                   type="button"
-                                  onClick={() => onUpdateOrderStatus(order.id, step.key as Order['status'])}
-                                  className={`p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
-                                    isCurrent
-                                      ? 'bg-[#FF4B26] text-white border-[#FF4B26] shadow-sm ring-2 ring-[#FF4B26]/30'
-                                      : isCompleted
-                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                  disabled={isDeliveryCompletedDisabled}
+                                  onClick={() => {
+                                    if (!isDeliveryCompletedDisabled) {
+                                      onUpdateOrderStatus(order.id, step.key as Order['status']);
+                                    }
+                                  }}
+                                  className={`p-1.5 sm:p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-0.5 ${
+                                    isDeliveryCompletedDisabled
+                                      ? 'bg-gray-100/60 text-gray-400 border-gray-200 cursor-not-allowed opacity-70'
+                                      : 'cursor-pointer active:scale-95 ' + (
+                                          isCurrent
+                                            ? 'bg-[#FF4B26] text-white border-[#FF4B26] shadow-sm ring-2 ring-[#FF4B26]/30'
+                                            : isCompleted
+                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                        )
                                   }`}
-                                  title={`Tap to set order status to: ${step.label}`}
+                                  title={
+                                    isDeliveryCompletedDisabled
+                                      ? 'Delivered status is confirmed by the delivery rider upon dropoff'
+                                      : `Tap to set order status to: ${step.label}`
+                                  }
                                 >
                                   <div className="flex items-center gap-1">
                                     <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
@@ -1163,6 +1178,8 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                                         ? 'bg-white text-[#FF4B26]'
                                         : isCompleted
                                         ? 'bg-emerald-600 text-white'
+                                        : isDeliveryCompletedDisabled
+                                        ? 'bg-gray-200 text-gray-400'
                                         : 'bg-gray-200 text-gray-700'
                                     }`}>
                                       {isCompleted ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : step.num}
@@ -1284,15 +1301,22 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                           )}
 
                           {order.status === 'en-route' && (
-                            <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Bike className="w-4 h-4 text-blue-600 shrink-0 animate-bounce" />
-                                <span className="font-bold truncate">
-                                  Courier {order.assignedDriverName ? `(${order.assignedDriverName})` : ''} is en route to customer
-                                </span>
+                            <div className="p-3 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <Bike className="w-4 h-4 animate-bounce" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-extrabold truncate text-blue-950">
+                                    {order.assignedDriverName ? `Courier: ${order.assignedDriverName}` : 'Handed to Courier'} &middot; En Route
+                                  </div>
+                                  <div className="text-[11px] text-blue-700 font-medium truncate">
+                                    Courier will confirm delivery completion upon dropoff
+                                  </div>
+                                </div>
                               </div>
                               <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full shrink-0">
-                                Live on GPS
+                                Live GPS
                               </span>
                             </div>
                           )}

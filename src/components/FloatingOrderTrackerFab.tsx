@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Bike, Flame, ChefHat, CheckCircle2, ChevronUp, X, Sparkles } from 'lucide-react';
-import { Order } from '../types';
+import { Order, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { calculateDistanceKm } from '../utils/pricingEngine';
 
 interface FloatingOrderTrackerFabProps {
   order: Order | null;
@@ -23,8 +24,26 @@ export const FloatingOrderTrackerFab: React.FC<FloatingOrderTrackerFabProps> = (
   const isConfirmed = order.status !== 'received';
   const prepMinutes = order.prepDurationMinutes || (order.diningMode === 'pickup' ? 15 : order.diningMode === 'dine-in' ? 12 : 25);
 
+  const calculateTransitMinutes = () => {
+    const custCoords = order.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea] : null;
+    const restCoords = MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
+    if (custCoords && restCoords) {
+      const distKm = calculateDistanceKm(restCoords, custCoords);
+      if (distKm && distKm > 0.1) {
+        return Math.max(5, Math.round((distKm / 20) * 60));
+      }
+    }
+    return 15;
+  };
+
   const calculateSecondsLeft = () => {
     if (!isConfirmed) return prepMinutes * 60;
+    if (order.status === 'en-route') {
+      const transitMins = calculateTransitMinutes();
+      const transitStart = order.enRouteAtTimestamp || order.readyAtTimestamp || order.confirmedAtTimestamp || (order.createdAtTimestamp ? order.createdAtTimestamp + prepMinutes * 60000 : Date.now());
+      const targetArrival = order.targetEtaTimestamp || (transitStart + transitMins * 60000);
+      return Math.max(0, Math.floor((targetArrival - Date.now()) / 1000));
+    }
     const targetTimestamp = order.targetEtaTimestamp || (
       order.confirmedAtTimestamp 
         ? order.confirmedAtTimestamp + prepMinutes * 60000
