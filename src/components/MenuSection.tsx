@@ -3,6 +3,7 @@ import { Heart, Plus, Sparkles, Filter, Flame, Clock, Zap, Store, MapPin } from 
 import { MenuItem, Restaurant, Category, Currency, USD_TO_LRD_RATE } from '../types';
 import { CATEGORIES } from '../data/monroviaData';
 import { DishIllustration } from './DishIllustration';
+import { isDummyMenuItem } from '../utils/cleanData';
 
 interface MenuSectionProps {
   menuItems: MenuItem[];
@@ -33,6 +34,8 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   // Filtered dishes
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
+      // Exclude any legacy dummy items
+      if (isDummyMenuItem(item)) return false;
       // Restaurant filter
       if (selectedRestaurantId !== 'all' && item.restaurantId && item.restaurantId !== selectedRestaurantId) {
         return false;

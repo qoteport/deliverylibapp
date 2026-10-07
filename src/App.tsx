@@ -34,7 +34,7 @@ import { useAuth } from './context/AuthContext';
 import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
 import { sendBrowserNotification, requestNotificationPermission } from './utils/browserNotifications';
 import { delegateOrderToDriver } from './utils/dispatchEngine';
-import { sanitizeForFirestore } from './utils/cleanData';
+import { sanitizeForFirestore, isDummyMenuItem, isDummyRestaurant, cleanMenuList, cleanRestaurantList } from './utils/cleanData';
 import {
   fetchOrdersFromApi,
   saveOrderToApi,
@@ -84,9 +84,7 @@ export default function App() {
       const saved = localStorage.getItem('aura_monrovia_restaurants');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Clean out legacy demo ids if present
-        const cleaned = Array.isArray(parsed) ? parsed.filter((r: any) => !r.id?.startsWith('rest_living') && !r.id?.startsWith('rest_evelyn')) : [];
-        return cleaned;
+        return cleanRestaurantList(parsed);
       }
     } catch {}
     return [];
@@ -97,8 +95,7 @@ export default function App() {
       const saved = localStorage.getItem('aura_monrovia_menu');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const cleaned = Array.isArray(parsed) ? parsed.filter((m: any) => !m.id?.startsWith('dish_living') && !m.id?.startsWith('dish_evelyn')) : [];
-        return cleaned;
+        return cleanMenuList(parsed);
       }
     } catch {}
     return [];
@@ -190,12 +187,24 @@ export default function App() {
       (snapshot) => {
         const remoteList: Restaurant[] = [];
         snapshot.forEach((docSnap) => {
-          remoteList.push(docSnap.data() as Restaurant);
+          const data = docSnap.data() as Restaurant;
+          const rest = { ...data, id: data.id || docSnap.id };
+          if (isDummyRestaurant(rest)) {
+            // Actively purge dummy restaurants from Firestore
+            deleteDoc(doc(db, 'restaurants', docSnap.id)).catch(() => {});
+            deleteRestaurantFromApi(rest.id).catch(() => {});
+            return;
+          }
+          if (rest && rest.name) {
+            remoteList.push(rest);
+          }
         });
-        if (remoteList.length > 0) {
-          setRestaurants(remoteList);
-          remoteList.forEach((r) => saveRestaurantToApi(r).catch(() => {}));
-        }
+        const cleanList = cleanRestaurantList(remoteList);
+        setRestaurants(cleanList);
+        try {
+          localStorage.setItem('aura_monrovia_restaurants', JSON.stringify(cleanList));
+        } catch {}
+        cleanList.forEach((r) => saveRestaurantToApi(r).catch(() => {}));
       },
       (error) => {
         console.warn('Firestore restaurants snapshot notice:', error);
@@ -212,20 +221,26 @@ export default function App() {
         const remoteItems: MenuItem[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as MenuItem;
+          const item = { ...data, id: data.id || docSnap.id };
+          if (isDummyMenuItem(item)) {
+            // Actively purge dummy menu items from Firestore and local API
+            deleteDoc(doc(db, 'menu', docSnap.id)).catch(() => {});
+            deleteDoc(doc(db, 'menu_items', docSnap.id)).catch(() => {});
+            deleteMenuItemFromApi(item.id).catch(() => {});
+            return;
+          }
           if (data && data.name) {
-            remoteItems.push({
-              ...data,
-              id: data.id || docSnap.id,
-            });
+            remoteItems.push(item);
           }
         });
-        setMenuItems(remoteItems);
+        const cleanItems = cleanMenuList(remoteItems);
+        setMenuItems(cleanItems);
         try {
-          localStorage.setItem('aura_monrovia_menu', JSON.stringify(remoteItems));
+          localStorage.setItem('aura_monrovia_menu', JSON.stringify(cleanItems));
         } catch (e) {
           console.warn('LocalStorage menu cache error:', e);
         }
-        remoteItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+        cleanItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
       },
       (error) => {
         console.warn('Firestore menu snapshot notice:', error);

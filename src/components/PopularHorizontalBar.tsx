@@ -2,6 +2,7 @@ import React from 'react';
 import { Flame, Plus } from 'lucide-react';
 import { MenuItem, Currency, USD_TO_LRD_RATE } from '../types';
 import { DishIllustration } from './DishIllustration';
+import { isDummyMenuItem } from '../utils/cleanData';
 
 interface PopularHorizontalBarProps {
   menuItems: MenuItem[];
@@ -14,11 +15,12 @@ export const PopularHorizontalBar: React.FC<PopularHorizontalBarProps> = ({
   onOpenDishModal,
   currency,
 }) => {
+  const validItems = menuItems.filter((d) => !isDummyMenuItem(d));
   // Select popular / chef special dishes
-  const popularDishes = menuItems.filter(
+  const popularDishes = validItems.filter(
     (d) => d.isChefSpecial || d.calories > 400 || d.dietary.includes('Spicy')
   ).slice(0, 10);
-  const displayDishes = popularDishes.length >= 4 ? popularDishes : menuItems.slice(0, 8);
+  const displayDishes = popularDishes.length >= 4 ? popularDishes : validItems.slice(0, 8);
 
   if (displayDishes.length === 0) {
     return null;

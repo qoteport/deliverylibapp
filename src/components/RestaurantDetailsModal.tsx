@@ -3,6 +3,7 @@ import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles
 import { Restaurant, MenuItem, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { formatDisplayPhoneNumber } from '../utils/phoneUtils';
+import { isDummyMenuItem } from '../utils/cleanData';
 
 interface RestaurantDetailsModalProps {
   restaurant: Restaurant | null;
@@ -60,7 +61,7 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
     MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
 
   const restaurantDishes = menuItems.filter(
-    (item) => item.restaurantId === restaurant.id || item.provenance === restaurant.name
+    (item) => !isDummyMenuItem(item) && (item.restaurantId === restaurant.id || item.provenance === restaurant.name)
   );
 
   const reviewCountDisplay = (!restaurant.reviewCount || restaurant.reviewCount <= 1) ? 20 : restaurant.reviewCount;

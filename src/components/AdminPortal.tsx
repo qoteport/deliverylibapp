@@ -73,9 +73,10 @@ import {
   bulkDeleteRestaurantsFromApi,
   saveRestaurantToApi,
   saveDriverToApi,
-  saveOrderToApi
+  saveOrderToApi,
+  deleteMenuItemFromApi
 } from '../utils/apiSync';
-import { sanitizeForFirestore } from '../utils/cleanData';
+import { sanitizeForFirestore, isDummyMenuItem, isDummyRestaurant, cleanMenuList, cleanRestaurantList } from '../utils/cleanData';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
@@ -218,6 +219,44 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     customReasonText: string;
   } | null>(null);
 
+  // Automated background Firestore purifier for dummy / legacy demo items
+  useEffect(() => {
+    const purgeDummyDataFromFirestore = async () => {
+      try {
+        const menuSnap = await getDocs(collection(db, 'menu'));
+        menuSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (isDummyMenuItem({ ...data, id: docSnap.id })) {
+            deleteDoc(docSnap.ref).catch(() => {});
+            deleteMenuItemFromApi(docSnap.id).catch(() => {});
+          }
+        });
+
+        const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
+        menuItemsSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (isDummyMenuItem({ ...data, id: docSnap.id })) {
+            deleteDoc(docSnap.ref).catch(() => {});
+            deleteMenuItemFromApi(docSnap.id).catch(() => {});
+          }
+        });
+
+        const restSnap = await getDocs(collection(db, 'restaurants'));
+        restSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (isDummyRestaurant({ ...data, id: docSnap.id })) {
+            deleteDoc(docSnap.ref).catch(() => {});
+            deleteRestaurantFromApi(docSnap.id).catch(() => {});
+          }
+        });
+      } catch (e) {
+        // Silent background purifier notice
+      }
+    };
+
+    purgeDummyDataFromFirestore();
+  }, []);
+
   const handleExecuteDelete = async () => {
     if (!deleteConfirmationModal) return;
     setIsDeletingData(true);
@@ -318,17 +357,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'restaurants') {
         const querySnapshot = await getDocs(collection(db, 'restaurants'));
+        const menuSnap = await getDocs(collection(db, 'menu'));
+        const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
+
         const batch = writeBatch(db);
         const allIds: string[] = [];
         querySnapshot.forEach((docSnap) => {
           batch.delete(docSnap.ref);
           allIds.push(docSnap.id);
         });
+        menuSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+        menuItemsSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+
         await batch.commit();
         if (onDeleteRestaurants) onDeleteRestaurants(allIds);
         await bulkDeleteRestaurantsFromApi(allIds);
         localStorage.removeItem('aura_monrovia_restaurants');
-        setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and menus.`);
+        localStorage.removeItem('aura_monrovia_menu');
+        setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and all menus.`);
         setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'users') {
         const querySnapshot = await getDocs(collection(db, 'users'));
@@ -344,12 +390,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         const restSnaps = await getDocs(collection(db, 'restaurants'));
         const driverSnaps = await getDocs(collection(db, 'drivers'));
         const userSnaps = await getDocs(collection(db, 'users'));
+        const menuSnaps = await getDocs(collection(db, 'menu'));
+        const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
 
         const batch = writeBatch(db);
         orderSnaps.forEach((d) => batch.delete(d.ref));
         restSnaps.forEach((d) => batch.delete(d.ref));
         driverSnaps.forEach((d) => batch.delete(d.ref));
         userSnaps.forEach((d) => batch.delete(d.ref));
+        menuSnaps.forEach((d) => batch.delete(d.ref));
+        menuItemsSnap.forEach((d) => batch.delete(d.ref));
 
         await batch.commit();
         fetch('/api/reset-all-data', { method: 'POST' }).catch(() => {});
