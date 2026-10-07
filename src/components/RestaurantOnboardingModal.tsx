@@ -4,6 +4,7 @@ import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { LocationPickerModal } from './LocationPickerModal';
+import { CustomDropdown } from './CustomDropdown';
 
 interface RestaurantOnboardingModalProps {
   isOpen: boolean;
@@ -318,18 +319,14 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-gray-600 font-bold">Monrovia Neighborhood *</label>
-                  <select
+                  <label className="text-gray-600 font-bold block text-xs mb-1">Monrovia Neighborhood *</label>
+                  <CustomDropdown
+                    options={MONROVIA_NEIGHBORHOODS}
                     value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#111827] font-semibold focus:outline-none focus:border-[#FF4B26]"
-                  >
-                    {MONROVIA_NEIGHBORHOODS.map((nh) => (
-                      <option key={nh} value={nh}>
-                        {nh}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setNeighborhood}
+                    placeholder="Select Monrovia Neighborhood..."
+                    buttonClassName="bg-gray-50 border-gray-200 text-xs text-[#111827] font-semibold rounded-2xl py-2.5 px-4 focus:border-[#FF4B26]"
+                  />
                 </div>
 
                 <div className="space-y-1">

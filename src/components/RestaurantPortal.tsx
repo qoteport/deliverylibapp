@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award } from 'lucide-react';
-import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, AddonOption } from '../types';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, MONROVIA_NEIGHBORHOODS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
+import { CustomDropdown } from './CustomDropdown';
 import { saveRestaurantToApi, saveMenuItemToApi, deleteMenuItemFromApi } from '../utils/apiSync';
 
 interface RestaurantPortalProps {
@@ -1461,13 +1462,13 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-gray-700">Neighborhood</label>
-                  <input
-                    type="text"
-                    required
+                  <label className="font-bold text-gray-700 block text-xs mb-1">Monrovia Neighborhood *</label>
+                  <CustomDropdown
+                    options={MONROVIA_NEIGHBORHOODS}
                     value={restNeighborhood}
-                    onChange={(e) => setRestNeighborhood(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#111827]"
+                    onChange={setRestNeighborhood}
+                    placeholder="Select Monrovia Neighborhood..."
+                    buttonClassName="bg-gray-50 border-gray-200 text-xs text-[#111827] font-semibold rounded-xl py-2.5 px-3.5"
                   />
                 </div>
 
