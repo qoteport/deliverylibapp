@@ -61,10 +61,11 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   onToggleCurrency,
   restaurants,
 }) => {
-  const [isOnline, setIsOnline] = useState(driver.isOnline);
+  // isOnline is dynamically enforced based on driver verification state
   const [justVerifiedNotice, setJustVerifiedNotice] = useState(false);
 
   const isDriverVerified = driver.isVerified !== false && driver.verificationStatus !== 'pending';
+  const isOnline = isDriverVerified ? (driver.isOnline ?? false) : false;
 
   useEffect(() => {
     if (!driver?.id) return;
@@ -121,8 +122,11 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   };
 
   const handleToggleOnline = async () => {
+    if (!isDriverVerified) {
+      alert('Verification Required: Your courier profile is currently pending verification by Monrovia Admin. You cannot go online until verified.');
+      return;
+    }
     const nextStatus = !isOnline;
-    setIsOnline(nextStatus);
     const updated: DeliveryDriver = {
       ...driver,
       isOnline: nextStatus,
@@ -315,14 +319,18 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             {/* Online / Offline Status Switch */}
             <button
               onClick={handleToggleOnline}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm cursor-pointer ${
-                isOnline
-                  ? 'bg-[#06C167] hover:bg-[#048747] text-white'
-                  : 'bg-gray-300 hover:bg-gray-400 text-gray-700'
+              disabled={!isDriverVerified}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm ${
+                !isDriverVerified
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed opacity-85'
+                  : isOnline
+                  ? 'bg-[#06C167] hover:bg-[#048747] text-white cursor-pointer'
+                  : 'bg-gray-300 hover:bg-gray-400 text-gray-700 cursor-pointer'
               }`}
+              title={!isDriverVerified ? 'Account Pending Verification' : isOnline ? 'You are Online' : 'Click to Go Online'}
             >
               <Power className="w-3.5 h-3.5" />
-              <span>{isOnline ? 'Online' : 'Offline'}</span>
+              <span>{!isDriverVerified ? 'Unverified' : isOnline ? 'Online' : 'Offline'}</span>
             </button>
 
             {/* Sign Out */}
@@ -339,6 +347,19 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-4">
+        
+        {/* Pending Verification Alert Banner */}
+        {!isDriverVerified && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-3xl text-amber-900 text-xs flex items-start gap-3 shadow-xs animate-fade-in">
+            <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-extrabold text-amber-900 block text-sm">Account Pending Admin Verification</span>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Your courier profile is undergoing review by Monrovia Fleet Admin. The <strong>Go Online</strong> button is disabled until your account is verified.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Metric Quick Bar */}
         <div className="grid grid-cols-3 gap-3">
@@ -597,9 +618,14 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             {!isOnline && (
               <button
                 onClick={handleToggleOnline}
-                className="mt-2 px-6 py-3 bg-gradient-to-r from-[#06C167] to-[#048747] hover:from-[#05A357] hover:to-[#03703a] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all cursor-pointer active:scale-95"
+                disabled={!isDriverVerified}
+                className={`mt-2 px-6 py-3 font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all ${
+                  !isDriverVerified
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed opacity-85'
+                    : 'bg-gradient-to-r from-[#06C167] to-[#048747] hover:from-[#05A357] hover:to-[#03703a] text-white cursor-pointer active:scale-95'
+                }`}
               >
-                Go Online Now
+                {!isDriverVerified ? 'Pending Admin Verification' : 'Go Online Now'}
               </button>
             )}
           </div>
