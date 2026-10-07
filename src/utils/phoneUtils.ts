@@ -5,9 +5,11 @@
 /**
  * Normalizes input phone numbers to international standard +231 format
  */
-export function normalizeLiberianPhoneNumber(raw: string): string {
-  if (!raw) return '';
-  const digits = raw.replace(/[^0-9]/g, '');
+export function normalizeLiberianPhoneNumber(raw: any): string {
+  if (raw === undefined || raw === null) return '';
+  const str = typeof raw === 'string' ? raw : String(raw);
+  if (!str) return '';
+  const digits = str.replace(/[^0-9]/g, '');
 
   if (digits.startsWith('231')) {
     return `+${digits}`;
@@ -18,25 +20,27 @@ export function normalizeLiberianPhoneNumber(raw: string): string {
   if (digits.length === 8 || digits.length === 9) {
     return `+231${digits}`;
   }
-  if (raw.trim().startsWith('+')) {
+  if (str.trim().startsWith('+')) {
     return `+${digits}`;
   }
-  return raw.trim();
+  return str.trim();
 }
 
 /**
  * Returns user-friendly formatted Liberian phone number (e.g. 0886 123 456 or +231 88 612 3456)
  */
-export function formatDisplayPhoneNumber(raw: string): string {
-  if (!raw) return '';
-  const normalized = normalizeLiberianPhoneNumber(raw);
+export function formatDisplayPhoneNumber(raw: any): string {
+  if (raw === undefined || raw === null) return '';
+  const str = typeof raw === 'string' ? raw : String(raw);
+  if (!str) return '';
+  const normalized = normalizeLiberianPhoneNumber(str);
   if (normalized.startsWith('+231') && normalized.length === 13) {
     const carrier = normalized.substring(4, 6);
     const part1 = normalized.substring(6, 9);
     const part2 = normalized.substring(9, 13);
     return `+231 ${carrier} ${part1} ${part2}`;
   }
-  return raw;
+  return str;
 }
 
 /**
@@ -44,9 +48,11 @@ export function formatDisplayPhoneNumber(raw: string): string {
  * MTN Lonestar: 088, +23188
  * Orange Liberia: 077, +23177
  */
-export function isValidLiberianPhoneNumber(raw: string): boolean {
-  if (!raw) return false;
-  const digits = raw.replace(/[^0-9]/g, '');
+export function isValidLiberianPhoneNumber(raw: any): boolean {
+  if (raw === undefined || raw === null) return false;
+  const str = typeof raw === 'string' ? raw : String(raw);
+  if (!str) return false;
+  const digits = str.replace(/[^0-9]/g, '');
   if (digits.startsWith('231') && digits.length === 12) return true;
   if (digits.startsWith('0') && digits.length === 10) return true;
   if (digits.length >= 8 && digits.length <= 15) return true;
@@ -58,10 +64,13 @@ export function isValidLiberianPhoneNumber(raw: string): boolean {
  */
 export function generateMomoUssdUri(
   carrier: 'mtn' | 'orange',
-  recipientNumber: string,
+  recipientNumber: any,
   amountLrd?: number
 ): string {
-  const cleanRecipient = recipientNumber.replace(/[^0-9]/g, '');
+  const str = (recipientNumber !== undefined && recipientNumber !== null) 
+    ? (typeof recipientNumber === 'string' ? recipientNumber : String(recipientNumber)) 
+    : '';
+  const cleanRecipient = str.replace(/[^0-9]/g, '');
   if (carrier === 'mtn') {
     // Lonestar Cell MTN MoMo USSD: *156#
     return amountLrd

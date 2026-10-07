@@ -42,8 +42,8 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [tagline, setTagline] = useState('');
 
   // Auto-detect Liberian MoMo provider from phone number
-  const detectMomoNetwork = (phoneStr: string): 'mtn' | 'orange' | null => {
-    const digits = phoneStr.replace(/[^0-9]/g, '');
+  const detectMomoNetwork = (phoneStr: any): 'mtn' | 'orange' | null => {
+    const digits = String(phoneStr || '').replace(/[^0-9]/g, '');
     if (
       digits.startsWith('23188') || digits.startsWith('23155') ||
       digits.startsWith('088') || digits.startsWith('055') ||

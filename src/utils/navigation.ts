@@ -5,10 +5,12 @@ export type AppRoute =
   | { name: 'restaurant'; restaurantId: string }
   | { name: 'driver'; driverId?: string };
 
-export function parseRoute(pathname: string, hash: string): AppRoute {
-  const cleanPath = (hash && hash.startsWith('#/')) 
-    ? hash.replace(/^#/, '') 
-    : (pathname || '/');
+export function parseRoute(pathname: any, hash: any): AppRoute {
+  const safeHash = typeof hash === 'string' ? hash : '';
+  const safePathname = typeof pathname === 'string' ? pathname : '/';
+  const cleanPath = (safeHash && safeHash.startsWith('#/')) 
+    ? safeHash.replace(/^#/, '') 
+    : (safePathname || '/');
 
   if (cleanPath.startsWith('/admin')) {
     return { name: 'admin' };

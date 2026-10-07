@@ -1088,7 +1088,7 @@ Status: ${orderToCopy.status.toUpperCase()}
                                     <span>Call Rider</span>
                                   </a>
                                   <a
-                                    href={`https://wa.me/${order.assignedDriverPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${order.assignedDriverName}, order #${order.id} is being prepared at ${restaurant.name}.`)}`}
+                                    href={`https://wa.me/${String(order.assignedDriverPhone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${order.assignedDriverName || 'Rider'}, order #${order.id} is being prepared at ${restaurant.name}.`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-2.5 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors"

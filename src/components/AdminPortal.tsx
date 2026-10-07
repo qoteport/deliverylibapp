@@ -460,7 +460,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // 1. Seed from Firestore users
   dbUsers.forEach((u) => {
     if (u.phone) {
-      const cleanPhone = u.phone.trim();
+      const cleanPhone = String(u.phone).trim();
       customersMap.set(cleanPhone, {
         uid: u.uid,
         phone: cleanPhone,
@@ -479,7 +479,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // 2. Aggregate from all orders placed in system
   orders.forEach((o) => {
-    const phone = (o.customerPhone || '').trim();
+    const phone = String(o.customerPhone || '').trim();
     if (!phone) return;
 
     const existing = customersMap.get(phone) || {

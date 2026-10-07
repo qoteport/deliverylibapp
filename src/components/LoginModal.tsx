@@ -96,8 +96,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   if (!isOpen) return null;
 
   // Helper: Normalize phone digits for robust matching
-  const normalizePhoneDigits = (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, '');
+  const normalizePhoneDigits = (raw: any) => {
+    if (raw === undefined || raw === null) return '';
+    const str = typeof raw === 'string' ? raw : String(raw);
+    const digits = str.replace(/[^0-9]/g, '');
     return digits.length >= 7 ? digits.slice(-7) : digits;
   };
 

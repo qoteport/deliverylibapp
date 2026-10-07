@@ -43,8 +43,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
   const [isMomoNumberManuallyEdited, setIsMomoNumberManuallyEdited] = useState(false);
 
   // Auto detect Liberia MoMo Provider from prefix
-  const detectMomoNetwork = (num: string): DeliveryDriver['momoProvider'] => {
-    const clean = num.replace(/\D/g, '');
+  const detectMomoNetwork = (num: any): DeliveryDriver['momoProvider'] => {
+    const clean = String(num || '').replace(/\D/g, '');
     if (
       clean.startsWith('23188') ||
       clean.startsWith('23155') ||
