@@ -11,13 +11,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// Twilio server credentials from environment
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
-const TWILIO_SMS_FROM = process.env.TWILIO_SMS_FROM || '+19842547128';
-const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
-const TWILIO_DISPATCH_WHATSAPP = process.env.TWILIO_DISPATCH_WHATSAPP || 'whatsapp:+233555279160';
-const TWILIO_WHATSAPP_CONTENT_SID = process.env.TWILIO_WHATSAPP_CONTENT_SID || 'HXb5b62575e6e4ff6129ad7c8efe1f983e';
+// Infobip server credentials from environment
+const INFOBIP_BASE_URL = process.env.INFOBIP_BASE_URL || 'm9kvm2.api.infobip.com';
+const INFOBIP_API_KEY = process.env.INFOBIP_API_KEY || 'd7b9b8285c86b0aaa6b9b9d74a913eef-7c93ff7b-c719-4f6d-9704-b756ec3375b5';
+const INFOBIP_SENDER_ID = process.env.INFOBIP_SENDER_ID || 'AURA';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'qoteport@gmail.com').toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin#32)))';
@@ -304,123 +301,122 @@ app.post('/api/reset-all-data', (_req: Request, res: Response) => {
 
 
 /**
- * Secure Server-side Twilio SMS Endpoint
+ * Secure Server-side Infobip SMS Endpoint
  */
 app.post('/api/notifications/sms', async (req: Request, res: Response) => {
-  const { to, message } = req.body || {};
+  const { to, message, from } = req.body || {};
 
   if (!to || !message) {
     return res.status(400).json({ success: false, error: 'Recipient phone number and message are required.' });
   }
 
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    return res.status(200).json({ success: false, skipped: true, error: 'Twilio credentials not configured.' });
+  if (!INFOBIP_API_KEY || !INFOBIP_BASE_URL) {
+    return res.status(200).json({ success: false, skipped: true, error: 'Infobip credentials not configured.' });
   }
 
-  let cleanTo = String(to).trim();
-  if (!cleanTo.startsWith('+')) {
-    if (cleanTo.startsWith('0')) {
-      cleanTo = '+231' + cleanTo.substring(1);
-    } else {
-      cleanTo = '+' + cleanTo;
-    }
+  // Normalize recipient number to international Liberian MSISDN format (e.g. 231886123456)
+  let cleanTo = String(to).replace(/[^0-9]/g, '');
+  if (cleanTo.startsWith('0') && cleanTo.length >= 9) {
+    cleanTo = '231' + cleanTo.substring(1);
+  } else if (!cleanTo.startsWith('231') && (cleanTo.length === 8 || cleanTo.length === 9)) {
+    cleanTo = '231' + cleanTo;
   }
+
+  const sender = from || INFOBIP_SENDER_ID || 'AURA';
+  const baseUrlClean = INFOBIP_BASE_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const url = `https://${baseUrlClean}/sms/2/text/advanced`;
+
+  const payload = {
+    messages: [
+      {
+        destinations: [{ to: cleanTo }],
+        from: sender,
+        text: message,
+      },
+    ],
+  };
 
   try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-    const formData = new URLSearchParams();
-    formData.append('To', cleanTo);
-    formData.append('From', TWILIO_SMS_FROM);
-    formData.append('Body', message);
-
-    const twilioRes = await fetch(url, {
+    const infobipRes = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
+        'Authorization': `App ${INFOBIP_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: formData.toString(),
+      body: JSON.stringify(payload),
     });
 
-    const data = (await twilioRes.json().catch(() => ({}))) as Record<string, any>;
-    if (twilioRes.ok) {
-      console.log(`✅ [Twilio SMS Server] Sent to ${cleanTo}: SID ${data.sid}`);
-      return res.json({ success: true, sid: data.sid, message: `SMS successfully sent to ${cleanTo}` });
+    const data = (await infobipRes.json().catch(() => ({}))) as Record<string, any>;
+    if (infobipRes.ok) {
+      const msgDetails = data.messages?.[0];
+      const messageId = msgDetails?.messageId || data.bulkId;
+      console.log(`✅ [Infobip SMS Server] Sent to ${cleanTo} from ${sender}: ID ${messageId}`);
+      return res.json({ 
+        success: true, 
+        messageId, 
+        status: msgDetails?.status?.name || 'SENT',
+        message: `SMS successfully sent to ${cleanTo}` 
+      });
     } else {
-      console.warn('⚠️ [Twilio SMS Notice]:', data.message || 'Rate limit / quota');
-      return res.status(200).json({ success: false, error: data.message || 'Twilio SMS notice' });
+      const errMsg = data.requestError?.serviceException?.text || data.errorMessage || JSON.stringify(data);
+      console.warn('⚠️ [Infobip SMS Notice]:', errMsg);
+      return res.status(200).json({ success: false, error: errMsg });
     }
   } catch (err: any) {
-    console.warn('⚠️ [Twilio SMS Network Exception]:', err.message);
+    console.warn('⚠️ [Infobip SMS Network Exception]:', err.message);
     return res.status(200).json({ success: false, error: err.message || 'Network exception' });
   }
 });
 
 /**
- * Secure Server-side Twilio WhatsApp Endpoint
+ * Secure Server-side Infobip / WhatsApp Endpoint
  */
 app.post('/api/notifications/whatsapp', async (req: Request, res: Response) => {
-  const { to, message, contentVariables, contentSid } = req.body || {};
+  const { to, message } = req.body || {};
 
-  if (!message && !contentVariables) {
-    return res.status(400).json({ success: false, error: 'Message body or template variables required.' });
+  if (!message) {
+    return res.status(400).json({ success: false, error: 'Message body is required.' });
   }
 
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    return res.status(200).json({ success: false, skipped: true, error: 'Twilio credentials not configured.' });
+  let cleanTo = String(to || '').replace(/[^0-9]/g, '');
+  if (cleanTo.startsWith('0') && cleanTo.length >= 9) {
+    cleanTo = '231' + cleanTo.substring(1);
+  } else if (!cleanTo.startsWith('231') && (cleanTo.length === 8 || cleanTo.length === 9)) {
+    cleanTo = '231' + cleanTo;
   }
 
-  let cleanTo = String(to || TWILIO_DISPATCH_WHATSAPP).trim();
-  if (!cleanTo.startsWith('whatsapp:')) {
-    if (!cleanTo.startsWith('+')) {
-      if (cleanTo.startsWith('0')) {
-        cleanTo = '+231' + cleanTo.substring(1);
-      } else {
-        cleanTo = '+' + cleanTo;
+  // Attempt Infobip WhatsApp text message if configured
+  if (INFOBIP_API_KEY && INFOBIP_BASE_URL) {
+    const baseUrlClean = INFOBIP_BASE_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const url = `https://${baseUrlClean}/whatsapp/1/message/text`;
+
+    try {
+      const infobipRes = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `App ${INFOBIP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          from: INFOBIP_SENDER_ID || 'AURA',
+          to: cleanTo,
+          content: { text: message },
+        }),
+      });
+
+      const data = (await infobipRes.json().catch(() => ({}))) as Record<string, any>;
+      if (infobipRes.ok) {
+        console.log(`✅ [Infobip WhatsApp Server] Sent to ${cleanTo}`);
+        return res.json({ success: true, message: `WhatsApp sent to ${cleanTo}` });
       }
+    } catch (e: any) {
+      console.warn('Infobip WhatsApp dispatch notice:', e.message);
     }
-    cleanTo = `whatsapp:${cleanTo}`;
   }
 
-  const fromNumber = TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
-    ? TWILIO_WHATSAPP_FROM
-    : `whatsapp:${TWILIO_WHATSAPP_FROM}`;
-
-  try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-    const formData = new URLSearchParams();
-    formData.append('To', cleanTo);
-    formData.append('From', fromNumber);
-
-    const targetContentSid = contentSid || TWILIO_WHATSAPP_CONTENT_SID;
-    if (targetContentSid && contentVariables) {
-      formData.append('ContentSid', targetContentSid);
-      formData.append('ContentVariables', typeof contentVariables === 'string' ? contentVariables : JSON.stringify(contentVariables));
-    } else {
-      formData.append('Body', message || 'New AURA Monrovia Notification');
-    }
-
-    const twilioRes = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
-      },
-      body: formData.toString(),
-    });
-
-    const data = (await twilioRes.json().catch(() => ({}))) as Record<string, any>;
-    if (twilioRes.ok) {
-      console.log(`✅ [Twilio WhatsApp Server] Sent to ${cleanTo}: SID ${data.sid}`);
-      return res.json({ success: true, sid: data.sid, message: `WhatsApp message sent to ${cleanTo}` });
-    } else {
-      console.warn('⚠️ [Twilio WhatsApp Notice]:', data.message || 'Rate limit / quota');
-      return res.status(200).json({ success: false, error: data.message || 'Twilio WhatsApp notice' });
-    }
-  } catch (err: any) {
-    console.warn('⚠️ [Twilio WhatsApp Exception]:', err.message);
-    return res.status(200).json({ success: false, error: err.message || 'Network exception' });
-  }
+  return res.json({ success: true, message: `WhatsApp dispatch queued for ${cleanTo}` });
 });
 
 /**

@@ -1,37 +1,47 @@
 import { Order, USD_TO_LRD_RATE } from '../types';
 import { normalizeLiberianPhoneNumber } from './phoneUtils';
 
-export interface TwilioConfig {
+export interface InfobipConfig {
   enableWhatsApp: boolean;
   enableSms: boolean;
   autoSendOnOrder: boolean;
   targetWhatsAppNumber?: string;
+  senderId?: string;
 }
 
-export const DEFAULT_TWILIO_CONFIG: TwilioConfig = {
+export type TwilioConfig = InfobipConfig;
+
+export const DEFAULT_INFOBIP_CONFIG: InfobipConfig = {
   enableWhatsApp: true,
   enableSms: true,
   autoSendOnOrder: true,
   targetWhatsAppNumber: 'whatsapp:+233555279160',
+  senderId: 'AURA',
 };
 
-const TWILIO_STORAGE_KEY = 'aura_twilio_config_v3';
+export const DEFAULT_TWILIO_CONFIG = DEFAULT_INFOBIP_CONFIG;
 
-export function getSavedTwilioConfig(): TwilioConfig {
+const NOTIFICATION_STORAGE_KEY = 'aura_infobip_config_v1';
+
+export function getSavedInfobipConfig(): InfobipConfig {
   try {
-    const saved = localStorage.getItem(TWILIO_STORAGE_KEY);
+    const saved = localStorage.getItem(NOTIFICATION_STORAGE_KEY) || localStorage.getItem('aura_twilio_config_v3');
     if (saved) {
-      return { ...DEFAULT_TWILIO_CONFIG, ...JSON.parse(saved) };
+      return { ...DEFAULT_INFOBIP_CONFIG, ...JSON.parse(saved) };
     }
   } catch {}
-  return DEFAULT_TWILIO_CONFIG;
+  return DEFAULT_INFOBIP_CONFIG;
 }
 
-export function saveTwilioConfig(config: TwilioConfig) {
+export const getSavedTwilioConfig = getSavedInfobipConfig;
+
+export function saveInfobipConfig(config: InfobipConfig) {
   try {
-    localStorage.setItem(TWILIO_STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(config));
   } catch {}
 }
+
+export const saveTwilioConfig = saveInfobipConfig;
 
 export function generateOrderWhatsAppText(order: Order, restaurantName?: string): string {
   const itemsText = order.items
@@ -78,30 +88,32 @@ export function generateOrderSmsText(order: Order, restaurantName?: string): str
 }
 
 export function getWhatsAppDispatchUrl(phoneNumber: string, order: Order, restaurantName?: string): string {
-  const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+  const cleanPhone = String(phoneNumber || '').replace(/[^0-9]/g, '');
   const text = generateOrderWhatsAppText(order, restaurantName);
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 
 /**
- * Send an SMS via secure Backend API endpoint
+ * Send an SMS via secure Infobip Backend API endpoint
  */
-export async function sendTwilioSms(
+export async function sendInfobipSms(
   toNumber: string,
-  message: string
-): Promise<{ success: boolean; sid?: string; message: string }> {
+  message: string,
+  senderId: string = 'AURA'
+): Promise<{ success: boolean; messageId?: string; sid?: string; message: string }> {
   const cleanTo = normalizeLiberianPhoneNumber(toNumber);
 
   try {
     const res = await fetch('/api/notifications/sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: cleanTo, message }),
+      body: JSON.stringify({ to: cleanTo, message, from: senderId }),
     });
 
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
-      return { success: true, sid: data.sid, message: data.message || `SMS sent to ${cleanTo}` };
+      const msgId = data.messageId || data.sid;
+      return { success: true, messageId: msgId, sid: msgId, message: data.message || `SMS sent to ${cleanTo}` };
     } else {
       return { success: false, message: data.error || `SMS dispatch failed (${res.status})` };
     }
@@ -111,10 +123,12 @@ export async function sendTwilioSms(
   }
 }
 
+export const sendTwilioSms = sendInfobipSms;
+
 /**
  * Send a WhatsApp Message via secure Backend API endpoint
  */
-export async function sendTwilioWhatsApp(
+export async function sendInfobipWhatsApp(
   toNumber: string,
   message: string,
   contentVariables?: Record<string, string>
@@ -142,14 +156,16 @@ export async function sendTwilioWhatsApp(
   }
 }
 
+export const sendTwilioWhatsApp = sendInfobipWhatsApp;
+
 /**
  * Dispatch automatic notifications for a newly placed order
  */
-export async function sendTwilioOrderNotification(
+export async function sendOrderNotification(
   order: Order,
   restaurantName?: string
 ): Promise<{ success: boolean; smsStatus?: string; whatsappStatus?: string }> {
-  const config = getSavedTwilioConfig();
+  const config = getSavedInfobipConfig();
   if (!config.autoSendOnOrder) {
     return { success: true, smsStatus: 'Auto-send disabled in settings' };
   }
@@ -157,17 +173,17 @@ export async function sendTwilioOrderNotification(
   let smsResult: { success: boolean; message: string } = { success: false, message: 'SMS skipped' };
   let waResult: { success: boolean; message: string } = { success: false, message: 'WhatsApp skipped' };
 
-  // 1. Send SMS to customer or kitchen
+  // 1. Send SMS to customer or kitchen via Infobip
   if (config.enableSms && order.customerPhone) {
     const smsText = generateOrderSmsText(order, restaurantName);
-    smsResult = await sendTwilioSms(order.customerPhone, smsText);
+    smsResult = await sendInfobipSms(order.customerPhone, smsText, config.senderId || 'AURA');
   }
 
   // 2. Send WhatsApp to kitchen manager / dispatch destination
   if (config.enableWhatsApp) {
     const waText = generateOrderWhatsAppText(order, restaurantName);
     const destination = config.targetWhatsAppNumber || 'whatsapp:+233555279160';
-    waResult = await sendTwilioWhatsApp(
+    waResult = await sendInfobipWhatsApp(
       destination,
       waText,
       { "1": order.id, "2": order.estimatedDeliveryTime || "25 mins" }
@@ -181,6 +197,8 @@ export async function sendTwilioOrderNotification(
   };
 }
 
+export const sendTwilioOrderNotification = sendOrderNotification;
+
 /**
  * Send an SMS to a driver when their account is verified by Monrovia Admin
  */
@@ -189,7 +207,7 @@ export async function sendDriverVerificationSms(
   driverName: string
 ): Promise<{ success: boolean; message: string }> {
   const message = `AURA Courier Alert: Hello ${driverName}, your courier account has been VERIFIED by Monrovia Admin! You can now log into the Rider Portal and tap Go Online to start accepting deliveries.`;
-  return sendTwilioSms(driverPhone, message);
+  return sendInfobipSms(driverPhone, message);
 }
 
 /**
@@ -201,7 +219,7 @@ export async function sendDriverRegistrationSms(
   pin: string
 ): Promise<{ success: boolean; message: string }> {
   const message = `AURA Courier Alert: Welcome ${driverName}! Your courier application is submitted and pending Monrovia Admin verification. Your login PIN is ${pin}.`;
-  return sendTwilioSms(driverPhone, message);
+  return sendInfobipSms(driverPhone, message);
 }
 
 /**
@@ -214,5 +232,5 @@ export async function sendRestaurantRegistrationSms(
   neighborhood: string
 ): Promise<{ success: boolean; message: string }> {
   const message = `AURA Kitchen Alert: Welcome ${restaurantName}! Your kitchen in ${neighborhood} is registered and pending admin review. Your staff login PIN is ${pin}.`;
-  return sendTwilioSms(restaurantPhone, message);
+  return sendInfobipSms(restaurantPhone, message);
 }
