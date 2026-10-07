@@ -4018,183 +4018,239 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* POPUP MODAL 5: LARGE ORDER DETAILS / STATUS PROGRESSION WIZARD           */}
+            {/* ========================================================================= */}
+      {/* POPUP MODAL 5: TRACK ORDER & SEE PROGRESS MODAL                          */}
       {/* ========================================================================= */}
-      {selectedOrderForDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 max-h-[90vh] overflow-y-auto">
-            
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-gray-100 pb-4">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-base font-black text-gray-900 bg-gray-100 px-3 py-1 rounded-xl">
-                    #{selectedOrderForDetails.id}
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold uppercase ${
-                    selectedOrderForDetails.status === 'cancelled'
-                      ? 'bg-red-100 text-red-800'
-                      : selectedOrderForDetails.status === 'completed'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                  }`}>
-                    {selectedOrderForDetails.status}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-gray-100 text-gray-700">
-                    {selectedOrderForDetails.diningMode}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Placed on: {selectedOrderForDetails.createdAt}
-                </div>
-              </div>
+      {selectedOrderForDetails && (() => {
+        const matchedRest = restaurants?.find((r) => r.id === selectedOrderForDetails.restaurantId || r.name === selectedOrderForDetails.restaurantName);
+        const matchedDriver = drivers?.find((d) => d.id === selectedOrderForDetails.assignedDriverId || d.name === selectedOrderForDetails.assignedDriverName);
+        const kitchenPhone = matchedRest?.phone || selectedOrderForDetails.restaurantPhone || '0886000000';
+        const driverPhone = matchedDriver?.phone || selectedOrderForDetails.assignedDriverPhone;
+        const customerPhone = selectedOrderForDetails.customerPhone;
 
-              <button
-                type="button"
-                onClick={() => setSelectedOrderForDetails(null)}
-                className="p-2 text-gray-400 hover:text-black rounded-xl cursor-pointer"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Visual Stage Progression Wizard */}
-            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-              <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider block">
-                Order Lifecycle Progression
-              </span>
-              <div className="grid grid-cols-5 gap-2 text-center text-[11px] font-bold">
-                {[
-                  { key: 'received', label: '1. Received', icon: '📝' },
-                  { key: 'preparing', label: '2. Cooking', icon: '👨‍🍳' },
-                  { key: 'plating', label: '3. Packed', icon: '🍲' },
-                  { key: 'en-route', label: '4. En Route', icon: '🛵' },
-                  { key: 'completed', label: '5. Delivered', icon: '✅' },
-                ].map((st, idx) => {
-                  const stages = ['received', 'preparing', 'plating', 'en-route', 'completed'];
-                  const currentIdx = stages.indexOf(selectedOrderForDetails.status);
-                  const isCurrent = selectedOrderForDetails.status === st.key;
-                  const isPast = currentIdx > idx;
-
-                  return (
-                    <div
-                      key={st.key}
-                      className={`p-2.5 rounded-xl border transition-all ${
-                        isCurrent
-                          ? 'bg-[#06C167] text-white border-[#06C167] shadow-sm'
-                          : isPast
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : 'bg-white text-gray-400 border-gray-200'
-                      }`}
-                    >
-                      <div className="text-base mb-0.5">{st.icon}</div>
-                      <div>{st.label}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Customer, Kitchen & Courier 3-Way Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-4 bg-gray-50 rounded-2xl space-y-1.5 border border-gray-100">
-                <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Customer Info</span>
-                <div className="font-extrabold text-gray-900 text-sm">{selectedOrderForDetails.customerName}</div>
-                <a href={`tel:${selectedOrderForDetails.customerPhone}`} className="text-[#048747] font-mono font-bold hover:underline block">
-                  📞 {selectedOrderForDetails.customerPhone}
-                </a>
-                <div className="text-gray-500 pt-1">
-                  📍 {selectedOrderForDetails.deliveryArea || selectedOrderForDetails.deliveryAddress || 'Monrovia'}
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-50 rounded-2xl space-y-1.5 border border-gray-100">
-                <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Kitchen Spot</span>
-                <div className="font-extrabold text-gray-900 text-sm">{selectedOrderForDetails.restaurantName || 'Kitchen'}</div>
-                <div className="text-gray-500">
-                  {selectedOrderForDetails.diningMode === 'pickup' ? 'Takeaway order' : 'Delivery Dispatch'}
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-50 rounded-2xl space-y-1.5 border border-gray-100">
-                <span className="text-[10px] font-extrabold uppercase text-gray-400 block">Courier Assignment</span>
-                <div className="font-extrabold text-gray-900 text-sm">
-                  {selectedOrderForDetails.assignedDriverName || 'Auto-dispatching...'}
-                </div>
-                {selectedOrderForDetails.assignedDriverPhone && (
-                  <a href={`tel:${selectedOrderForDetails.assignedDriverPhone}`} className="text-[#048747] font-mono font-bold hover:underline block">
-                    📞 {selectedOrderForDetails.assignedDriverPhone}
-                  </a>
-                )}
-                <div className="text-[10px] text-gray-400 capitalize">
-                  Stage: {selectedOrderForDetails.delegationStatus || 'unassigned'}
-                </div>
-              </div>
-            </div>
-
-            {/* Itemized Order Breakdown */}
-            <div className="space-y-2">
-              <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider block">
-                Line Items ({selectedOrderForDetails.items?.length || 0})
-              </span>
-              <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl bg-gray-50/50 p-3 space-y-2 text-xs">
-                {selectedOrderForDetails.items?.map((item) => (
-                  <div key={item.cartItemId} className="pt-2 first:pt-0 flex items-start justify-between">
-                    <div>
-                      <div className="font-extrabold text-gray-900">
-                        <span className="text-[#048747]">{item.quantity}x</span> {item.menuItem?.name}
-                      </div>
-                      {item.selectedSpiceLevel && (
-                        <div className="text-red-600 font-bold text-[11px]">Spice: {item.selectedSpiceLevel}</div>
-                      )}
-                      {item.selectedAddons && item.selectedAddons.length > 0 && (
-                        <div className="text-gray-500 text-[11px]">
-                          Toppings: {item.selectedAddons.map(a => a.name).join(', ')}
-                        </div>
-                      )}
-                      {item.specialInstructions && (
-                        <div className="text-amber-700 italic text-[11px]">"{item.specialInstructions}"</div>
-                      )}
-                    </div>
-                    <span className="font-mono font-bold text-gray-900">{formatPrice(item.itemTotal)}</span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 max-h-[90vh] overflow-y-auto">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-gray-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono text-base font-black text-gray-900 bg-gray-100 px-3 py-1 rounded-xl">
+                      #{selectedOrderForDetails.id}
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold uppercase ${
+                      selectedOrderForDetails.status === 'cancelled'
+                        ? 'bg-red-100 text-red-800'
+                        : selectedOrderForDetails.status === 'completed'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {selectedOrderForDetails.status}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-gray-100 text-gray-700">
+                      {selectedOrderForDetails.diningMode}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="text-xs text-gray-500 mt-1 font-medium">
+                    Placed on: {selectedOrderForDetails.createdAt}
+                  </div>
+                </div>
 
-            {/* Financial Summary */}
-            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 text-xs">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal:</span>
-                <span className="font-mono">{formatPrice(selectedOrderForDetails.subtotal || selectedOrderForDetails.total)}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="p-2 text-gray-400 hover:text-black rounded-xl cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Delivery Fee:</span>
-                <span className="font-mono">{formatPrice(selectedOrderForDetails.deliveryFee || 0)}</span>
-              </div>
-              <div className="flex justify-between font-extrabold text-base text-gray-900 pt-2 border-t border-gray-200">
-                <span>Total:</span>
-                <span className="font-mono">{formatPrice(selectedOrderForDetails.total)} ({selectedOrderForDetails.paymentMethod})</span>
-              </div>
-            </div>
 
-            {/* Quick Actions in Dialog */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                {selectedOrderForDetails.status !== 'completed' && selectedOrderForDetails.status !== 'cancelled' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onUpdateOrderStatus(selectedOrderForDetails.id, 'completed');
-                        setSelectedOrderForDetails(null);
-                      }}
-                      className="px-4 py-2 bg-[#06C167] hover:bg-[#05A357] text-white text-xs font-extrabold rounded-xl shadow-xs cursor-pointer flex items-center gap-1"
+              {/* Visual 5-Stage Progression Timeline */}
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
+                <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider block">
+                  5-Stage Order Progress Timeline
+                </span>
+                <div className="grid grid-cols-5 gap-2 text-center text-[11px] font-bold">
+                  {[
+                    { key: 'received', label: '1. Received', icon: '📝' },
+                    { key: 'preparing', label: '2. Cooking', icon: '👨‍🍳' },
+                    { key: 'plating', label: '3. Ready', icon: '🍲' },
+                    { key: 'en-route', label: '4. En Route', icon: '🛵' },
+                    { key: 'completed', label: '5. Delivered', icon: '✅' },
+                  ].map((st, idx) => {
+                    const stages = ['received', 'preparing', 'plating', 'en-route', 'completed'];
+                    const currentIdx = stages.indexOf(selectedOrderForDetails.status);
+                    const isCurrent = selectedOrderForDetails.status === st.key;
+                    const isPast = currentIdx > idx;
+
+                    return (
+                      <div
+                        key={st.key}
+                        className={`p-2.5 rounded-xl border transition-all ${
+                          isCurrent
+                            ? 'bg-[#06C167] text-white border-[#06C167] shadow-sm'
+                            : isPast
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-white text-gray-400 border-gray-200'
+                        }`}
+                      >
+                        <div className="text-base mb-0.5">{st.icon}</div>
+                        <div>{st.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Delivery Map & Tracking Radar */}
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                <div className="bg-gray-900 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Navigation className="w-4 h-4 text-[#06C167]" />
+                    <span>Live Monrovia Dispatch &amp; Delivery Tracking</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                    Radar Active
+                  </span>
+                </div>
+                <MonroviaDeliveryMap
+                  customerLocation={selectedOrderForDetails.gpsCoords || MONROVIA_NEIGHBORHOOD_COORDS[selectedOrderForDetails.deliveryArea] || { lat: 6.2907, lng: -10.7818 }}
+                  customerAddress={selectedOrderForDetails.deliveryAddress || selectedOrderForDetails.deliveryArea}
+                  restaurantLocation={matchedRest?.locationCoords || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor']}
+                  restaurantName={selectedOrderForDetails.restaurantName || 'Kitchen'}
+                  driverLocation={matchedDriver?.currentLocation || drivers[0]?.currentLocation}
+                  driverName={selectedOrderForDetails.assignedDriverName || 'Courier'}
+                  height="260px"
+                />
+              </div>
+
+              {/* Customer, Kitchen & Courier 3-Way Grid with Direct Phone Call Triggers */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {/* Customer Details */}
+                <div className="p-4 bg-gray-50 rounded-2xl space-y-2 border border-gray-100 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-gray-400 block mb-1">Customer Details</span>
+                    <div className="font-extrabold text-gray-900 text-sm">{selectedOrderForDetails.customerName}</div>
+                    <div className="text-gray-600 text-[11px] mt-1 leading-snug">
+                      📍 {selectedOrderForDetails.deliveryAddress || selectedOrderForDetails.deliveryArea || 'Monrovia'}
+                    </div>
+                  </div>
+                  {customerPhone ? (
+                    <a
+                      href={`tel:${customerPhone}`}
+                      className="mt-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-xs rounded-xl border border-blue-200 inline-flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
                     >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Mark Order Delivered</span>
-                    </button>
+                      <Phone className="w-3.5 h-3.5 fill-current" />
+                      <span>Call Customer ({customerPhone})</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">No phone listed</span>
+                  )}
+                </div>
 
+                {/* Kitchen / Restaurant Details */}
+                <div className="p-4 bg-gray-50 rounded-2xl space-y-2 border border-gray-100 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-gray-400 block mb-1">Kitchen Spot</span>
+                    <div className="font-extrabold text-gray-900 text-sm">{selectedOrderForDetails.restaurantName || 'Monrovia Kitchen'}</div>
+                    <div className="text-gray-500 text-[11px] mt-1">
+                      Status: <span className="font-bold text-gray-800 uppercase">{selectedOrderForDetails.status}</span>
+                    </div>
+                  </div>
+                  {kitchenPhone ? (
+                    <a
+                      href={`tel:${kitchenPhone}`}
+                      className="mt-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-900 font-bold text-xs rounded-xl border border-orange-200 inline-flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      <Phone className="w-3.5 h-3.5 fill-current" />
+                      <span>Call Kitchen ({kitchenPhone})</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">Kitchen phone unlisted</span>
+                  )}
+                </div>
+
+                {/* Courier / Driver Details */}
+                <div className="p-4 bg-gray-50 rounded-2xl space-y-2 border border-gray-100 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase text-gray-400 block mb-1">Courier Roster</span>
+                    <div className="font-extrabold text-gray-900 text-sm">
+                      {selectedOrderForDetails.assignedDriverName || 'Auto-Dispatching...'}
+                    </div>
+                    {matchedDriver && (
+                      <div className="text-[11px] text-gray-500 mt-1 font-medium">
+                        {matchedDriver.vehicleType} • {matchedDriver.plateNumber} (★ {(matchedDriver.rating || 5.0).toFixed(1)})
+                      </div>
+                    )}
+                    <div className="text-[10px] text-emerald-700 font-bold uppercase mt-1">
+                      Courier Stage: {selectedOrderForDetails.delegationStatus || 'pending'}
+                    </div>
+                  </div>
+                  {driverPhone ? (
+                    <a
+                      href={`tel:${driverPhone}`}
+                      className="mt-2 px-3 py-2 bg-[#E8F8EE] hover:bg-[#D4F4E0] text-[#048747] font-bold text-xs rounded-xl border border-[#A7F3D0] inline-flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      <Phone className="w-3.5 h-3.5 fill-current" />
+                      <span>Call Courier ({driverPhone})</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">Courier not assigned</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Itemized Order Breakdown */}
+              <div className="space-y-2">
+                <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider block">
+                  Line Items ({selectedOrderForDetails.items?.length || 0})
+                </span>
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl bg-gray-50/50 p-3 space-y-2 text-xs">
+                  {selectedOrderForDetails.items?.map((item) => (
+                    <div key={item.cartItemId} className="pt-2 first:pt-0 flex items-start justify-between">
+                      <div>
+                        <div className="font-extrabold text-gray-900">
+                          <span className="text-[#048747]">{item.quantity}x</span> {item.menuItem?.name}
+                        </div>
+                        {item.selectedSpiceLevel && (
+                          <div className="text-red-600 font-bold text-[11px]">Spice: {item.selectedSpiceLevel}</div>
+                        )}
+                        {item.selectedAddons && item.selectedAddons.length > 0 && (
+                          <div className="text-gray-500 text-[11px]">
+                            Toppings: {item.selectedAddons.map(a => a.name).join(', ')}
+                          </div>
+                        )}
+                        {item.specialInstructions && (
+                          <div className="text-amber-700 italic text-[11px]">"{item.specialInstructions}"</div>
+                        )}
+                      </div>
+                      <span className="font-mono font-bold text-gray-900">{formatPrice(item.itemTotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 text-xs">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal:</span>
+                  <span className="font-mono">{formatPrice(selectedOrderForDetails.subtotal || selectedOrderForDetails.total)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Delivery Fee:</span>
+                  <span className="font-mono">{formatPrice(selectedOrderForDetails.deliveryFee || 0)}</span>
+                </div>
+                <div className="flex justify-between font-extrabold text-base text-gray-900 pt-2 border-t border-gray-200">
+                  <span>Total:</span>
+                  <span className="font-mono">{formatPrice(selectedOrderForDetails.total)} ({selectedOrderForDetails.paymentMethod})</span>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  {selectedOrderForDetails.status !== 'completed' && selectedOrderForDetails.status !== 'cancelled' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -4210,23 +4266,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     >
                       Cancel Order
                     </button>
-                  </>
-                )}
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Close Tracking Modal
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedOrderForDetails(null)}
-                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Close
-              </button>
             </div>
-
           </div>
-        </div>
-      )}
-
+        );
+      })()}
       {/* ========================================================================= */}
       {/* POPUP MODAL 6: CUSTOMER ORDER HISTORY DIALOG                              */}
       {/* ========================================================================= */}
