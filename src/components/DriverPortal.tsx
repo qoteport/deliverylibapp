@@ -596,7 +596,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
           <div className="p-4 bg-white border border-gray-100 rounded-3xl shadow-xs">
             <div className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1">
               <Wallet className="w-3.5 h-3.5 text-[#06C167]" />
-              <span>Today's MoMo</span>
+              <span>Today's Earnings</span>
             </div>
             <div className="font-mono text-xl font-black text-[#048747] mt-1">
               {formatMoney(driver.earningsTodayUsd)}
@@ -1249,7 +1249,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                       Monrovia Fleet Payouts
                     </span>
                     <h2 className="text-lg font-black text-white">
-                      Rider MoMo Earnings
+                      Rider Earnings
                     </h2>
                   </div>
                 </div>

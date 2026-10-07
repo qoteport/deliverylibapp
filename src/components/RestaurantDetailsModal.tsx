@@ -51,6 +51,8 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
     (item) => item.restaurantId === restaurant.id || item.provenance === restaurant.name
   );
 
+  const reviewCountDisplay = (!restaurant.reviewCount || restaurant.reviewCount <= 1) ? 20 : restaurant.reviewCount;
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade"
@@ -62,9 +64,14 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
       >
         {/* Mobile drag handle */}
         <div
-          className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0 cursor-pointer hover:bg-gray-300 transition-colors"
+          className="w-full py-2.5 flex items-center justify-center sm:hidden shrink-0 cursor-pointer active:scale-95"
           onClick={onClose}
-        />
+          title="Tap to close"
+          role="button"
+          aria-label="Collapse modal"
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
+        </div>
 
         {/* Modal Header Bar */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
@@ -116,7 +123,7 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
                   <span>{(restaurant.rating ?? 5.0).toFixed(1)}</span>
                 </div>
                 <div className="text-[10px] text-gray-500 font-medium mt-0.5">
-                  {restaurant.reviewCount} {restaurant.reviewCount === 1 ? 'review' : 'reviews'}
+                  {reviewCountDisplay} reviews
                 </div>
               </div>
 

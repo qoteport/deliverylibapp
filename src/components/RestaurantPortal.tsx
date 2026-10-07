@@ -1769,6 +1769,20 @@ Status: ${orderToCopy.status.toUpperCase()}
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-3xl border border-gray-100 p-5 sm:p-7 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
             
+            {/* Mobile tap-to-close notch handle */}
+            <div 
+              onClick={() => {
+                resetDishForm();
+                setIsAddDishOpen(false);
+              }}
+              className="w-full py-1.5 -mt-2 flex items-center justify-center sm:hidden shrink-0 cursor-pointer active:scale-95"
+              title="Tap to close"
+              role="button"
+              aria-label="Collapse modal"
+            >
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
+            </div>
+
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3.5 border-b border-gray-100">
               <div>
@@ -2440,6 +2454,17 @@ Status: ${orderToCopy.status.toUpperCase()}
               className="relative bg-white w-full sm:max-w-xl md:max-w-2xl rounded-t-3xl sm:rounded-none border-t sm:border-2 sm:border-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-modal-sheet sm:animate-in sm:zoom-in-95"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Mobile top pull-down notch handle */}
+              <div 
+                onClick={() => setSelectedOrderForModal(null)}
+                className="w-full py-2 bg-gray-900 flex items-center justify-center sm:hidden shrink-0 cursor-pointer active:scale-95"
+                title="Tap to close"
+                role="button"
+                aria-label="Collapse ticket"
+              >
+                <div className="w-12 h-1.5 bg-gray-600 rounded-full hover:bg-gray-500 transition-colors" />
+              </div>
+
               {/* Modal Header */}
               <div className="px-5 py-4 border-b border-gray-200 bg-gray-900 text-white flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3 min-w-0">

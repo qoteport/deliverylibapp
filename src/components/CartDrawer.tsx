@@ -64,9 +64,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     restaurantNeighborhood: items[0]?.menuItem?.provenance,
   });
   const deliveryFee = diningMode === 'delivery' ? (subtotal > 35 ? 0 : dynamicPricing.finalFee) : 0;
-  const serviceFee = subtotal > 0 ? 0.75 : 0;
+  const serviceFee = 0;
   const tax = subtotal * 0.04;
-  const total = Math.max(0, subtotal - discountAmount + deliveryFee + serviceFee + tax);
+  const total = Math.max(0, subtotal - discountAmount + deliveryFee + tax);
 
   const formatPrice = (usd: number) => {
     if (currency === 'LRD') {
@@ -79,7 +79,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     onProceedToCheckout({
       subtotal,
       discount: discountAmount,
-      serviceFee,
+      serviceFee: 0,
       deliveryFee,
       tax,
       tip: 0,
@@ -283,17 +283,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
               {diningMode === 'delivery' && (
                 <div className="flex justify-between items-center text-sm sm:text-base">
-                  <span className="font-semibold text-gray-600">Delivery Fee</span>
+                  <span className="font-semibold text-gray-600">Delivery Fee (Est.)</span>
                   <span className="font-mono font-bold text-gray-900 text-base sm:text-lg">
                     {deliveryFee === 0 ? <span className="text-emerald-600 font-black">FREE</span> : formatPrice(deliveryFee)}
                   </span>
                 </div>
               )}
-
-              <div className="flex justify-between items-center text-sm sm:text-base">
-                <span className="font-semibold text-gray-600">Service & Packaging</span>
-                <span className="font-mono font-bold text-gray-900 text-base sm:text-lg">{formatPrice(serviceFee)}</span>
-              </div>
 
               <div className="pt-3 border-t border-gray-200 flex justify-between items-baseline">
                 <div>

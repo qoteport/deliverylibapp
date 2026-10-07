@@ -195,11 +195,14 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
       >
         {/* Mobile top pull indicator handle */}
         <div 
+          onClick={onClose}
           onTouchStart={handleSheetTouchStart}
           onTouchMove={handleSheetTouchMove}
           onTouchEnd={handleSheetTouchEnd}
-          className="w-full py-2.5 flex items-center justify-center sm:hidden cursor-grab active:cursor-grabbing shrink-0" 
+          className="w-full py-2.5 flex items-center justify-center sm:hidden cursor-pointer active:scale-95 shrink-0" 
           title="Swipe down or tap to minimize"
+          role="button"
+          aria-label="Collapse tracker"
         >
           <div className="w-14 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
         </div>

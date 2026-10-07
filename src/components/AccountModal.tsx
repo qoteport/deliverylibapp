@@ -95,7 +95,15 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         className="relative bg-white w-full sm:max-w-md md:max-w-lg rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-full h-auto sm:h-full animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+        <div 
+          onClick={onClose}
+          className="w-full py-2.5 flex items-center justify-center sm:hidden shrink-0 cursor-pointer active:scale-95"
+          title="Tap to close"
+          role="button"
+          aria-label="Collapse modal"
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
+        </div>
         
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">

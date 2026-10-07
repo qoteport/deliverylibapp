@@ -110,7 +110,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const computedTotal = Math.max(
     0,
-    cartTotals.subtotal - cartTotals.discount + calculatedDeliveryFee + cartTotals.serviceFee + cartTotals.tax + cartTotals.tip
+    cartTotals.subtotal - cartTotals.discount + calculatedDeliveryFee + cartTotals.tax + cartTotals.tip
   );
 
   // Sync / prefill when currentUser updates or modal opens
@@ -225,7 +225,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       customerEmail: currentUser?.email || `${(name || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.lr`,
       subtotal: cartTotals.subtotal,
       discount: cartTotals.discount,
-      serviceFee: cartTotals.serviceFee,
+      serviceFee: 0,
       deliveryFee: calculatedDeliveryFee,
       tax: cartTotals.tax,
       tip: cartTotals.tip,
@@ -346,11 +346,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       >
         {/* Mobile top pull indicator handle */}
         <div 
+          onClick={onClose}
           onTouchStart={handleSheetTouchStart}
           onTouchMove={handleSheetTouchMove}
           onTouchEnd={handleSheetTouchEnd}
-          className="w-full py-2.5 flex items-center justify-center sm:hidden cursor-grab active:cursor-grabbing shrink-0"
-          title="Pull down to close"
+          className="w-full py-2.5 flex items-center justify-center sm:hidden cursor-pointer active:scale-95 shrink-0"
+          title="Tap or pull down to close"
+          role="button"
+          aria-label="Collapse checkout"
         >
           <div className="w-14 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
         </div>

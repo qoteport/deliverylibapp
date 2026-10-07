@@ -173,13 +173,16 @@ export const DishModal: React.FC<DishModalProps> = ({
           
           {/* Mobile top pull-down notch handle (Interactive touch area) */}
           <div 
+            onClick={onClose}
             onTouchStart={handleSheetTouchStart}
             onTouchMove={handleSheetTouchMove}
             onTouchEnd={handleSheetTouchEnd}
-            className="absolute top-0 inset-x-0 h-10 flex items-center justify-center z-30 sm:hidden cursor-grab active:cursor-grabbing"
-            title="Pull down to close"
+            className="absolute top-0 inset-x-0 h-10 flex items-center justify-center z-30 sm:hidden cursor-pointer active:scale-95"
+            title="Tap or pull down to close"
+            role="button"
+            aria-label="Collapse modal"
           >
-            <div className="w-14 h-1.5 bg-white/90 shadow-md rounded-full ring-1 ring-black/10 transition-transform active:scale-95" />
+            <div className="w-14 h-1.5 bg-white/90 shadow-md rounded-full ring-1 ring-black/10 transition-transform active:scale-90 hover:scale-105" />
           </div>
 
           <button
@@ -195,17 +198,27 @@ export const DishModal: React.FC<DishModalProps> = ({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-full h-full flex items-center justify-center overflow-hidden touch-pan-y select-none bg-gray-100"
+              className="relative w-full h-full flex items-center overflow-hidden touch-pan-y select-none bg-gray-900"
             >
-              {/* Centered High-Def Food Image with smooth animated transition */}
-              <img
-                key={activeImageIndex}
-                src={allImages[activeImageIndex] || allImages[0]}
-                alt={dish.name}
-                className="w-full h-full object-cover object-center pointer-events-none animate-in fade-in zoom-in-95 duration-200"
-                loading="eager"
-                draggable={false}
-              />
+              {/* Sliding Horizontal Image Track */}
+              <div 
+                className="flex w-full h-full transition-transform duration-350 ease-out"
+                style={{
+                  transform: `translateX(-${activeImageIndex * 100}%)`,
+                }}
+              >
+                {allImages.map((imgUrl, i) => (
+                  <div key={i} className="w-full h-full shrink-0 flex items-center justify-center bg-gray-900">
+                    <img
+                      src={imgUrl}
+                      alt={`${dish.name} view ${i + 1}`}
+                      className="w-full h-full object-cover object-center pointer-events-none"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      draggable={false}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center p-4">

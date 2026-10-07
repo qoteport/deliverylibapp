@@ -43,7 +43,15 @@ export const FavoritesDrawer: React.FC<FavoritesDrawerProps> = ({
         className="w-full sm:max-w-md bg-white max-h-[92vh] sm:max-h-full rounded-t-3xl sm:rounded-none shadow-2xl flex flex-col border-t sm:border-l border-gray-100 animate-modal-sheet sm:animate-drawer-right"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+        <div 
+          onClick={onClose}
+          className="w-full py-2.5 flex items-center justify-center sm:hidden shrink-0 cursor-pointer active:scale-95"
+          title="Tap to close"
+          role="button"
+          aria-label="Collapse drawer"
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
+        </div>
 
         {/* Header Tabs */}
         <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
