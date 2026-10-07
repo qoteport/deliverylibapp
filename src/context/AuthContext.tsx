@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppUser } from '../types';
 import { auth, db } from '../firebase/config';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { requestNotificationPermission } from '../utils/browserNotifications';
 
 interface AuthContextType {

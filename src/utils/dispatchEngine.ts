@@ -67,6 +67,9 @@ export async function delegateOrderToDriver(
   }
 
   const bestDriver = findBestDriverForOrder(order, drivers, restaurantCoords);
+  if (!bestDriver) {
+    return { success: false };
+  }
 
   const dynamicFee = order.deliveryFee && order.deliveryFee >= 0.5
     ? order.deliveryFee

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2, Calendar, Sparkles } from 'lucide-react';
+import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2, Calendar, Sparkles, Bike } from 'lucide-react';
 import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';

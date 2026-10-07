@@ -2576,7 +2576,7 @@ Status: ${orderToCopy.status.toUpperCase()}
         const isDelivery = modalOrder.diningMode === 'delivery';
         const isDineIn = modalOrder.diningMode === 'dine-in';
         const isPickup = modalOrder.diningMode === 'pickup';
-        const waModalUrl = getWhatsAppDispatchUrl(modalOrder, restaurant.name);
+        const waModalUrl = getWhatsAppDispatchUrl(modalOrder.customerPhone || '0886000000', modalOrder, restaurant.name);
 
         return (
           <div 

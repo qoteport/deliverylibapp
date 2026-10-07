@@ -68,10 +68,10 @@ let menuStore: any[] = readData('menu.json', []);
 app.get('/api/config/public', (_req: Request, res: Response) => {
   res.json({
     usdToLrdRate: USD_TO_LRD_RATE,
-    dispatchWhatsAppNumber: TWILIO_DISPATCH_WHATSAPP,
+    dispatchWhatsAppNumber: 'whatsapp:+2310770400338',
     features: {
-      smsEnabled: Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN),
-      whatsappEnabled: Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN),
+      smsEnabled: Boolean(INFOBIP_API_KEY && INFOBIP_BASE_URL),
+      whatsappEnabled: Boolean(INFOBIP_API_KEY && INFOBIP_BASE_URL),
     },
   });
 });

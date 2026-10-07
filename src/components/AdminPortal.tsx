@@ -56,7 +56,8 @@ import {
   Terminal,
   Beaker,
   FileCode,
-  CheckSquare
+  CheckSquare,
+  XCircle
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser } from '../types';
 import { CustomDropdown } from './CustomDropdown';
@@ -682,7 +683,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         };
       }
       dishSalesMap[name].quantity += item.quantity || 1;
-      dishSalesMap[name].gmv += item.itemTotal || ((item.menuItem?.priceUsd || 0) * (item.quantity || 1));
+      dishSalesMap[name].gmv += item.itemTotal || ((item.menuItem?.price || 0) * (item.quantity || 1));
       dishSalesMap[name].count += 1;
     });
   });
@@ -1339,7 +1340,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     { key: 'received', label: 'Received / Awaiting Prep', count: statusCounts.received, color: 'bg-amber-400' },
                     { key: 'preparing', label: 'Cooking in Kitchen', count: statusCounts.preparing, color: 'bg-orange-500' },
                     { key: 'plating', label: 'Plating & Packed', count: statusCounts.plating, color: 'bg-blue-500' },
-                    { key: 'en-route', label: 'En-Route with Courier', count: statusCounts.enRoute || statusCounts['en-route'], color: 'bg-indigo-500' },
+                    { key: 'en-route', label: 'En-Route with Courier', count: statusCounts['en-route'], color: 'bg-indigo-500' },
                     { key: 'completed', label: 'Delivered & Completed', count: statusCounts.completed, color: 'bg-emerald-500' },
                     { key: 'cancelled', label: 'Cancelled / Declined', count: statusCounts.cancelled, color: 'bg-red-500' },
                   ].map((st) => {
@@ -3807,9 +3808,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           const chosenDish = sampleDishes[Math.floor(Math.random() * sampleDishes.length)];
                           const sampleNames = ['Kollie Freeman', 'Comfort Weah', 'Alphonso Massaquoi', 'Fatu Sirleaf', 'Tamba Kamara', 'Bendue Cooper'];
                           const sampleCustomerName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-                          const sampleNeighborhoods = ['Sinkor (Tubman Blvd)', 'Congo Town', 'Mamba Point', 'Paynesville', 'Old Road', 'Bushrod Island'];
+                          const sampleNeighborhoods = ['Sinkor (Tubman Blvd)', 'Congotown & Old Road', 'Mamba Point & Snapper Hill', 'Paynesville & ELWA', 'Airfield & Lakpazee', 'Bushrod Island & Freeport'];
                           const sampleArea = sampleNeighborhoods[Math.floor(Math.random() * sampleNeighborhoods.length)];
-                          const samplePaymentMethods: Array<Order['paymentMethod']> = ['momo-on-delivery', 'momo', 'cash', 'card'];
+                          const samplePaymentMethods: Array<Order['paymentMethod']> = ['momo-mtn', 'orange-money', 'cod-usd', 'cod-lrd'];
                           const samplePayMethod = samplePaymentMethods[Math.floor(Math.random() * samplePaymentMethods.length)];
 
                           const orderId = `aura-sim-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -3847,19 +3848,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             delegationStatus: 'unassigned',
                             items: [
                               {
+                                cartItemId: `cart-sim-${Date.now()}`,
                                 menuItem: {
                                   id: `dish-sim-${Date.now()}`,
                                   name: chosenDish.name,
+                                  subname: 'Freshly Prepared',
                                   price: chosenDish.price,
                                   category: 'liberian-favorites',
                                   image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600',
                                   description: 'Freshly prepared test dish for Monrovia platform testing.',
+                                  calories: 450,
+                                  dietary: ['Spicy'],
+                                  ingredients: ['Locally sourced fresh ingredients', 'Liberian spices'],
+                                  illustrationType: 'jollof',
                                   restaurantId: randomKitchen.id,
                                   provenance: randomKitchen.name,
                                   prepTimeMinutes: 20,
                                 },
                                 quantity: 1,
+                                selectedAddons: [],
                                 selectedSpiceLevel: 'Monrovia Hot',
+                                itemTotal: chosenDish.price,
                               },
                             ],
                           };
@@ -4757,7 +4766,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {selectedOrderForDetails && (() => {
         const matchedRest = restaurants?.find((r) => r.id === selectedOrderForDetails.restaurantId || r.name === selectedOrderForDetails.restaurantName);
         const matchedDriver = drivers?.find((d) => d.id === selectedOrderForDetails.assignedDriverId || d.name === selectedOrderForDetails.assignedDriverName);
-        const kitchenPhone = matchedRest?.phone || selectedOrderForDetails.restaurantPhone || '0886000000';
+        const kitchenPhone = matchedRest?.phone || '0886000000';
         const driverPhone = matchedDriver?.phone || selectedOrderForDetails.assignedDriverPhone;
         const customerPhone = selectedOrderForDetails.customerPhone;
 
@@ -4848,9 +4857,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </span>
                 </div>
                 <MonroviaDeliveryMap
-                  customerLocation={selectedOrderForDetails.gpsCoords || MONROVIA_NEIGHBORHOOD_COORDS[selectedOrderForDetails.deliveryArea] || { lat: 6.2907, lng: -10.7818 }}
+                  customerLocation={selectedOrderForDetails.deliveryCoords || (selectedOrderForDetails.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[selectedOrderForDetails.deliveryArea] : undefined) || { lat: 6.2907, lng: -10.7818 }}
                   customerAddress={selectedOrderForDetails.deliveryAddress || selectedOrderForDetails.deliveryArea}
-                  restaurantLocation={matchedRest?.locationCoords || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor']}
+                  restaurantLocation={matchedRest?.location || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'] || { lat: 6.2907, lng: -10.7818 }}
                   restaurantName={selectedOrderForDetails.restaurantName || 'Kitchen'}
                   driverLocation={matchedDriver?.currentLocation || drivers[0]?.currentLocation}
                   driverName={selectedOrderForDetails.assignedDriverName || 'Courier'}
