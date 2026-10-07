@@ -262,6 +262,50 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     return `$${usd.toFixed(2)}`;
   };
 
+  const getOrderDeliveryTiming = (order: Order) => {
+    const deliveredTimeMs = order.deliveredAtTimestamp || (order.createdAt ? new Date(order.createdAt).getTime() : Date.now());
+    const deliveryDateObj = new Date(deliveredTimeMs);
+    
+    const formattedDeliveredDate = deliveryDateObj.toLocaleDateString([], {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const formattedDeliveredTime = deliveryDateObj.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Calculate Transit Duration (from picking up at kitchen to customer dropoff)
+    let transitMinutes = order.actualDeliveryMinutes;
+    let pickupTimeMs = order.enRouteAtTimestamp;
+
+    if (!transitMinutes && order.enRouteAtTimestamp && order.deliveredAtTimestamp) {
+      transitMinutes = Math.max(1, Math.round((order.deliveredAtTimestamp - order.enRouteAtTimestamp) / 60000));
+    } else if (!transitMinutes) {
+      // Graceful fallback for demo or past orders
+      transitMinutes = 14;
+    }
+
+    if (!pickupTimeMs) {
+      pickupTimeMs = deliveredTimeMs - transitMinutes * 60000;
+    }
+
+    const pickupDateObj = new Date(pickupTimeMs);
+    const formattedPickupTime = pickupDateObj.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return {
+      formattedDeliveredDate,
+      formattedDeliveredTime,
+      formattedPickupTime,
+      transitMinutes,
+    };
+  };
+
   const handleToggleOnline = async () => {
     if (!isDriverVerified) {
       alert('Verification Required: Your courier profile is currently pending verification by Monrovia Admin. You cannot go online until verified.');
@@ -371,19 +415,25 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         tag: `driver-status-${order.id}`,
       });
     } else if (stage === 'bringing_it') {
+      const now = Date.now();
       const targetStatus: Order['status'] = 'en-route';
       const delegationStatus = 'out_for_delivery';
 
       onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
         delegationStatus,
+        enRouteAtTimestamp: now,
         driverLocation: driver.currentLocation,
       });
 
-      updateOrderStatusApi(order.id, targetStatus, undefined, undefined, { delegationStatus }).catch(() => {});
+      updateOrderStatusApi(order.id, targetStatus, undefined, undefined, { 
+        delegationStatus,
+        enRouteAtTimestamp: now,
+      }).catch(() => {});
       try {
         await updateDoc(doc(db, 'orders', order.id), {
           delegationStatus,
           status: targetStatus,
+          enRouteAtTimestamp: now,
         });
       } catch (e) {
         console.warn('Firestore rider stage notice:', e);
@@ -395,11 +445,16 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         tag: `driver-status-${order.id}`,
       });
     } else if (stage === 'delivered') {
+      const now = Date.now();
       const targetStatus: Order['status'] = 'completed';
       const delegationStatus = 'delivered';
+      const pickupTime = order.enRouteAtTimestamp || order.readyAtTimestamp || (now - 14 * 60000);
+      const transitMinutes = Math.max(1, Math.round((now - pickupTime) / 60000));
 
       onUpdateOrderStatus(order.id, targetStatus, undefined, undefined, {
         delegationStatus,
+        deliveredAtTimestamp: now,
+        actualDeliveryMinutes: transitMinutes,
         driverLocation: driver.currentLocation,
       });
 
@@ -407,19 +462,25 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         ...driver,
         status: 'available',
         activeOrderId: undefined,
-        totalDeliveries: driver.totalDeliveries + 1,
-        earningsTodayUsd: driver.earningsTodayUsd + (order.deliveryFee || 2.5),
+        totalDeliveries: (driver.totalDeliveries || 0) + 1,
+        earningsTodayUsd: (driver.earningsTodayUsd || 0) + (order.deliveryFee || 2.5),
       };
       onUpdateDriver(updatedDriver);
 
       // Dual Sync API
-      updateOrderStatusApi(order.id, 'completed', undefined, undefined, { delegationStatus: 'delivered' }).catch(() => {});
+      updateOrderStatusApi(order.id, 'completed', undefined, undefined, { 
+        delegationStatus: 'delivered',
+        deliveredAtTimestamp: now,
+        actualDeliveryMinutes: transitMinutes,
+      }).catch(() => {});
       saveDriverToApi(updatedDriver).catch(() => {});
 
       try {
         await updateDoc(doc(db, 'orders', order.id), {
           delegationStatus: 'delivered',
           status: 'completed',
+          deliveredAtTimestamp: now,
+          actualDeliveryMinutes: transitMinutes,
         });
         await updateDoc(doc(db, 'drivers', driver.id), {
           status: 'available',
@@ -1103,16 +1164,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                   const targetRest = restaurants?.find(
                     (r) => r.id === order.restaurantId || r.name.toLowerCase() === order.restaurantName?.toLowerCase()
                   );
-                  const orderDate = new Date(order.deliveredAtTimestamp || order.createdAt || Date.now());
-                  const formattedDate = orderDate.toLocaleDateString([], {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  });
-                  const formattedTime = orderDate.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
+                  const timing = getOrderDeliveryTiming(order);
 
                   return (
                     <div
@@ -1138,7 +1190,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
                           <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3 text-gray-400" />
-                            <span>{formattedDate} &bull; {formattedTime}</span>
+                            <span>{timing.formattedDeliveredDate} &bull; Delivered {timing.formattedDeliveredTime} ({timing.transitMinutes}m trip)</span>
                           </span>
                         </div>
 
@@ -1345,6 +1397,16 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-none border-t sm:border-2 sm:border-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-modal-sheet sm:animate-in sm:zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Interactive Pull Notch for Small Screens */}
+            <button
+              type="button"
+              onClick={() => setSelectedHistoryOrder(null)}
+              className="sm:hidden w-full pt-3 pb-1 flex items-center justify-center cursor-pointer bg-gray-900"
+              aria-label="Collapse slip"
+            >
+              <div className="w-12 h-1.5 bg-gray-600 rounded-full hover:bg-gray-400 transition-colors" />
+            </button>
+
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-gray-200 bg-gray-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -1388,6 +1450,59 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                   <span>Completed</span>
                 </span>
               </div>
+
+              {/* Delivery Timing & Transit Breakdown (Pickup -> Customer) */}
+              {(() => {
+                const timing = getOrderDeliveryTiming(selectedHistoryOrder);
+                return (
+                  <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-gray-500 tracking-wider flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-[#06C167]" />
+                        <span>Delivery Time &amp; Duration</span>
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#E8F8EE] text-[#048747] border border-emerald-200 flex items-center gap-1">
+                        <Bike className="w-3 h-3" />
+                        <span>{timing.transitMinutes} Mins On Road</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-200/60">
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase block">
+                          Picked Up at Kitchen
+                        </span>
+                        <div className="font-mono text-xs font-black text-gray-800">
+                          {timing.formattedPickupTime}
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase block">
+                          Delivered to Customer
+                        </span>
+                        <div className="font-mono text-xs font-black text-[#048747]">
+                          {timing.formattedDeliveredTime}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-gray-700 bg-emerald-50/80 border border-emerald-200/80 p-2.5 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#06C167]" />
+                        <span className="font-bold text-emerald-950">Pickup &rarr; Customer Transit:</span>
+                      </div>
+                      <span className="font-extrabold text-[#048747]">
+                        {timing.transitMinutes} minutes
+                      </span>
+                    </div>
+
+                    <div className="text-[10px] text-gray-400 text-right">
+                      Delivery Date: <span className="font-semibold text-gray-600">{timing.formattedDeliveredDate}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Route Summary */}
               <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl space-y-2.5">
