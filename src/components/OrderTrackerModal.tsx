@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle, Wallet, DollarSign, ShieldCheck } from 'lucide-react';
+import { X, CheckCircle2, Clock, ChefHat, Bike, Flame, Utensils, Phone, MapPin, Store, Minimize2, Copy, Check, AlertTriangle, XCircle, Wallet, DollarSign, ShieldCheck, Navigation } from 'lucide-react';
 import { Order, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant, PaymentMethod } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 
@@ -351,23 +351,6 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
             </div>
           )}
 
-          {/* Live Google Map Interactive View (Delivery Mode) */}
-          {order.diningMode === 'delivery' && !isCancelled && (
-            <div className="space-y-1.5">
-              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                Monrovia Delivery Route
-              </div>
-              <MonroviaDeliveryMap
-                driverLocation={order.driverLocation || { lat: 6.2910, lng: -10.7825 }}
-                restaurantLocation={restaurantCoords}
-                customerLocation={customerCoords}
-                restaurantName={restaurantName}
-                customerAddress={order.deliveryArea || order.deliveryAddress || 'Customer'}
-                height="h-52"
-              />
-            </div>
-          )}
-
           {/* Progress Timeline */}
           <div className="space-y-3 pt-2">
             <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -461,11 +444,8 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                     <Wallet className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-xs sm:text-sm text-gray-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>Order Payment</span>
-                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
-                        Kitchen Confirmed
-                      </span>
+                    <h3 className="font-extrabold text-xs sm:text-sm text-gray-950 uppercase tracking-wider">
+                      Order Payment
                     </h3>
                     <p className="text-[11px] text-gray-500 font-medium">
                       Please send payment to {restaurantName}
@@ -733,25 +713,26 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
               </div>
             </div>
 
-            {/* 2. Delivery Driver Contact Information (Only shown once a driver actually confirms & accepts) */}
-            {order.diningMode === 'delivery' && Boolean(driverName) && (
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-[#06C167] text-white flex items-center justify-center shadow-xs">
-                      <Bike className="w-3.5 h-3.5" />
+            {/* 2. Delivery Driver & Live Approaching Route Map (Only shown for delivery mode when driver is assigned or order is en route) */}
+            {order.diningMode === 'delivery' && (Boolean(driverName) || order.status === 'en-route') && (
+              <div className="p-3.5 sm:p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-3 text-xs shadow-xs">
+                {/* Driver Info Header */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-xs shrink-0">
+                      <Bike className="w-4 h-4" />
                     </div>
-                    <div>
-                      <div className="font-black text-gray-900 text-xs flex items-center gap-1.5">
-                        <span>{driverName}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
+                    <div className="min-w-0">
+                      <div className="font-black text-gray-900 text-xs sm:text-sm flex items-center gap-1.5 truncate">
+                        <span className="truncate">{driverName || 'Monrovia Fleet Courier'}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold shrink-0">
                           {driverVehicle}
                         </span>
                       </div>
-                      <div className="text-[10px] text-emerald-700">
-                        {order.delegationStatus === 'out_for_delivery'
+                      <div className="text-[11px] text-emerald-700 font-medium truncate">
+                        {order.status === 'en-route' || order.delegationStatus === 'out_for_delivery'
                           ? '🛵 Courier is on the way to you'
-                          : '🛵 Assigned Monrovia Courier'}
+                          : '🛵 Assigned Courier · Awaiting Pickup'}
                       </div>
                     </div>
                   </div>
@@ -759,7 +740,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                   {driverPhone && (
                     <a
                       href={`tel:${driverPhone}`}
-                      className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors active:scale-95 cursor-pointer"
+                      className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-[#048747] border border-emerald-200 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-xs transition-colors active:scale-95 cursor-pointer shrink-0"
                       title="Call Courier"
                     >
                       <Phone className="w-3.5 h-3.5" />
@@ -767,9 +748,58 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
                     </a>
                   )}
                 </div>
+
                 {driverPhone && (
-                  <div className="text-[11px] text-gray-600 font-mono pl-9">
+                  <div className="text-[11px] text-gray-600 font-mono pl-10">
                     Rider Phone: <strong className="text-gray-900">{driverPhone}</strong>
+                  </div>
+                )}
+
+                {/* Only show the live route map & ETA when kitchen marks order as en route! */}
+                {(order.status === 'en-route' || order.delegationStatus === 'out_for_delivery') && (
+                  <div className="space-y-2 pt-2 border-t border-emerald-200/60 animate-in fade-in zoom-in-95 duration-200">
+                    {/* Live Approaching & Estimated Time of Arrival (ETA) Callout */}
+                    <div className="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-[#048747] flex items-center justify-center shrink-0 font-bold">
+                          <Navigation className="w-3.5 h-3.5 animate-pulse" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-extrabold uppercase text-gray-500 tracking-wider">
+                            Approaching Customer
+                          </div>
+                          <div className="text-xs font-black text-[#048747] truncate">
+                            Courier moving towards {order.deliveryArea || order.deliveryAddress || 'your location'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0 bg-[#E8F8EE] px-2.5 py-1 rounded-lg border border-emerald-200">
+                        <div className="text-[9px] font-extrabold uppercase text-gray-500">
+                          Est. Arrival
+                        </div>
+                        <div className="font-mono text-xs font-black text-[#048747]">
+                          ~{formatCountdown(secondsRemaining)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Google Map Showing Rider Position Approaching Customer */}
+                    <div className="rounded-2xl overflow-hidden border border-emerald-200 shadow-inner">
+                      <MonroviaDeliveryMap
+                        driverLocation={order.driverLocation || {
+                          lat: (restaurantCoords.lat + customerCoords.lat) / 2,
+                          lng: (restaurantCoords.lng + customerCoords.lng) / 2,
+                        }}
+                        restaurantLocation={restaurantCoords}
+                        customerLocation={customerCoords}
+                        restaurantName={restaurantName}
+                        customerAddress={order.deliveryArea || order.deliveryAddress || 'Customer'}
+                        driverName={driverName || 'Courier'}
+                        driverVehicle={driverVehicle}
+                        height="h-56"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
