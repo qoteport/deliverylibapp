@@ -191,3 +191,28 @@ export async function sendDriverVerificationSms(
   const message = `AURA Courier Alert: Hello ${driverName}, your courier account has been VERIFIED by Monrovia Admin! You can now log into the Rider Portal and tap Go Online to start accepting deliveries.`;
   return sendTwilioSms(driverPhone, message);
 }
+
+/**
+ * Send an SMS to a driver when they register
+ */
+export async function sendDriverRegistrationSms(
+  driverPhone: string,
+  driverName: string,
+  pin: string
+): Promise<{ success: boolean; message: string }> {
+  const message = `AURA Courier Alert: Welcome ${driverName}! Your courier application is submitted and pending Monrovia Admin verification. Your login PIN is ${pin}.`;
+  return sendTwilioSms(driverPhone, message);
+}
+
+/**
+ * Send an SMS to a restaurant when they register
+ */
+export async function sendRestaurantRegistrationSms(
+  restaurantPhone: string,
+  restaurantName: string,
+  pin: string,
+  neighborhood: string
+): Promise<{ success: boolean; message: string }> {
+  const message = `AURA Kitchen Alert: Welcome ${restaurantName}! Your kitchen in ${neighborhood} is registered and pending admin review. Your staff login PIN is ${pin}.`;
+  return sendTwilioSms(restaurantPhone, message);
+}

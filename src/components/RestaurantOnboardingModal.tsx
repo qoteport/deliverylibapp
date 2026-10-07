@@ -5,6 +5,9 @@ import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { LocationPickerModal } from './LocationPickerModal';
 import { CustomDropdown } from './CustomDropdown';
+import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
+import { sendRestaurantRegistrationSms } from '../utils/twilio';
+import { playOrderAlertSound } from '../utils/audioAlert';
 
 interface RestaurantOnboardingModalProps {
   isOpen: boolean;
@@ -189,6 +192,23 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     setIsSuccess(true);
     setCreatedRestaurant(newRestaurant);
     onRestaurantCreated(newRestaurant, initialDish);
+
+    // Request notification permission & dispatch celebratory alert
+    requestNotificationPermission().catch(() => {});
+    playOrderAlertSound();
+    sendBrowserNotification({
+      title: 'Restaurant Registration Submitted! 🍳',
+      body: `Welcome ${newRestaurant.name}! Your kitchen profile in ${newRestaurant.neighborhood} is registered and undergoing admin review.`,
+      tag: `restaurant-register-${newRestaurant.id}`,
+    });
+
+    // Dispatch SMS via Twilio
+    sendRestaurantRegistrationSms(
+      cleanPhone,
+      newRestaurant.name,
+      cleanPin,
+      newRestaurant.neighborhood
+    ).catch((e) => console.warn('Restaurant registration SMS dispatch notice:', e));
   };
 
   return (

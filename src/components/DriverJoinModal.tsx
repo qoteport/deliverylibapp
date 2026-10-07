@@ -6,6 +6,9 @@ import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { saveDriverToApi } from '../utils/apiSync';
+import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
+import { sendDriverRegistrationSms } from '../utils/twilio';
+import { playOrderAlertSound } from '../utils/audioAlert';
 
 interface DriverJoinModalProps {
   isOpen: boolean;
@@ -115,6 +118,20 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
     setRegisteredDriver(newDriver);
     setIsSuccess(true);
     onDriverRegistered(newDriver);
+
+    // Request browser notification permission & dispatch celebratory alert
+    requestNotificationPermission().catch(() => {});
+    playOrderAlertSound();
+    sendBrowserNotification({
+      title: 'Courier Registration Submitted! 🛵',
+      body: `Welcome ${newDriver.name}! Your courier application is submitted and pending Monrovia Fleet verification.`,
+      tag: `driver-register-${newDriver.id}`,
+    });
+
+    // Dispatch Welcome & Verification SMS via Twilio
+    sendDriverRegistrationSms(newDriver.phone, newDriver.name, newDriver.driverPin || '******').catch((e) =>
+      console.warn('Driver registration SMS dispatch notice:', e)
+    );
 
     // 1. Sync directly to Backend API store for instantaneous cross-device delivery
     saveDriverToApi(newDriver).catch((e) => console.warn('API driver sync notice:', e));

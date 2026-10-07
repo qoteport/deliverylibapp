@@ -191,7 +191,10 @@ export default function App() {
         snapshot.forEach((docSnap) => {
           remoteList.push(docSnap.data() as Restaurant);
         });
-        setRestaurants(remoteList);
+        if (remoteList.length > 0) {
+          setRestaurants(remoteList);
+          remoteList.forEach((r) => saveRestaurantToApi(r).catch(() => {}));
+        }
       },
       (error) => {
         console.warn('Firestore restaurants snapshot notice:', error);
@@ -209,7 +212,10 @@ export default function App() {
         snapshot.forEach((docSnap) => {
           remoteItems.push(docSnap.data() as MenuItem);
         });
-        setMenuItems(remoteItems);
+        if (remoteItems.length > 0) {
+          setMenuItems(remoteItems);
+          remoteItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+        }
       },
       (error) => {
         console.warn('Firestore menu snapshot notice:', error);
@@ -234,11 +240,14 @@ export default function App() {
           }
         });
 
-        setDrivers(remoteDrivers);
-        try {
-          localStorage.setItem('aura_monrovia_drivers', JSON.stringify(remoteDrivers));
-        } catch (e) {
-          console.warn('LocalStorage drivers cache error:', e);
+        if (remoteDrivers.length > 0) {
+          setDrivers(remoteDrivers);
+          remoteDrivers.forEach((d) => saveDriverToApi(d).catch(() => {}));
+          try {
+            localStorage.setItem('aura_monrovia_drivers', JSON.stringify(remoteDrivers));
+          } catch (e) {
+            console.warn('LocalStorage drivers cache error:', e);
+          }
         }
       },
       (error) => {
@@ -264,14 +273,16 @@ export default function App() {
           }
         });
 
-        const sorted = remoteOrders.sort(
-          (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-        );
-        setOrders(sorted);
-        try {
-          localStorage.setItem('aura_orders', JSON.stringify(sorted));
-        } catch (e) {
-          console.warn('LocalStorage orders cache error:', e);
+        if (remoteOrders.length > 0) {
+          const sorted = remoteOrders.sort(
+            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+          );
+          setOrders(sorted);
+          try {
+            localStorage.setItem('aura_orders', JSON.stringify(sorted));
+          } catch (e) {
+            console.warn('LocalStorage orders cache error:', e);
+          }
         }
       },
       (error) => {
@@ -288,29 +299,44 @@ export default function App() {
     const syncWithApi = async () => {
       // 1. Sync Orders
       const apiOrders = await fetchOrdersFromApi();
-      if (apiOrders && isMounted) {
-        const sorted = apiOrders.sort(
-          (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-        );
-        setOrders(sorted);
+      if (apiOrders && isMounted && apiOrders.length > 0) {
+        setOrders((prev) => {
+          const idMap = new Map(prev.map((o) => [o.id, o]));
+          apiOrders.forEach((o) => idMap.set(o.id, { ...idMap.get(o.id), ...o }));
+          return Array.from(idMap.values()).sort(
+            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
+          );
+        });
       }
 
       // 2. Sync Drivers
       const apiDrivers = await fetchDriversFromApi();
-      if (apiDrivers && isMounted) {
-        setDrivers(apiDrivers);
+      if (apiDrivers && isMounted && apiDrivers.length > 0) {
+        setDrivers((prev) => {
+          const idMap = new Map(prev.map((d) => [d.id, d]));
+          apiDrivers.forEach((d) => idMap.set(d.id, { ...idMap.get(d.id), ...d }));
+          return Array.from(idMap.values());
+        });
       }
 
       // 3. Sync Restaurants
       const apiRestaurants = await fetchRestaurantsFromApi();
-      if (apiRestaurants && isMounted) {
-        setRestaurants(apiRestaurants);
+      if (apiRestaurants && isMounted && apiRestaurants.length > 0) {
+        setRestaurants((prev) => {
+          const idMap = new Map(prev.map((r) => [r.id, r]));
+          apiRestaurants.forEach((r) => idMap.set(r.id, { ...idMap.get(r.id), ...r }));
+          return Array.from(idMap.values());
+        });
       }
 
       // 4. Sync Menu
       const apiMenu = await fetchMenuFromApi();
-      if (apiMenu && isMounted) {
-        setMenuItems(apiMenu);
+      if (apiMenu && isMounted && apiMenu.length > 0) {
+        setMenuItems((prev) => {
+          const idMap = new Map(prev.map((m) => [m.id, m]));
+          apiMenu.forEach((m) => idMap.set(m.id, { ...idMap.get(m.id), ...m }));
+          return Array.from(idMap.values());
+        });
       }
     };
 
@@ -719,7 +745,19 @@ export default function App() {
     showToast(`Restaurant "${newRest.name}" registered successfully!`);
     saveRestaurantToApi(newRest).catch((e) => console.warn('API save restaurant notice:', e));
     try {
-      await setDoc(doc(db, 'restaurants', newRest.id), newRest);
+      await setDoc(doc(db, 'restaurants', newRest.id), sanitizeForFirestore(newRest), { merge: true });
+    } catch (e) {
+      console.warn('Firestore setDoc restaurant notice:', e);
+    }
+  };
+
+  const handleUpdateRestaurant = async (updatedRest: Restaurant) => {
+    setRestaurants((prev) =>
+      prev.map((r) => (r.id === updatedRest.id ? updatedRest : r))
+    );
+    saveRestaurantToApi(updatedRest).catch((e) => console.warn('API update restaurant notice:', e));
+    try {
+      await setDoc(doc(db, 'restaurants', updatedRest.id), sanitizeForFirestore(updatedRest), { merge: true });
     } catch (e) {
       console.warn('Firestore setDoc restaurant notice:', e);
     }
@@ -914,6 +952,7 @@ export default function App() {
             onExitAdmin={() => navigateTo({ name: 'home' })}
             onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
             onToggleRestaurantStatus={handleToggleRestaurantStatus}
+            onUpdateRestaurant={handleUpdateRestaurant}
             onDeleteRestaurant={handleDeleteRestaurant}
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onUpdateDriver={handleUpdateDriver}

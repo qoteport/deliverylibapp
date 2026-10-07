@@ -55,8 +55,11 @@ import {
   deleteDriverFromApi, 
   bulkDeleteDriversFromApi, 
   deleteRestaurantFromApi, 
-  bulkDeleteRestaurantsFromApi 
+  bulkDeleteRestaurantsFromApi,
+  saveRestaurantToApi,
+  saveDriverToApi
 } from '../utils/apiSync';
+import { sanitizeForFirestore } from '../utils/cleanData';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
@@ -70,6 +73,7 @@ interface AdminPortalProps {
   onExitAdmin: () => void;
   onOpenRestaurantPortal: (restaurantId: string) => void;
   onToggleRestaurantStatus: (restaurantId: string) => void;
+  onUpdateRestaurant?: (restaurant: Restaurant) => void;
   onDeleteRestaurant: (restaurantId: string) => void;
   onUpdateOrderStatus: (
     orderId: string, 
@@ -94,6 +98,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onOpenOnboarding,
   onOpenRestaurantPortal,
   onToggleRestaurantStatus,
+  onUpdateRestaurant,
   onDeleteRestaurant,
   onUpdateOrderStatus,
   onUpdateDriver,
@@ -711,11 +716,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     if (selectedRestaurantForDetails && selectedRestaurantForDetails.id === restaurant.id) {
       setSelectedRestaurantForDetails(updated);
     }
-    try {
-      await updateDoc(doc(db, 'restaurants', restaurant.id), {
-        isVerified: newVerified,
-        verificationStatus: newStatus,
+    if (onUpdateRestaurant) {
+      onUpdateRestaurant(updated);
+    }
+    saveRestaurantToApi(updated).catch(() => {});
+
+    if (newVerified) {
+      playOrderAlertSound();
+      sendBrowserNotification({
+        title: 'Kitchen Verified! 🍳',
+        body: `${restaurant.name} has been verified and is now live on the Monrovia storefront!`,
+        tag: `restaurant-verified-${restaurant.id}`,
       });
+    }
+
+    try {
+      await setDoc(doc(db, 'restaurants', restaurant.id), sanitizeForFirestore(updated), { merge: true });
     } catch (e) {
       console.warn('Firestore restaurant verification error:', e);
     }
