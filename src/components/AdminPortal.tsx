@@ -42,7 +42,21 @@ import {
   Search,
   Timer,
   Sparkles,
-  ChefHat
+  ChefHat,
+  Settings,
+  Sliders,
+  Volume2,
+  Bell,
+  Play,
+  RefreshCw,
+  Copy,
+  CheckCheck,
+  Info,
+  Radio,
+  Terminal,
+  Beaker,
+  FileCode,
+  CheckSquare
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser } from '../types';
 import { CustomDropdown } from './CustomDropdown';
@@ -57,13 +71,23 @@ import {
   deleteRestaurantFromApi, 
   bulkDeleteRestaurantsFromApi,
   saveRestaurantToApi,
-  saveDriverToApi
+  saveDriverToApi,
+  saveOrderToApi
 } from '../utils/apiSync';
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { playOrderAlertSound, primeAudioContext } from '../utils/audioAlert';
 import { sendBrowserNotification, requestNotificationPermission } from '../utils/browserNotifications';
-import { sendDriverVerificationSms } from '../utils/twilio';
+import { 
+  sendInfobipSms, 
+  sendInfobipWhatsApp, 
+  getSavedInfobipConfig, 
+  saveInfobipConfig, 
+  InfobipConfig, 
+  sendDriverVerificationSms, 
+  sendDriverRegistrationSms, 
+  sendRestaurantRegistrationSms 
+} from '../utils/infobip';
 
 interface AdminPortalProps {
   restaurants: Restaurant[];
@@ -111,13 +135,42 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onToggleCurrency,
 }) => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'restaurants' | 'drivers' | 'orders' | 'users' | 'system'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'restaurants' | 'drivers' | 'orders' | 'users' | 'system' | 'settings'>('analytics');
   const [restaurantFilter, setRestaurantFilter] = useState<'all' | 'pending' | 'verified'>('all');
   const [driverFilter, setDriverFilter] = useState<'all' | 'pending' | 'verified'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchRestaurant, setSearchRestaurant] = useState<string>('');
   const [searchDriver, setSearchDriver] = useState<string>('');
   const [searchUser, setSearchUser] = useState<string>('');
+
+  // Settings & Testing Ground State
+  const [testSmsPhone, setTestSmsPhone] = useState('0886 554 321');
+  const [testSmsSender, setTestSmsSender] = useState('AURA');
+  const [testSmsMessage, setTestSmsMessage] = useState('Hello from AURA Monrovia! Your test SMS notification via Infobip has been delivered successfully.');
+  const [testSmsPreset, setTestSmsPreset] = useState<'custom' | 'otp' | 'order' | 'driver' | 'kitchen'>('order');
+  const [isSendingTestSms, setIsSendingTestSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{
+    timestamp: string;
+    success: boolean;
+    to: string;
+    sender: string;
+    messageId?: string;
+    status?: string;
+    error?: string;
+    raw?: any;
+  } | null>(null);
+
+  // Infobip & System Config State
+  const [infobipSettings, setInfobipSettings] = useState<InfobipConfig>(() => getSavedInfobipConfig());
+  const [infobipBaseUrlInput, setInfobipBaseUrlInput] = useState('m9kvm2.api.infobip.com');
+  const [infobipApiKeyInput, setInfobipApiKeyInput] = useState('d7b9b8285c86b0aaa6b9b9d74a913eef-7c93ff7b-c719-4f6d-9704-b756ec3375b5');
+  const [infobipSenderInput, setInfobipSenderInput] = useState('AURA');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [settingsSavedMessage, setSettingsSavedMessage] = useState('');
+  const [isSimulatingOrder, setIsSimulatingOrder] = useState(false);
+  const [simulatedOrderSuccess, setSimulatedOrderSuccess] = useState<string | null>(null);
+  const [soundTestSuccess, setSoundTestSuccess] = useState(false);
+  const [pushTestSuccess, setPushTestSuccess] = useState(false);
 
   // Firestore Live Users & Customer Directory
   const [dbUsers, setDbUsers] = useState<AppUser[]>([]);
@@ -1110,6 +1163,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             }`}
           >
             <span>Database Maintenance</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'settings'
+                ? 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Settings &amp; Testing Ground</span>
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse ml-0.5" />
           </button>
         </div>
 
@@ -3410,6 +3476,625 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
               </div>
             )}
+
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 6: SETTINGS & TESTING GROUND (SANDBOX)                   */}
+        {/* ============================================================ */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+
+            {/* Top Overview Banner */}
+            <div className="p-6 sm:p-7 bg-gradient-to-br from-gray-900 via-gray-900 to-slate-800 rounded-3xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+              <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-[#06C167]/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="space-y-1.5 relative z-10">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black uppercase tracking-wider bg-[#06C167]/20 text-emerald-400 border border-[#06C167]/30 flex items-center gap-1">
+                    <Beaker className="w-3 h-3" />
+                    <span>Admin Sandbox &amp; Configs</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    Infobip Live
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Settings &amp; Testing Ground
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-300 max-w-xl">
+                  Simulate live customer orders, test Infobip SMS dispatch, trigger browser/audio alerts, and configure platform dispatch settings.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 relative z-10 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playOrderAlertSound();
+                    setSoundTestSuccess(true);
+                    setTimeout(() => setSoundTestSuccess(false), 2500);
+                  }}
+                  className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-white/15 shadow-sm active:scale-95"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{soundTestSuccess ? 'Sound Chime Played! 🔔' : 'Test Audio Chime'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await requestNotificationPermission();
+                    sendBrowserNotification({
+                      title: 'AURA Admin Push Test 🚀',
+                      body: 'Web push notifications are working smoothly across your device.',
+                      tag: 'admin-test-push',
+                    });
+                    setPushTestSuccess(true);
+                    setTimeout(() => setPushTestSuccess(false), 3000);
+                  }}
+                  className="px-3.5 py-2.5 bg-[#06C167] hover:bg-[#048747] text-white rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#06C167]/20 active:scale-95"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>{pushTestSuccess ? 'Push Sent! 🚀' : 'Test Web Push'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Main 2-Column Grid: Sandbox & Simulator (Left) + System Configs (Right) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+              {/* LEFT COLUMN: SMS TESTBED & ORDER SIMULATOR (7 COLS) */}
+              <div className="lg:col-span-7 space-y-6">
+
+                {/* 1. Infobip SMS Dispatch Sandbox */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-[#048747] flex items-center justify-center font-black">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Infobip SMS Dispatch Sandbox
+                        </h3>
+                        <p className="text-[11px] text-gray-400">
+                          Live real-time SMS testbed using Infobip API authentication
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>API Connected</span>
+                    </span>
+                  </div>
+
+                  {/* Recipient & Sender Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>Recipient Phone (Liberia / International) *</span>
+                        <span className="text-[10px] font-mono text-gray-400 font-normal">e.g. 0886 554 321</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={testSmsPhone}
+                        onChange={(e) => setTestSmsPhone(e.target.value)}
+                        placeholder="0886 554 321 or +231..."
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>Sender ID *</span>
+                        <span className="text-[10px] font-mono text-gray-400 font-normal">Alpha-numeric</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={testSmsSender}
+                        onChange={(e) => setTestSmsSender(e.target.value)}
+                        placeholder="AURA"
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167] focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="space-y-1.5 text-xs">
+                    <label className="font-extrabold text-gray-700 block">Quick Message Presets</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: 'order', label: '🛒 New Order Confirmed', text: 'AURA Order #1042 received! Kitchen: Living Room Lounge. Total: $12.50 USD. Transmitted to kitchen for cooking. Track live in app!' },
+                        { id: 'otp', label: '🔑 Verification OTP', text: 'Your AURA Monrovia verification code is 584920.' },
+                        { id: 'driver', label: '🛵 Rider Verification Alert', text: 'AURA Courier Alert: Hello Tamba, your courier account has been VERIFIED by Monrovia Admin! You can now log into Rider Portal and tap Go Online.' },
+                        { id: 'kitchen', label: '🍳 Kitchen Registration', text: 'AURA Kitchen Alert: Welcome Evelyn\'s Restaurant! Your kitchen in Sinkor is registered and live on the storefront. Staff PIN: 123456.' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            setTestSmsPreset(preset.id as any);
+                            setTestSmsMessage(preset.text);
+                          }}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                            testSmsPreset === preset.id
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Message Input */}
+                  <div className="space-y-1 text-xs">
+                    <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                      <span>SMS Message Body *</span>
+                      <span className="text-[10px] font-mono text-gray-400">{testSmsMessage.length} characters (~{Math.ceil(testSmsMessage.length / 160)} SMS)</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={testSmsMessage}
+                      onChange={(e) => {
+                        setTestSmsMessage(e.target.value);
+                        setTestSmsPreset('custom');
+                      }}
+                      placeholder="Type SMS text to dispatch via Infobip..."
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167] focus:bg-white transition-all font-sans"
+                    />
+                  </div>
+
+                  {/* Dispatch Action */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      disabled={isSendingTestSms || !testSmsPhone.trim() || !testSmsMessage.trim()}
+                      onClick={async () => {
+                        setIsSendingTestSms(true);
+                        setTestSmsResult(null);
+                        try {
+                          const res = await sendInfobipSms(testSmsPhone.trim(), testSmsMessage.trim(), testSmsSender.trim() || 'AURA');
+                          setTestSmsResult({
+                            timestamp: new Date().toLocaleTimeString(),
+                            success: res.success,
+                            to: testSmsPhone.trim(),
+                            sender: testSmsSender.trim() || 'AURA',
+                            messageId: res.messageId || res.sid,
+                            status: res.success ? 'SENT_TO_INFOBIP' : 'FAILED',
+                            error: res.success ? undefined : res.message,
+                            raw: res,
+                          });
+                        } catch (err: any) {
+                          setTestSmsResult({
+                            timestamp: new Date().toLocaleTimeString(),
+                            success: false,
+                            to: testSmsPhone.trim(),
+                            sender: testSmsSender.trim() || 'AURA',
+                            status: 'NETWORK_ERROR',
+                            error: err.message || 'Unknown network error',
+                          });
+                        } finally {
+                          setIsSendingTestSms(false);
+                        }
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        isSendingTestSms || !testSmsPhone.trim() || !testSmsMessage.trim()
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-[#06C167] to-[#048747] text-white shadow-md shadow-[#06C167]/20 hover:opacity-95 active:scale-98'
+                      }`}
+                    >
+                      {isSendingTestSms ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Dispatching via Infobip API...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Dispatch Test SMS (Infobip)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Live Response Inspector */}
+                  {testSmsResult && (
+                    <div className={`p-4 rounded-2xl border text-xs space-y-2 animate-in fade-in ${
+                      testSmsResult.success
+                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                        : 'bg-red-50/80 border-red-200 text-red-950'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {testSmsResult.success ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                          )}
+                          <span className="font-black">
+                            {testSmsResult.success ? 'Infobip Dispatch Accepted' : 'Dispatch Failed / Notice'}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[10px] text-gray-500">
+                          {testSmsResult.timestamp}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px]">
+                        <div className="bg-white/80 p-2 rounded-lg border border-gray-100">
+                          <span className="text-[9px] text-gray-400 uppercase font-sans block">Recipient</span>
+                          <span className="font-bold truncate block">{testSmsResult.to}</span>
+                        </div>
+                        <div className="bg-white/80 p-2 rounded-lg border border-gray-100">
+                          <span className="text-[9px] text-gray-400 uppercase font-sans block">Sender</span>
+                          <span className="font-bold truncate block">{testSmsResult.sender}</span>
+                        </div>
+                        <div className="bg-white/80 p-2 rounded-lg border border-gray-100">
+                          <span className="text-[9px] text-gray-400 uppercase font-sans block">Status</span>
+                          <span className={`font-bold truncate block ${testSmsResult.success ? 'text-emerald-700' : 'text-red-700'}`}>
+                            {testSmsResult.status}
+                          </span>
+                        </div>
+                        <div className="bg-white/80 p-2 rounded-lg border border-gray-100">
+                          <span className="text-[9px] text-gray-400 uppercase font-sans block">Message ID</span>
+                          <span className="font-bold truncate block" title={testSmsResult.messageId || 'N/A'}>
+                            {testSmsResult.messageId ? `#${testSmsResult.messageId.slice(0, 10)}...` : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {testSmsResult.error && (
+                        <div className="text-[11px] text-red-700 font-mono bg-red-100/60 p-2 rounded-lg">
+                          Error: {testSmsResult.error}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. End-to-End Live Order Simulator */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-black">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Monrovia Order Flow Simulator
+                        </h3>
+                        <p className="text-[11px] text-gray-400">
+                          Generate simulated customer orders to test dispatch radar and kitchen KDS
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                      1-Click Generator
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    Simulates a customer in Monrovia selecting authentic dishes, submitting payment via MTN MoMo / Orange Money / Cash, calculating dynamic delivery fees, and broadcasting to fleet couriers in real-time.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      disabled={isSimulatingOrder}
+                      onClick={async () => {
+                        setIsSimulatingOrder(true);
+                        setSimulatedOrderSuccess(null);
+                        try {
+                          const now = Date.now();
+                          const randomKitchen = restaurants.length > 0
+                            ? restaurants[Math.floor(Math.random() * restaurants.length)]
+                            : { id: 'rest-living-room', name: 'Living Room Lounge', neighborhood: 'Sinkor (Tubman Blvd)', phone: '0886 554 321' };
+
+                          const sampleDishes = [
+                            { name: 'Monrovia Fried Pepper Rice & Fish', price: 9.50 },
+                            { name: 'Liberian Jollof Rice & Roasted Chicken', price: 10.00 },
+                            { name: 'Cassava Leaf & Country Rice Combo', price: 8.50 },
+                            { name: 'Palm Butter Stew with Smoked Fish', price: 11.00 },
+                            { name: 'Pepper Kala & Spicy Dip', price: 4.50 },
+                          ];
+
+                          const chosenDish = sampleDishes[Math.floor(Math.random() * sampleDishes.length)];
+                          const sampleNames = ['Kollie Freeman', 'Comfort Weah', 'Alphonso Massaquoi', 'Fatu Sirleaf', 'Tamba Kamara', 'Bendue Cooper'];
+                          const sampleCustomerName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+                          const sampleNeighborhoods = ['Sinkor (Tubman Blvd)', 'Congo Town', 'Mamba Point', 'Paynesville', 'Old Road', 'Bushrod Island'];
+                          const sampleArea = sampleNeighborhoods[Math.floor(Math.random() * sampleNeighborhoods.length)];
+                          const samplePaymentMethods: Array<Order['paymentMethod']> = ['momo-on-delivery', 'momo', 'cash', 'card'];
+                          const samplePayMethod = samplePaymentMethods[Math.floor(Math.random() * samplePaymentMethods.length)];
+
+                          const orderId = `aura-sim-${Math.floor(1000 + Math.random() * 9000)}`;
+                          const subtotal = chosenDish.price;
+                          const deliveryFee = 2.00;
+                          const total = subtotal + deliveryFee;
+
+                          const simulatedOrder: Order = {
+                            id: orderId,
+                            createdAt: new Date(now).toISOString(),
+                            createdAtTimestamp: now,
+                            confirmedAtTimestamp: now,
+                            targetEtaTimestamp: now + 25 * 60000,
+                            status: 'received',
+                            restaurantId: randomKitchen.id,
+                            restaurantName: randomKitchen.name,
+                            customerName: sampleCustomerName,
+                            customerPhone: testSmsPhone.trim() || '0886 554 321',
+                            customerEmail: `${sampleCustomerName.toLowerCase().replace(/\s+/g, '')}@monrovia.aura`,
+                            deliveryArea: sampleArea,
+                            deliveryAddress: `${sampleArea}, Monrovia`,
+                            deliveryCoords: MONROVIA_NEIGHBORHOOD_COORDS[sampleArea] || { lat: 6.2907, lng: -10.7818 },
+                            diningMode: 'delivery',
+                            paymentMethod: samplePayMethod,
+                            currency: 'USD',
+                            subtotal,
+                            discount: 0,
+                            tax: 0,
+                            serviceFee: 0,
+                            deliveryFee,
+                            tip: 0,
+                            total,
+                            estimatedDeliveryTime: '25 mins',
+                            prepDurationMinutes: 20,
+                            delegationStatus: 'unassigned',
+                            items: [
+                              {
+                                menuItem: {
+                                  id: `dish-sim-${Date.now()}`,
+                                  name: chosenDish.name,
+                                  price: chosenDish.price,
+                                  category: 'liberian-favorites',
+                                  image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600',
+                                  description: 'Freshly prepared test dish for Monrovia platform testing.',
+                                  restaurantId: randomKitchen.id,
+                                  provenance: randomKitchen.name,
+                                  prepTimeMinutes: 20,
+                                },
+                                quantity: 1,
+                                selectedSpiceLevel: 'Monrovia Hot',
+                              },
+                            ],
+                          };
+
+                          await saveOrderToApi(simulatedOrder).catch(() => {});
+                          await setDoc(doc(db, 'orders', orderId), sanitizeForFirestore(simulatedOrder));
+
+                          playOrderAlertSound();
+                          sendBrowserNotification({
+                            title: `⚡ Test Order #${orderId} Created!`,
+                            body: `${sampleCustomerName} ordered ${chosenDish.name} from ${randomKitchen.name}. Total: $${total.toFixed(2)}.`,
+                            tag: `order-sim-${orderId}`,
+                          });
+
+                          if (infobipSettings.enableSms && testSmsPhone) {
+                            sendInfobipSms(
+                              testSmsPhone,
+                              `AURA Test Ground: Order #${orderId} received! Kitchen: ${randomKitchen.name}. Total: $${total.toFixed(2)}. Track live in app!`
+                            ).catch(() => {});
+                          }
+
+                          setSimulatedOrderSuccess(`Simulated order #${orderId} created successfully! Kitchen: ${randomKitchen.name}, Customer: ${sampleCustomerName}. Order is now live.`);
+                        } catch (err: any) {
+                          alert(`Simulation error: ${err.message}`);
+                        } finally {
+                          setIsSimulatingOrder(false);
+                        }
+                      }}
+                      className="flex-1 py-3 px-4 bg-gray-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      {isSimulatingOrder ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Generating Simulated Order...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 text-[#06C167]" />
+                          <span>Simulate Live Customer Order</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('orders')}
+                      className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>View Orders Feed ({activeOrdersCount})</span>
+                    </button>
+                  </div>
+
+                  {simulatedOrderSuccess && (
+                    <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 flex items-start gap-2.5 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-[#06C167] shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <span className="font-extrabold block">Order Successfully Injected!</span>
+                        <p className="text-[11px] text-emerald-800">{simulatedOrderSuccess}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* RIGHT COLUMN: PLATFORM CONFIGURATIONS & CREDENTIALS (5 COLS) */}
+              <div className="lg:col-span-5 space-y-6">
+
+                {/* Platform Configuration Settings */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
+                        <Sliders className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Infobip &amp; Notification Settings
+                        </h3>
+                        <p className="text-[11px] text-gray-400">
+                          Manage messaging parameters and credentials
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const updated: InfobipConfig = {
+                        ...infobipSettings,
+                        senderId: infobipSenderInput.trim() || 'AURA',
+                      };
+                      setInfobipSettings(updated);
+                      saveInfobipConfig(updated);
+                      setSettingsSavedMessage('Configurations saved successfully!');
+                      setTimeout(() => setSettingsSavedMessage(''), 3000);
+                    }}
+                    className="space-y-3.5 text-xs"
+                  >
+                    {/* API Base URL */}
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 block">Infobip API Base URL</label>
+                      <input
+                        type="text"
+                        value={infobipBaseUrlInput}
+                        readOnly
+                        className="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-mono text-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* API Key */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="font-extrabold text-gray-700">Infobip API Key (Environment)</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="text-[10px] font-bold text-[#06C167] hover:underline cursor-pointer"
+                        >
+                          {showApiKey ? 'Hide Key' : 'Reveal Key'}
+                        </button>
+                      </div>
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={infobipApiKeyInput}
+                        readOnly
+                        className="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-mono text-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Sender ID */}
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 block">Default Brand Sender ID</label>
+                      <input
+                        type="text"
+                        value={infobipSenderInput}
+                        onChange={(e) => setInfobipSenderInput(e.target.value)}
+                        placeholder="AURA"
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167] focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Notification Toggles */}
+                    <div className="pt-2 border-t border-gray-100 space-y-2.5">
+                      <label className="flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 bg-gray-50/70 hover:bg-gray-50 cursor-pointer transition-colors">
+                        <div>
+                          <span className="font-extrabold text-gray-900 block">Auto-SMS on New Orders</span>
+                          <span className="text-[11px] text-gray-500">Dispatch customer SMS immediately upon order placement</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={infobipSettings.enableSms}
+                          onChange={(e) => {
+                            const updated = { ...infobipSettings, enableSms: e.target.checked };
+                            setInfobipSettings(updated);
+                            saveInfobipConfig(updated);
+                          }}
+                          className="w-4 h-4 rounded text-[#06C167] focus:ring-[#06C167] cursor-pointer"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 bg-gray-50/70 hover:bg-gray-50 cursor-pointer transition-colors">
+                        <div>
+                          <span className="font-extrabold text-gray-900 block">WhatsApp Order Links</span>
+                          <span className="text-[11px] text-gray-500">Enable click-to-chat dispatch URL generation for kitchens</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={infobipSettings.enableWhatsApp}
+                          onChange={(e) => {
+                            const updated = { ...infobipSettings, enableWhatsApp: e.target.checked };
+                            setInfobipSettings(updated);
+                            saveInfobipConfig(updated);
+                          }}
+                          className="w-4 h-4 rounded text-[#06C167] focus:ring-[#06C167] cursor-pointer"
+                        />
+                      </label>
+                    </div>
+
+                    {settingsSavedMessage && (
+                      <div className="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl flex items-center gap-1.5 animate-in fade-in">
+                        <Check className="w-3.5 h-3.5 text-[#06C167] stroke-[3]" />
+                        <span>{settingsSavedMessage}</span>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 px-4 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        Save Configurations
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Monrovia Platform Parameters Card */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-3.5 text-xs">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Store className="w-4 h-4 text-[#06C167]" />
+                      <h4 className="font-extrabold text-gray-900">Monrovia Platform Rules</h4>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-gray-400">v3.4 Fleet</span>
+                  </div>
+
+                  <div className="divide-y divide-gray-100 space-y-2">
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-gray-500 font-medium">Exchange Rate:</span>
+                      <span className="font-mono font-extrabold text-gray-900">1 USD = 195 LRD</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-gray-500 font-medium">Delivery Fee Algorithm:</span>
+                      <span className="font-extrabold text-emerald-700">Dynamic Distance ($0.50 - $3.00)</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-gray-500 font-medium">Active Fleet Couriers:</span>
+                      <span className="font-bold text-gray-900">{drivers.filter(d => d.isOnline).length} Online / {drivers.length} Total</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-gray-500 font-medium">Kitchens Enrolled:</span>
+                      <span className="font-bold text-gray-900">{restaurants.length} Registered</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
 
           </div>
         )}
