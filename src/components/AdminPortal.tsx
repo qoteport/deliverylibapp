@@ -1045,9 +1045,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             }`}
           >
             <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Live Orders ({orders.length})</span>
+            <span>Live Orders ({activeOrdersCount})</span>
             {activeOrdersCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-black text-[10px] font-black">
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'orders' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-[#048747]'
+              }`}>
                 {activeOrdersCount}
               </span>
             )}
