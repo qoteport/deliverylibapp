@@ -218,29 +218,46 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       }
     };
 
-    // Load Google Maps Script if not present
-    if ((window as any).google?.maps) {
-      initMap();
-    } else {
-      const existingScript = document.getElementById('google-maps-script-loader');
-      if (!existingScript) {
+    // Robust Google Maps Script Loader & Polling Manager
+    let intervalId: any = null;
+
+    const checkAndInitMap = () => {
+      if ((window as any).google?.maps?.Map) {
+        if (intervalId) clearInterval(intervalId);
+        if (isMounted) {
+          initMap();
+        }
+        return true;
+      }
+      return false;
+    };
+
+    if (!checkAndInitMap()) {
+      const scripts = Array.from(document.querySelectorAll('script'));
+      const hasGmapsScript = scripts.some(
+        (s) => s.src && s.src.includes('maps.googleapis.com/maps/api/js')
+      );
+
+      if (!hasGmapsScript) {
         const script = document.createElement('script');
         script.id = 'google-maps-script-loader';
         script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,marker&v=weekly`;
         script.async = true;
-        script.onload = () => {
-          if (isMounted) initMap();
-        };
         document.head.appendChild(script);
-      } else {
-        existingScript.addEventListener('load', () => {
-          if (isMounted) initMap();
-        });
       }
+
+      let attempts = 0;
+      intervalId = setInterval(() => {
+        attempts++;
+        if (checkAndInitMap() || attempts > 120) {
+          if (intervalId) clearInterval(intervalId);
+        }
+      }, 100);
     }
 
     return () => {
       isMounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
   }, []);
 
@@ -377,7 +394,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
         {/* Map View */}
         <div className="relative flex-1 min-h-[260px] sm:min-h-[300px] bg-gray-100">
-          <div ref={mapContainerRef} className="w-full h-full min-h-[260px] sm:min-h-[300px]" />
+          <div ref={mapContainerRef} style={{ width: "100%", height: "320px", minHeight: "320px" }} className="w-full relative rounded-2xl overflow-hidden" />
 
           {/* Floating Instructions Banner & Geocoding status */}
           <div className="absolute top-2 left-2 right-2 sm:left-auto sm:right-2 sm:w-auto bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-gray-200 text-[11px] font-bold text-gray-800 flex items-center gap-1.5 pointer-events-none">
