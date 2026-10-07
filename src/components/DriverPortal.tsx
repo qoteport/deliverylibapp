@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bike, 
   MapPin, 
@@ -8,6 +8,8 @@ import {
   CheckCircle2, 
   Clock, 
   Power, 
+  ShieldAlert, 
+  Sparkles, 
   Sparkles, 
   ShieldCheck, 
   ArrowLeft, 
@@ -24,8 +26,9 @@ import {
 import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { sendBrowserNotification } from '../utils/browserNotifications';
+import { playOrderAlertSound } from '../utils/audioAlert';
 import { db } from '../firebase/config';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { saveOrderToApi, saveDriverToApi, updateOrderStatusApi, updateDriverApi } from '../utils/apiSync';
 
@@ -59,6 +62,34 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   restaurants,
 }) => {
   const [isOnline, setIsOnline] = useState(driver.isOnline);
+  const [justVerifiedNotice, setJustVerifiedNotice] = useState(false);
+
+  const isDriverVerified = driver.isVerified !== false && driver.verificationStatus !== 'pending';
+
+  useEffect(() => {
+    if (!driver?.id) return;
+    let previousVerified = isDriverVerified;
+
+    const unsub = onSnapshot(doc(db, 'drivers', driver.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as DeliveryDriver;
+        const nowVerified = data.isVerified !== false && data.verificationStatus !== 'pending';
+        if (!previousVerified && nowVerified) {
+          setJustVerifiedNotice(true);
+          playOrderAlertSound();
+          sendBrowserNotification(
+            'Account Verified! 🚀',
+            'Your courier account has been verified by Monrovia Admin. You can now Go Online to receive orders!',
+            { tag: `driver-verified-${driver.id}` }
+          );
+        }
+        previousVerified = nowVerified;
+        onUpdateDriver(data);
+      }
+    });
+
+    return () => unsub();
+  }, [driver?.id]);
   const [activeTab, setActiveTab] = useState<'dispatch' | 'earnings' | 'fleet'>('dispatch');
 
   // Find incoming offer for this driver or active delivery

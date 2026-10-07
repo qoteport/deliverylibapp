@@ -180,3 +180,14 @@ export async function sendTwilioOrderNotification(
     whatsappStatus: waResult.message,
   };
 }
+
+/**
+ * Send an SMS to a driver when their account is verified by Monrovia Admin
+ */
+export async function sendDriverVerificationSms(
+  driverPhone: string,
+  driverName: string
+): Promise<{ success: boolean; message: string }> {
+  const message = `AURA Courier Alert: Hello ${driverName}, your courier account has been VERIFIED by Monrovia Admin! You can now log into the Rider Portal and tap Go Online to start accepting deliveries.`;
+  return sendTwilioSms(driverPhone, message);
+}
