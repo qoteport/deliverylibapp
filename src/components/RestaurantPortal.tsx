@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award } from 'lucide-react';
+import { Store, Utensils, Clock, CheckCircle2, XCircle, FileText, Flame, Bike, Plus, ArrowLeft, Power, Phone, MapPin, DollarSign, X, Upload, Image as ImageIcon, Trash2, Edit2, MessageSquare, Bell, Volume2, VolumeX, Send, Sparkles, AlertCircle, Save, Navigation, ChevronLeft, ChevronRight, Star, ListPlus, Check, Layers, Tag, Users, Eye, ChefHat, Award, LogOut } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, MONROVIA_NEIGHBORHOODS, AddonOption } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -554,60 +554,62 @@ export const RestaurantPortal: React.FC<RestaurantPortalProps> = ({
     <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans">
       
       {/* Modern White Kitchen Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs py-4 sm:py-5 flex items-center">
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs py-3 sm:py-5 flex items-center">
+        <div className="w-full max-w-5xl mx-auto px-3 sm:px-8 lg:px-10 flex items-center justify-between gap-2 sm:gap-3">
           
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF4B26] to-[#FF7A00] flex items-center justify-center text-white shadow-xs shrink-0">
               <Store className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-[#111827] truncate max-w-[200px] sm:max-w-none">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-lg font-black text-[#111827] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
                   {restaurant.name}
                 </h1>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#FF4B26] text-[10px] font-extrabold uppercase tracking-wider">
                   Kitchen KDS
                 </span>
               </div>
-              <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
-                <span>{restaurant.neighborhood}</span>
+              <div className="text-[10px] sm:text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5 truncate">
+                <span className="truncate">{restaurant.neighborhood}</span>
                 <span>•</span>
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <span className="text-emerald-600 font-bold flex items-center gap-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  KDS Active · /restaurant-management/{restaurant.id}
+                  KDS Active
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Audio Chime Toggle */}
             <button
               onClick={() => {
                 setSoundEnabled(!soundEnabled);
                 if (!soundEnabled) playOrderAlertSound();
               }}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 soundEnabled ? 'bg-orange-50 border-orange-200 text-[#FF4B26]' : 'bg-gray-100 border-gray-200 text-gray-400'
               }`}
               title={soundEnabled ? 'Audio alerts ON' : 'Audio alerts MUTED'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </button>
 
             <button
               onClick={onToggleCurrency}
-              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800 cursor-pointer"
+              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-mono font-bold text-gray-800 cursor-pointer"
             >
               {currency}
             </button>
 
             <button
               onClick={logout}
-              className="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer flex items-center gap-1"
+              title="Sign Out"
             >
-              Sign Out
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Sign Out</span>
             </button>
           </div>
 

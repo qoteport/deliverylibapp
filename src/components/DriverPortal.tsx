@@ -21,7 +21,8 @@ import {
   TrendingUp,
   AlertCircle,
   ChefHat,
-  Flame
+  Flame,
+  LogOut
 } from 'lucide-react';
 import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
@@ -287,30 +288,30 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     <div className="min-h-screen bg-[#FBFBF9] text-[#111827] flex flex-col font-sans pb-20">
       
       {/* Top Navigation Bar with AURA Monrovia styling (Locked In - No Back Button) */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-3 shadow-xs">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-md shadow-[#06C167]/20">
-              <Bike className="w-5 h-5" />
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-3 sm:px-4 py-2.5 sm:py-3 shadow-xs">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] flex items-center justify-center text-white shadow-md shadow-[#06C167]/20 shrink-0">
+              <Bike className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="font-black text-sm text-[#111827] flex items-center gap-1.5 leading-none">
-                <span>{driver.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold uppercase">
+            <div className="min-w-0">
+              <div className="font-black text-xs sm:text-sm text-[#111827] flex items-center gap-1.5 leading-none">
+                <span className="truncate max-w-[90px] xs:max-w-[140px] sm:max-w-none">{driver.name}</span>
+                <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-[#E8F8EE] text-[#048747] font-extrabold uppercase shrink-0">
                   {driver.vehicleType}
                 </span>
               </div>
-              <div className="text-[11px] text-gray-500 font-mono mt-1">
+              <div className="text-[10px] sm:text-[11px] text-gray-500 font-mono mt-0.5 truncate">
                 {driver.plateNumber || 'Fleet Rider'} • {driver.baseZone.split(' ')[0]}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Currency Switcher */}
             <button
               onClick={onToggleCurrency}
-              className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-xl text-xs font-black text-gray-700 transition-colors cursor-pointer"
+              className="px-2 sm:px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-xl text-xs font-black text-gray-700 transition-colors cursor-pointer"
               title="Toggle USD / Liberian Dollars (LRD)"
             >
               {currency}
@@ -320,7 +321,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             <button
               onClick={handleToggleOnline}
               disabled={!isDriverVerified}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm ${
                 !isDriverVerified
                   ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed opacity-85'
                   : isOnline
@@ -336,10 +337,10 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             {/* Sign Out */}
             <button
               onClick={logout}
-              className="p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors cursor-pointer"
               title="Sign Out"
             >
-              <Power className="w-4 h-4" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
