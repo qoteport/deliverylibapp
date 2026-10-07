@@ -102,13 +102,6 @@ export async function delegateOrderToDriver(
     console.warn('Firestore delegation sync notice:', e);
   }
 
-  // Trigger Browser Push Notification to Driver
-  sendBrowserNotification({
-    title: `🚨 Delivery Offer! #${order.id}`,
-    body: `New Monrovia delivery offer: ${order.restaurantName || 'Kitchen'} -> ${order.deliveryArea || 'Customer'} (${(order.deliveryFee || 0).toFixed(2)} payout)`,
-    tag: `offer-${order.id}`,
-  });
-
   // Attempt Twilio SMS / WhatsApp notification if configured
   try {
     sendTwilioOrderNotification(

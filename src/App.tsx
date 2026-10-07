@@ -509,11 +509,16 @@ export default function App() {
       .map((i) => `${i.quantity}x ${i.menuItem.name}`)
       .join(', ');
     const displaySummary = dishSummary.length > 55 ? `${dishSummary.slice(0, 52)}...` : dishSummary;
+    const isDelivery = newOrder.diningMode === 'delivery';
+    const deliveryFeeStr = isDelivery && newOrder.deliveryFee 
+      ? ` (incl. $${newOrder.deliveryFee.toFixed(2)} delivery)` 
+      : '';
+    const restaurantDisplayName = newOrder.restaurantName || 'the kitchen';
 
     // Dispatch Browser Push / Mobile Notification (Awaiting kitchen confirmation)
     sendBrowserNotification({
-      title: `Order Received · #${newOrder.id}`,
-      body: `Your order for ${displaySummary} has been sent to the kitchen. Awaiting kitchen confirmation.`,
+      title: `Order Placed · #${newOrder.id}`,
+      body: `Your order for ${displaySummary} from ${restaurantDisplayName} is placed! Total: $${(newOrder.total || 0).toFixed(2)}${deliveryFeeStr}. Awaiting kitchen confirmation.`,
       tag: `order-${newOrder.id}`,
     });
 
@@ -653,34 +658,47 @@ export default function App() {
       });
     }
 
-    // Trigger Customized Browser Notification for Status Update
+    // Trigger Customized Browser Notification for Status Update (Uber Eats / Bolt Food standard)
     let statusTitle = `Order Update #${orderId}`;
     let statusText = '';
     let toastText = `Order status: ${status}`;
 
+    const orderTotal = existingOrder?.total || 0;
+    const isDelivery = existingOrder?.diningMode === 'delivery';
+    const deliveryFee = existingOrder?.deliveryFee || 2.5;
+    const formattedTotal = `$${orderTotal.toFixed(2)}`;
+    const feeText = isDelivery ? ` (incl. $${deliveryFee.toFixed(2)} delivery fee)` : '';
+
+    const dishItems = existingOrder?.items
+      ? existingOrder.items.map((i) => `${i.quantity}x ${i.menuItem.name}`).join(', ')
+      : '';
+    const itemsPreview = dishItems.length > 40 ? `${dishItems.slice(0, 37)}...` : dishItems;
+    const dishSnippet = itemsPreview ? ` (${itemsPreview})` : '';
+
     if (status === 'preparing') {
-      statusTitle = `Order Confirmed · #${orderId}`;
-      statusText = `👨‍🍳 ${spotName} has confirmed your order and started cooking!`;
-      toastText = 'Kitchen confirmed your order! Cooking in progress.';
+      statusTitle = `👨‍🍳 Your meal is being prepared!`;
+      statusText = `${spotName} has confirmed your order${dishSnippet}. Total: ${formattedTotal}${feeText}. Kitchen is cooking now!`;
+      toastText = `${spotName} confirmed your order! Cooking in progress.`;
     } else if (status === 'plating') {
-      statusTitle = `Order Ready · #${orderId}`;
-      statusText = '🍲 Your meal is freshly packed in an insulated thermal carrier!';
-      toastText = 'Order packed for handover.';
+      statusTitle = `📦 Your food is ready & packed!`;
+      statusText = `${spotName} has packed your meal fresh${isDelivery ? ' in an insulated carrier — ready for courier pickup.' : ' — ready for pickup.'}`;
+      toastText = 'Order packed for pickup.';
     } else if (status === 'en-route') {
-      statusTitle = `Out for Delivery · #${orderId}`;
-      statusText = '🛵 Courier is on the way with your order!';
+      const courierName = extra?.assignedDriverName || existingOrder?.assignedDriverName;
+      statusTitle = `🛵 Your courier is on the way!`;
+      statusText = `${courierName ? `${courierName} is` : 'Your courier is'} heading to ${existingOrder?.deliveryArea || existingOrder?.deliveryAddress || 'your location'} with your order. Total: ${formattedTotal}.`;
       toastText = 'Order is en-route with courier.';
     } else if (status === 'completed') {
-      statusTitle = `Order Delivered · #${orderId}`;
-      statusText = '✅ Your order was delivered! Enjoy your meal.';
+      statusTitle = `🎉 Order Delivered! Enjoy your meal.`;
+      statusText = `Your order from ${spotName} was delivered successfully. Total: ${formattedTotal}${feeText}. Thank you for ordering!`;
       toastText = 'Order delivered & completed!';
     } else if (status === 'cancelled') {
       if (cancelledBy === 'customer') {
-        statusTitle = `Order #${orderId} Cancelled by You`;
+        statusTitle = `Order #${orderId} Cancelled`;
         statusText = 'You cancelled this order before kitchen confirmation. No charges were made.';
         toastText = 'Order cancelled by you.';
       } else if (cancelledBy === 'restaurant') {
-        statusTitle = `Order #${orderId} Declined by ${spotName}`;
+        statusTitle = `Order Declined by ${spotName}`;
         const reasonStr = cancellationReason ? ` Reason: "${cancellationReason}".` : '';
         statusText = `⚠️ ${spotName} was unable to fulfill your order.${reasonStr} We apologize for the inconvenience.`;
         toastText = `Order declined by ${spotName}.`;
