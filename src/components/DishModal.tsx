@@ -206,26 +206,6 @@ export const DishModal: React.FC<DishModalProps> = ({
                 loading="eager"
                 draggable={false}
               />
-
-              {/* Swipe Dots Indicator */}
-              {allImages.length > 1 && (
-                <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full z-20 shadow-md">
-                  {allImages.map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveImageIndex(i);
-                      }}
-                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                        i === activeImageIndex ? 'bg-white w-5' : 'bg-white/50 w-1.5 hover:bg-white/80'
-                      }`}
-                      aria-label={`Go to slide ${i + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center p-4">
