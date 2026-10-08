@@ -29,7 +29,7 @@ import { MENU_ITEMS } from './data/menuData';
 import { INITIAL_RESTAURANTS } from './data/demoRestaurants';
 import { INITIAL_DRIVERS } from './data/demoDrivers';
 import { db } from './firebase/config';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
 import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
 import { sendBrowserNotification, requestNotificationPermission } from './utils/browserNotifications';
@@ -48,6 +48,7 @@ import {
   fetchMenuFromApi,
   saveMenuItemToApi,
   deleteMenuItemFromApi,
+  bulkDeleteMenuItemsFromApi,
 } from './utils/apiSync';
 import { Check, Store, Bike } from 'lucide-react';
 
@@ -932,6 +933,30 @@ export default function App() {
     }
   };
 
+  const handleBulkDeleteMenuItems = async (ids: string[]) => {
+    setMenuItems((prev) => {
+      const updated = prev.filter((m) => !ids.includes(m.id));
+      try {
+        localStorage.setItem('aura_monrovia_menu', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage menu write notice:', e);
+      }
+      return updated;
+    });
+    showToast(`Removed ${ids.length} dishes from menu`);
+    bulkDeleteMenuItemsFromApi(ids).catch(() => {});
+    try {
+      const batch = writeBatch(db);
+      ids.forEach((id) => {
+        batch.delete(doc(db, 'menu', id));
+        batch.delete(doc(db, 'menu_items', id));
+      });
+      await batch.commit();
+    } catch (e) {
+      console.warn('Firestore bulk delete menu notice:', e);
+    }
+  };
+
   const handleToggleItemAvailability = async (itemId: string) => {
     let updatedItem: MenuItem | undefined;
     setMenuItems((prev) => {
@@ -1038,6 +1063,7 @@ export default function App() {
             restaurants={restaurants}
             orders={orders}
             drivers={drivers}
+            menuItems={menuItems}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             onExitAdmin={() => navigateTo({ name: 'home' })}
             onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
@@ -1050,6 +1076,9 @@ export default function App() {
             onDeleteOrders={handleDeleteOrders}
             onDeleteDrivers={handleDeleteDrivers}
             onDeleteRestaurants={handleDeleteRestaurants}
+            onDeleteMenuItem={handleDeleteMenuItem}
+            onDeleteMenuItems={handleBulkDeleteMenuItems}
+            onToggleItemAvailability={handleToggleItemAvailability}
             onPurgeDemoData={handlePurgeAllDemoData}
             currency={currency}
             onToggleCurrency={handleToggleCurrency}

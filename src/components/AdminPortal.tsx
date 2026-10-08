@@ -74,7 +74,8 @@ import {
   saveRestaurantToApi,
   saveDriverToApi,
   saveOrderToApi,
-  deleteMenuItemFromApi
+  deleteMenuItemFromApi,
+  bulkDeleteMenuItemsFromApi
 } from '../utils/apiSync';
 import { sanitizeForFirestore, isDummyMenuItem, isDummyRestaurant, cleanMenuList, cleanRestaurantList } from '../utils/cleanData';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
@@ -95,6 +96,7 @@ interface AdminPortalProps {
   restaurants: Restaurant[];
   orders: Order[];
   drivers: DeliveryDriver[];
+  menuItems?: MenuItem[];
   onOpenOnboarding: () => void;
   onExitAdmin: () => void;
   onOpenRestaurantPortal: (restaurantId: string) => void;
@@ -112,6 +114,9 @@ interface AdminPortalProps {
   onDeleteOrders?: (ids: string[]) => void;
   onDeleteDrivers?: (ids: string[]) => void;
   onDeleteRestaurants?: (ids: string[]) => void;
+  onDeleteMenuItem?: (dishId: string) => void;
+  onDeleteMenuItems?: (ids: string[]) => void;
+  onToggleItemAvailability?: (dishId: string) => void;
   onPurgeDemoData?: () => void;
   currency: Currency;
   onToggleCurrency: () => void;
@@ -121,6 +126,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   restaurants,
   orders,
   drivers,
+  menuItems = [],
   onOpenOnboarding,
   onOpenRestaurantPortal,
   onToggleRestaurantStatus,
@@ -132,6 +138,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onDeleteOrders,
   onDeleteDrivers,
   onDeleteRestaurants,
+  onDeleteMenuItem,
+  onDeleteMenuItems,
+  onToggleItemAvailability,
   onPurgeDemoData,
   currency,
   onToggleCurrency,
@@ -190,20 +199,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [prevOrdersCount, setPrevOrdersCount] = useState(orders.length);
 
   // Database Explorer Sub-tab State
-  const [dbExplorerTab, setDbExplorerTab] = useState<'orders' | 'restaurants' | 'drivers' | 'users' | 'tools'>('orders');
+  const [dbExplorerTab, setDbExplorerTab] = useState<'orders' | 'restaurants' | 'drivers' | 'users' | 'menu' | 'tools'>('orders');
   const [dbSearchQuery, setDbSearchQuery] = useState<string>('');
   const [dbSelectedRowIds, setDbSelectedRowIds] = useState<string[]>([]);
 
   // Database Deletion & Confirmation Modal State
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState<{
     isOpen: boolean;
-    target: 'all-orders' | 'inactive-orders' | 'drivers' | 'restaurants' | 'users' | 'all-data' | 'local-cache' | 'selection';
+    target: 'all-orders' | 'inactive-orders' | 'drivers' | 'restaurants' | 'users' | 'menu' | 'all-data' | 'local-cache' | 'selection';
     title: string;
     description: string;
     count: number;
     requireTextMatch?: string;
     selectedIds?: string[];
-    collectionName?: 'orders' | 'drivers' | 'restaurants' | 'users';
+    collectionName?: 'orders' | 'drivers' | 'restaurants' | 'users' | 'menu';
   } | null>(null);
 
   const [confirmInputText, setConfirmInputText] = useState('');
@@ -305,6 +314,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               localStorage.setItem('aura_monrovia_restaurants', JSON.stringify(filtered));
             }
           } catch {}
+        } else if (colName === 'menu') {
+          if (onDeleteMenuItems) onDeleteMenuItems(ids);
+          await bulkDeleteMenuItemsFromApi(ids);
+          const menuBatch = writeBatch(db);
+          ids.forEach((id) => {
+            menuBatch.delete(doc(db, 'menu', id));
+            menuBatch.delete(doc(db, 'menu_items', id));
+          });
+          await menuBatch.commit().catch(() => {});
+          try {
+            const saved = localStorage.getItem('aura_monrovia_menu');
+            if (saved) {
+              const parsed: MenuItem[] = JSON.parse(saved);
+              const filtered = parsed.filter((m) => !ids.includes(m.id));
+              localStorage.setItem('aura_monrovia_menu', JSON.stringify(filtered));
+            }
+          } catch {}
         }
 
         setDeleteSuccessMessage(`Successfully deleted ${ids.length} record(s) from "${colName}".`);
@@ -375,6 +401,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         localStorage.removeItem('aura_monrovia_restaurants');
         localStorage.removeItem('aura_monrovia_menu');
         setDeleteSuccessMessage(`Successfully deleted ${querySnapshot.size} restaurants and all menus.`);
+        setDbSelectedRowIds([]);
+      } else if (deleteConfirmationModal.target === 'menu') {
+        const menuSnap = await getDocs(collection(db, 'menu'));
+        const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
+        const batch = writeBatch(db);
+        const allIds: string[] = [];
+        menuSnap.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+          allIds.push(docSnap.id);
+        });
+        menuItemsSnap.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+          if (!allIds.includes(docSnap.id)) allIds.push(docSnap.id);
+        });
+        await batch.commit();
+        if (onDeleteMenuItems) onDeleteMenuItems(allIds);
+        await bulkDeleteMenuItemsFromApi(allIds);
+        localStorage.removeItem('aura_monrovia_menu');
+        setDeleteSuccessMessage(`Successfully deleted all ${allIds.length} menu items.`);
         setDbSelectedRowIds([]);
       } else if (deleteConfirmationModal.target === 'users') {
         const querySnapshot = await getDocs(collection(db, 'users'));
@@ -2525,6 +2570,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  setDbExplorerTab('menu');
+                  setDbSelectedRowIds([]);
+                  setDbSearchQuery('');
+                }}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  dbExplorerTab === 'menu'
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200/60'
+                }`}
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                <span>Menu Records ({cleanMenuList(menuItems).length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setDbExplorerTab('users');
                   setDbSelectedRowIds([]);
                   setDbSearchQuery('');
@@ -3337,7 +3399,243 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             )}
 
             {/* ============================================================ */}
-            {/* SUB-VIEW 5: DANGER ZONE & BULK PURGE TOOLS                   */}
+            {/* SUB-VIEW 5: MENU RECORDS & DISHES COLLECTION TABLE          */}
+            {/* ============================================================ */}
+            {dbExplorerTab === 'menu' && (
+              <div className="space-y-4">
+                
+                {/* Table Filter & Multi-Select Bulk Action Bar */}
+                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={dbSearchQuery}
+                      onChange={(e) => setDbSearchQuery(e.target.value)}
+                      placeholder="Search dish name, restaurant provenance, category, ingredients..."
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-2xl text-[#111827] focus:outline-none focus:border-[#06C167]"
+                    />
+                  </div>
+
+                  {dbSelectedRowIds.length > 0 ? (
+                    <div className="flex items-center gap-2 animate-in fade-in">
+                      <span className="text-xs font-bold text-gray-700 font-mono">
+                        {dbSelectedRowIds.length} dish(es) selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'selection',
+                          collectionName: 'menu',
+                          selectedIds: dbSelectedRowIds,
+                          title: `Delete ${dbSelectedRowIds.length} Selected Menu Items`,
+                          description: `You are about to permanently delete ${dbSelectedRowIds.length} dish record(s) from Firestore and API catalog. This cannot be undone.`,
+                          count: dbSelectedRowIds.length,
+                        })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({dbSelectedRowIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbSelectedRowIds([])}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 font-medium">
+                      Select checkboxes to enable multi-record deletion
+                    </div>
+                  )}
+                </div>
+
+                {/* Menu Items Data Table */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                        <tr>
+                          <th className="p-3.5 sm:p-4 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                cleanMenuList(menuItems).length > 0 &&
+                                cleanMenuList(menuItems).every((item) => dbSelectedRowIds.includes(item.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setDbSelectedRowIds(cleanMenuList(menuItems).map((i) => i.id));
+                                } else {
+                                  setDbSelectedRowIds([]);
+                                }
+                              }}
+                              className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                            />
+                          </th>
+                          <th className="p-3.5 sm:p-4">Dish &amp; Description</th>
+                          <th className="p-3.5 sm:p-4">Kitchen / Restaurant</th>
+                          <th className="p-3.5 sm:p-4">Category</th>
+                          <th className="p-3.5 sm:p-4">Price (USD / LRD)</th>
+                          <th className="p-3.5 sm:p-4">Prep Time &amp; Spice</th>
+                          <th className="p-3.5 sm:p-4 text-center">Stock Status</th>
+                          <th className="p-3.5 sm:p-4 text-right">Row Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {cleanMenuList(menuItems)
+                          .filter((item) => {
+                            if (!dbSearchQuery) return true;
+                            const q = dbSearchQuery.toLowerCase().trim();
+                            const matchedRest = restaurants.find((r) => r.id === item.restaurantId);
+                            return (
+                              item.id.toLowerCase().includes(q) ||
+                              item.name.toLowerCase().includes(q) ||
+                              (item.subname && item.subname.toLowerCase().includes(q)) ||
+                              (item.category && item.category.toLowerCase().includes(q)) ||
+                              (item.provenance && item.provenance.toLowerCase().includes(q)) ||
+                              (matchedRest && matchedRest.name.toLowerCase().includes(q)) ||
+                              (item.description && item.description.toLowerCase().includes(q))
+                            );
+                          })
+                          .map((item) => {
+                            const isSelected = dbSelectedRowIds.includes(item.id);
+                            const matchedRest = restaurants.find((r) => r.id === item.restaurantId);
+                            const dishImage = item.image || (item.images && item.images[0]);
+                            const isAvailable = item.isAvailable !== false;
+
+                            return (
+                              <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setDbSelectedRowIds((prev) => [...prev, item.id]);
+                                      } else {
+                                        setDbSelectedRowIds((prev) => prev.filter((id) => id !== item.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-[#06C167] rounded cursor-pointer"
+                                  />
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center">
+                                      {dishImage ? (
+                                        <img src={dishImage} alt={item.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <Utensils className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-extrabold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                        <span>{item.name}</span>
+                                        {item.isChefSpecial && (
+                                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800">
+                                            Special
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 truncate max-w-[200px] font-mono">
+                                        ID: {item.id}
+                                      </div>
+                                      {item.subname && (
+                                        <div className="text-[11px] text-gray-500 italic truncate max-w-[200px]">
+                                          {item.subname}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <div className="font-bold text-gray-800">
+                                    {matchedRest?.name || item.provenance || 'Monrovia Kitchen'}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 font-mono">
+                                    {item.restaurantId ? `Rest ID: ${item.restaurantId}` : 'Global Menu'}
+                                  </div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4">
+                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200">
+                                    {item.category || 'General'}
+                                  </span>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 font-mono">
+                                  <div className="font-black text-gray-900">${item.price.toFixed(2)}</div>
+                                  <div className="text-[10px] text-emerald-600 font-bold">
+                                    ~L${Math.round(item.price * USD_TO_LRD_RATE).toLocaleString()} LRD
+                                  </div>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-xs">
+                                  <div className="font-semibold text-gray-800 flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-gray-400" />
+                                    <span>~{item.prepTimeMinutes || 10} mins</span>
+                                  </div>
+                                  {item.spiceLevel && (
+                                    <div className="text-[10px] text-red-600 font-bold">
+                                      🌶️ {item.spiceLevel}
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (onToggleItemAvailability) {
+                                        onToggleItemAvailability(item.id);
+                                      }
+                                    }}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                      isAvailable
+                                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                        : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                    }`}
+                                  >
+                                    {isAvailable ? 'In Stock' : 'Sold Out'}
+                                  </button>
+                                </td>
+
+                                <td className="p-3.5 sm:p-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteConfirmationModal({
+                                      isOpen: true,
+                                      target: 'selection',
+                                      collectionName: 'menu',
+                                      selectedIds: [item.id],
+                                      title: `Delete Dish: ${item.name}`,
+                                      description: `Are you sure you want to permanently delete dish "${item.name}" from Firestore & catalog?`,
+                                      count: 1,
+                                    })}
+                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer transition-colors"
+                                    title="Delete Dish"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* SUB-VIEW 6: DANGER ZONE & BULK PURGE TOOLS                   */}
             {/* ============================================================ */}
             {dbExplorerTab === 'tools' && (
               <div className="space-y-6">
@@ -3425,7 +3723,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Store className="w-4 h-4 text-orange-500" />
-                        <h4 className="font-extrabold text-sm text-gray-900">Kitchens &amp; Menus Collection</h4>
+                        <h4 className="font-extrabold text-sm text-gray-900">Kitchens &amp; Profiles Collection</h4>
                       </div>
                       <p className="text-xs text-gray-500">
                         Permanently delete all restaurant profiles, menus, dish prices, and operating hours from the database.
@@ -3450,7 +3748,37 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     </div>
                   </div>
 
-                  {/* Card 4: Customer Users Collection */}
+                  {/* Card 4: Menu Records & Dishes Collection */}
+                  <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Utensils className="w-4 h-4 text-amber-600" />
+                        <h4 className="font-extrabold text-sm text-gray-900">Menu Records &amp; Dishes</h4>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Delete all dish catalog items, ingredients, prices, and photo links from Firestore collections.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmationModal({
+                          isOpen: true,
+                          target: 'menu',
+                          title: 'Delete All Menu Dishes',
+                          description: 'This will permanently remove all menu items from Firestore ("menu" and "menu_items" collections). Restaurants will remain intact with empty menus.',
+                          count: cleanMenuList(menuItems).length,
+                        })}
+                        className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-2xl border border-red-200 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Delete All Dishes ({cleanMenuList(menuItems).length} items)</span>
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 5: Customer Users Collection */}
                   <div className="p-5 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -3489,7 +3817,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <h4 className="font-black text-base">Danger Zone: Full Platform Reset</h4>
                   </div>
                   <p className="text-xs text-gray-600 max-w-xl">
-                    Wipe all Firestore collections (Orders, Kitchens, Couriers, and Users) simultaneously and purge local browser caches. Requires typing <strong>"DELETE"</strong> to prevent accidental execution.
+                    Wipe all Firestore collections (Orders, Kitchens, Couriers, Dishes, and Users) simultaneously and purge local browser caches. Requires typing <strong>"DELETE"</strong> to prevent accidental execution.
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -3499,8 +3827,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         isOpen: true,
                         target: 'all-data',
                         title: 'FULL DATABASE RESET (NUCLEAR)',
-                        description: 'WARNING: This will permanently wipe ALL collections in Firestore (Orders, Restaurants, Drivers, and Users). The platform will be completely empty. This cannot be undone!',
-                        count: orders.length + restaurants.length + drivers.length + dbUsers.length,
+                        description: 'WARNING: This will permanently wipe ALL collections in Firestore (Orders, Restaurants, Drivers, Menu Items, and Users). The platform will be completely empty. This cannot be undone!',
+                        count: orders.length + restaurants.length + drivers.length + cleanMenuList(menuItems).length + dbUsers.length,
                         requireTextMatch: 'DELETE',
                       })}
                       className="px-5 py-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
