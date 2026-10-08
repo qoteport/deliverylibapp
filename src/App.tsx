@@ -214,11 +214,13 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // 2. Realtime Firestore Sync: Menu Items
+  // 2. Realtime Firestore Sync & Auto-Population: Menu Items
   useEffect(() => {
+    let hasAttemptedAutoSync = false;
+
     const unsub = onSnapshot(
       collection(db, 'menu'),
-      (snapshot) => {
+      async (snapshot) => {
         const remoteItems: MenuItem[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as MenuItem;
@@ -234,7 +236,89 @@ export default function App() {
             remoteItems.push(item);
           }
         });
-        const cleanItems = cleanMenuList(remoteItems);
+
+        let cleanItems = cleanMenuList(remoteItems);
+
+        // If 'menu' collection in Firebase is empty, query 'menu_items' collection as fallback
+        if (cleanItems.length === 0) {
+          try {
+            const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
+            const fallbackRemote: MenuItem[] = [];
+            menuItemsSnap.forEach((docSnap) => {
+              const data = docSnap.data() as MenuItem;
+              const item = { ...data, id: data.id || docSnap.id };
+              if (isDummyMenuItem(item)) {
+                deleteDoc(docSnap.ref).catch(() => {});
+                deleteMenuItemFromApi(item.id).catch(() => {});
+                return;
+              }
+              if (data && data.name) {
+                fallbackRemote.push(item);
+              }
+            });
+
+            const cleanFallback = cleanMenuList(fallbackRemote);
+            if (cleanFallback.length > 0) {
+              cleanItems = cleanFallback;
+              // Mirror to 'menu' collection for cross-collection consistency
+              cleanFallback.forEach((item) => {
+                setDoc(doc(db, 'menu', item.id), sanitizeForFirestore(item)).catch(() => {});
+              });
+            }
+          } catch (e) {
+            console.warn('Fallback menu_items query notice:', e);
+          }
+        }
+
+        // AUTO-SYNC TO FIREBASE:
+        // If Firebase is completely empty but the app has local menu items (in localStorage cache, API store, or state),
+        // automatically push them to Firebase so Firestore is populated and all devices/caches are updated!
+        if (cleanItems.length === 0 && !hasAttemptedAutoSync) {
+          hasAttemptedAutoSync = true;
+          let localItems: MenuItem[] = [];
+
+          try {
+            const saved = localStorage.getItem('aura_monrovia_menu');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              localItems = cleanMenuList(parsed);
+            }
+          } catch {}
+
+          if (localItems.length === 0) {
+            try {
+              const apiItems = await fetchMenuFromApi();
+              if (apiItems && apiItems.length > 0) {
+                localItems = cleanMenuList(apiItems);
+              }
+            } catch {}
+          }
+
+          if (localItems.length > 0) {
+            console.log(`[Auto-Sync] Pushing ${localItems.length} menu items from client cache to empty Firebase database...`);
+            try {
+              const batch = writeBatch(db);
+              localItems.forEach((item) => {
+                const cleanItem = sanitizeForFirestore(item);
+                batch.set(doc(db, 'menu', item.id), cleanItem);
+                batch.set(doc(db, 'menu_items', item.id), cleanItem);
+                saveMenuItemToApi(item).catch(() => {});
+              });
+              await batch.commit();
+              console.log('[Auto-Sync] Successfully populated Firebase with client menu items.');
+            } catch (err) {
+              console.warn('[Auto-Sync] Batch write to Firebase notice:', err);
+            }
+
+            setMenuItems(localItems);
+            try {
+              localStorage.setItem('aura_monrovia_menu', JSON.stringify(localItems));
+            } catch {}
+            return;
+          }
+        }
+
+        // When Firebase has items, it is the live authoritative source
         setMenuItems(cleanItems);
         try {
           localStorage.setItem('aura_monrovia_menu', JSON.stringify(cleanItems));
