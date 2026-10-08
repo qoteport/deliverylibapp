@@ -757,32 +757,20 @@ Delivery Fee: $${calculatedDeliveryFee.toFixed(2)}
                 <span>Send Order via SMS (+2310770400338)</span>
               </button>
             ) : (
-              <>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
-                >
-                  {isSubmitting ? (
-                    <span>Transmitting Order to Kitchen...</span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Place Order • {formatPrice(computedTotal)}</span>
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSendOrderViaSms}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-gray-500" />
-                  <span>Send Order via SMS (Offline Mode: +2310770400338)</span>
-                </button>
-              </>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <span>Transmitting Order to Kitchen...</span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Place Order • {formatPrice(computedTotal)}</span>
+                  </span>
+                )}
+              </button>
             )}
           </div>
 
