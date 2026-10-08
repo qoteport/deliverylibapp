@@ -51,11 +51,15 @@ export const PRICING_CONFIG = {
  * Quantizes any fee to strictly half-dollar increments ($0.50, $1.00, $1.50, $2.00, $2.50, $3.00)
  * and clamps between MIN_FEE ($0.50) and MAX_FEE ($3.00).
  */
-export function quantizeAndCapFee(amount: number): number {
-  // Round to nearest 0.50 step
-  const rounded = Math.round(amount / PRICING_CONFIG.STEP_INCREMENT) * PRICING_CONFIG.STEP_INCREMENT;
-  // Clamp between $0.50 and $3.00
-  const clamped = Math.max(PRICING_CONFIG.MIN_FEE, Math.min(PRICING_CONFIG.MAX_FEE, rounded));
+export function quantizeAndCapFee(amount: number, config = PRICING_CONFIG): number {
+  const step = config.STEP_INCREMENT || 0.50;
+  const min = typeof config.MIN_FEE === 'number' ? config.MIN_FEE : 0.50;
+  const max = typeof config.MAX_FEE === 'number' ? config.MAX_FEE : 3.00;
+  
+  // Round to nearest step increment
+  const rounded = Math.round(amount / step) * step;
+  // Clamp between min and max
+  const clamped = Math.max(min, Math.min(max, rounded));
   // Return fixed 2-decimal rounded number
   return Math.round(clamped * 100) / 100;
 }
@@ -66,9 +70,14 @@ export function quantizeAndCapFee(amount: number): number {
  * 2. Distance between rider and restaurant (Pickup Leg)
  * 3. Wait time (kitchen prep duration + transit time)
  * 
- * Result is strictly quantized in $0.50 increments and capped between $0.50 and $3.00.
+ * Result is strictly quantized in $0.50 increments and capped between $0.50 and $3.00 (or custom config).
  */
-export function calculateDynamicDeliveryFee(params: DeliveryPricingParams): DeliveryFeeBreakdown {
+export function calculateDynamicDeliveryFee(
+  params: DeliveryPricingParams,
+  customConfig?: Partial<typeof PRICING_CONFIG>
+): DeliveryFeeBreakdown {
+  const cfg = { ...PRICING_CONFIG, ...customConfig };
+
   // 1. Resolve Restaurant Coords
   const restCoords: LocationCoords =
     params.restaurantLocation ||
@@ -87,29 +96,29 @@ export function calculateDynamicDeliveryFee(params: DeliveryPricingParams): Deli
   // 4. Pickup distance (Rider -> Restaurant)
   const pickupDistKm = params.driverLocation
     ? calculateDistanceKm(params.driverLocation, restCoords)
-    : PRICING_CONFIG.DEFAULT_RIDER_APPROACH_KM;
+    : (cfg.DEFAULT_RIDER_APPROACH_KM ?? 1.2);
 
   const totalDistanceKm = Math.round((dropoffDistKm + pickupDistKm) * 10) / 10;
 
   // 5. Time calculation (Transit + Kitchen Prep)
   const estimatedTransitMins = Math.max(
     3,
-    Math.round((totalDistanceKm / PRICING_CONFIG.AVG_SPEED_KMH) * 60)
+    Math.round((totalDistanceKm / (cfg.AVG_SPEED_KMH || 22)) * 60)
   );
-  const prepMins = params.prepDurationMinutes || 20;
+  const prepMins = params.prepDurationMinutes ?? 20;
   const timeFactorMins = estimatedTransitMins + prepMins * 0.25;
 
   // 6. Uber / Bolt Dynamic Pricing Formula
   const rawFee =
-    PRICING_CONFIG.BASE_FARE +
-    totalDistanceKm * PRICING_CONFIG.PER_KM_RATE +
-    timeFactorMins * PRICING_CONFIG.PER_MINUTE_RATE;
+    cfg.BASE_FARE +
+    totalDistanceKm * cfg.PER_KM_RATE +
+    timeFactorMins * cfg.PER_MINUTE_RATE;
 
-  // 7. Quantize to $0.50 increments and cap between $0.50 and $3.00
-  const finalFee = quantizeAndCapFee(rawFee);
+  // 7. Quantize to step increments and clamp
+  const finalFee = quantizeAndCapFee(rawFee, cfg);
 
   return {
-    baseFee: PRICING_CONFIG.BASE_FARE,
+    baseFee: cfg.BASE_FARE,
     distanceKm: totalDistanceKm,
     riderPickupDistanceKm: pickupDistKm,
     customerDropoffDistanceKm: dropoffDistKm,

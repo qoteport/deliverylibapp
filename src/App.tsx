@@ -50,6 +50,7 @@ import {
   deleteMenuItemFromApi,
   bulkDeleteMenuItemsFromApi,
 } from './utils/apiSync';
+import { subscribeToUsdToLrdRate } from './utils/currencyRate';
 import { Check, Store, Bike } from 'lucide-react';
 
 export default function App() {
@@ -178,6 +179,14 @@ export default function App() {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       requestNotificationPermission().catch(() => {});
     }
+  }, []);
+
+  // Realtime Firestore Sync: Currency Exchange Rate (USD to LRD)
+  useEffect(() => {
+    const unsub = subscribeToUsdToLrdRate((rate) => {
+      // Rates updated across all components in real-time
+    });
+    return () => unsub();
   }, []);
 
 

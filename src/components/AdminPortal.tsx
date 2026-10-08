@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ShieldAlert, 
   Store, 
@@ -57,9 +57,14 @@ import {
   Beaker,
   FileCode,
   CheckSquare,
-  XCircle
+  XCircle,
+  Coins,
+  Calculator,
+  Gauge,
+  Compass,
+  Tag
 } from 'lucide-react';
-import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser } from '../types';
+import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser, LocationCoords, CartItem } from '../types';
 import { CustomDropdown } from './CustomDropdown';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
@@ -91,6 +96,8 @@ import {
   sendDriverRegistrationSms, 
   sendRestaurantRegistrationSms 
 } from '../utils/infobip';
+import { calculateDynamicDeliveryFee, calculateDistanceKm, PRICING_CONFIG, DeliveryFeeBreakdown } from '../utils/pricingEngine';
+import { getUsdToLrdRate, setUsdToLrdRate, subscribeToUsdToLrdRate } from '../utils/currencyRate';
 
 interface AdminPortalProps {
   restaurants: Restaurant[];
@@ -182,6 +189,175 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [simulatedOrderSuccess, setSimulatedOrderSuccess] = useState<string | null>(null);
   const [soundTestSuccess, setSoundTestSuccess] = useState(false);
   const [pushTestSuccess, setPushTestSuccess] = useState(false);
+
+  // Dollar Exchange Rate (USD to LRD) State
+  const [currentUsdRate, setCurrentUsdRate] = useState<number>(() => getUsdToLrdRate());
+  const [usdRateInput, setUsdRateInput] = useState<string>(() => getUsdToLrdRate().toString());
+  const [isSavingRate, setIsSavingRate] = useState(false);
+  const [rateSaveSuccess, setRateSaveSuccess] = useState('');
+
+  // Subscribe to real-time USD/LRD rate changes across all devices & Firestore
+  useEffect(() => {
+    const unsub = subscribeToUsdToLrdRate((rate) => {
+      setCurrentUsdRate(rate);
+      setUsdRateInput(rate.toString());
+    });
+    return () => unsub();
+  }, []);
+
+  const handleUpdateDollarRate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const parsed = parseFloat(usdRateInput);
+    if (isNaN(parsed) || parsed <= 0) {
+      alert('Please enter a valid dollar exchange rate (e.g. 195)');
+      return;
+    }
+    setIsSavingRate(true);
+    await setUsdToLrdRate(parsed);
+    setIsSavingRate(false);
+    setRateSaveSuccess(`Exchange rate updated to 1 USD = ${parsed} LRD!`);
+    setTimeout(() => setRateSaveSuccess(''), 4000);
+  };
+
+  // Dynamic Pricing Sandbox Playground State
+  const [pricingKitchenId, setPricingKitchenId] = useState<string>('all');
+  const [pricingKitchenArea, setPricingKitchenArea] = useState<string>('Sinkor (Tubman Blvd)');
+  const [pricingCustomerArea, setPricingCustomerArea] = useState<string>('Congotown & Old Road');
+  const [pricingDriverMode, setPricingDriverMode] = useState<'nearby' | 'at-kitchen' | 'moderate' | 'far' | 'custom-driver'>('nearby');
+  const [pricingDriverId, setPricingDriverId] = useState<string>('');
+  const [pricingPrepMins, setPricingPrepMins] = useState<number>(20);
+  const [pricingTrafficSpeed, setPricingTrafficSpeed] = useState<number>(22);
+  const [isSimulatingPricingOrder, setIsSimulatingPricingOrder] = useState(false);
+  const [simulatedPricingOrderMsg, setSimulatedPricingOrderMsg] = useState<string | null>(null);
+
+  // Live dynamic calculation for pricing playground
+  const calculatedPricing = useMemo(() => {
+    let kitchenCoords = MONROVIA_NEIGHBORHOOD_COORDS[pricingKitchenArea];
+    if (pricingKitchenId !== 'all') {
+      const matched = restaurants.find((r) => r.id === pricingKitchenId);
+      if (matched?.location) kitchenCoords = matched.location;
+      else if (matched?.neighborhood && MONROVIA_NEIGHBORHOOD_COORDS[matched.neighborhood]) {
+        kitchenCoords = MONROVIA_NEIGHBORHOOD_COORDS[matched.neighborhood];
+      }
+    }
+
+    const customerCoords =
+      MONROVIA_NEIGHBORHOOD_COORDS[pricingCustomerArea] || MONROVIA_NEIGHBORHOOD_COORDS['Congotown & Old Road'];
+
+    let driverCoords: LocationCoords | undefined;
+    if (pricingDriverMode === 'at-kitchen') {
+      driverCoords = kitchenCoords;
+    } else if (pricingDriverMode === 'nearby') {
+      driverCoords = kitchenCoords
+        ? { lat: kitchenCoords.lat + 0.009, lng: kitchenCoords.lng + 0.005 }
+        : undefined;
+    } else if (pricingDriverMode === 'moderate') {
+      driverCoords = kitchenCoords
+        ? { lat: kitchenCoords.lat + 0.022, lng: kitchenCoords.lng + 0.012 }
+        : undefined;
+    } else if (pricingDriverMode === 'far') {
+      driverCoords = kitchenCoords
+        ? { lat: kitchenCoords.lat + 0.040, lng: kitchenCoords.lng + 0.025 }
+        : undefined;
+    } else if (pricingDriverMode === 'custom-driver' && pricingDriverId) {
+      const matchedDriver = drivers.find((d) => d.id === pricingDriverId);
+      if (matchedDriver?.currentLocation) {
+        driverCoords = matchedDriver.currentLocation;
+      }
+    }
+
+    return calculateDynamicDeliveryFee(
+      {
+        restaurantLocation: kitchenCoords,
+        restaurantNeighborhood: pricingKitchenArea,
+        customerLocation: customerCoords,
+        customerNeighborhood: pricingCustomerArea,
+        driverLocation: driverCoords,
+        prepDurationMinutes: pricingPrepMins,
+      },
+      {
+        AVG_SPEED_KMH: pricingTrafficSpeed,
+      }
+    );
+  }, [
+    pricingKitchenId,
+    pricingKitchenArea,
+    pricingCustomerArea,
+    pricingDriverMode,
+    pricingDriverId,
+    pricingPrepMins,
+    pricingTrafficSpeed,
+    restaurants,
+    drivers,
+  ]);
+
+  const handleSimulatePricingOrder = async () => {
+    setIsSimulatingPricingOrder(true);
+    setSimulatedPricingOrderMsg(null);
+
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    const mockOrderId = `ORD-CALC-${randomDigits}`;
+    const selectedRest = restaurants.find((r) => r.id === pricingKitchenId) || restaurants[0];
+
+    const sampleItem: CartItem = {
+      cartItemId: `cart-${Date.now()}`,
+      menuItem: (menuItems && menuItems.length > 0) ? menuItems[0] : {
+        id: 'dish-sim',
+        name: 'Authentic Liberian Jollof Platter',
+        subname: 'Smoked fish, seasoned chicken & plantains',
+        category: 'liberian-favorites',
+        description: 'Simulated dish for dynamic pricing playground test',
+        price: 12.00,
+        calories: 650,
+        prepTimeMinutes: pricingPrepMins,
+        dietary: [],
+        ingredients: ['Rice', 'Plantain', 'Chicken'],
+        provenance: selectedRest?.name || 'Sinkor Kitchen',
+        illustrationType: 'jollof',
+      },
+      quantity: 1,
+      selectedAddons: [],
+      itemTotal: 12.00,
+    };
+
+    const simulatedOrder: Order = {
+      id: mockOrderId,
+      createdAt: new Date().toISOString(),
+      createdAtTimestamp: Date.now(),
+      status: 'received',
+      items: [sampleItem],
+      diningMode: 'delivery',
+      restaurantId: selectedRest?.id || 'rest-sim',
+      restaurantName: selectedRest?.name || 'Monrovia Kitchen',
+      customerName: 'Dynamic Pricing Tester',
+      customerPhone: '0886 554 321',
+      customerEmail: 'pricing.tester@auramonrovia.com',
+      deliveryArea: pricingCustomerArea,
+      deliveryAddress: `${pricingCustomerArea}, Monrovia, Liberia`,
+      deliveryCoords: MONROVIA_NEIGHBORHOOD_COORDS[pricingCustomerArea],
+      subtotal: 12.00,
+      deliveryFee: calculatedPricing.finalFee,
+      total: 12.00 + calculatedPricing.finalFee,
+      paymentMethod: 'momo-mtn',
+      paymentNumber: '0886 554 321',
+      paymentStatus: 'paid',
+      isOfflineOrder: false,
+    };
+
+    try {
+      await setDoc(doc(db, 'orders', mockOrderId), sanitizeForFirestore(simulatedOrder));
+      await saveOrderToApi(simulatedOrder);
+      playOrderAlertSound();
+      setSimulatedPricingOrderMsg(
+        `Dispatched Test Order #${mockOrderId} with computed fee of $${calculatedPricing.finalFee.toFixed(2)} (~L$${Math.round(calculatedPricing.finalFee * currentUsdRate).toLocaleString()} LRD)!`
+      );
+      setTimeout(() => setSimulatedPricingOrderMsg(null), 7000);
+    } catch (e: any) {
+      setSimulatedPricingOrderMsg(`Order creation notice: ${e.message || e}`);
+    } finally {
+      setIsSimulatingPricingOrder(false);
+    }
+  };
 
   // Firestore Live Users & Customer Directory
   const [dbUsers, setDbUsers] = useState<AppUser[]>([]);
@@ -574,7 +750,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   const formatPrice = (usd: number) => {
     if (currency === 'LRD') {
-      return `L$${Math.round(usd * USD_TO_LRD_RATE).toLocaleString()}`;
+      return `L$${Math.round(usd * currentUsdRate).toLocaleString()}`;
     }
     return `$${usd.toFixed(2)}`;
   };
@@ -4311,10 +4487,396 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   )}
                 </div>
 
+                {/* 3. Dynamic Delivery Pricing Testing Playground */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-black">
+                        <Calculator className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Dynamic Pricing Engine Testing Playground
+                        </h3>
+                        <p className="text-[11px] text-gray-400">
+                          Uber/Bolt dynamic dispatch calculation &amp; half-dollar quantization simulator
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                      <Gauge className="w-3 h-3" />
+                      <span>$0.50 Step Clamped</span>
+                    </span>
+                  </div>
+
+                  {/* Playground Controls Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* Kitchen Pickup Origin */}
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>1. Kitchen Pickup Location</span>
+                        <span className="text-[10px] text-gray-400 font-normal">Origin</span>
+                      </label>
+                      <select
+                        value={pricingKitchenId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPricingKitchenId(val);
+                          if (val !== 'all') {
+                            const rest = restaurants.find((r) => r.id === val);
+                            if (rest?.neighborhood) setPricingKitchenArea(rest.neighborhood);
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                      >
+                        <option value="all">Custom Area: {pricingKitchenArea}</option>
+                        {restaurants.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} ({r.neighborhood})
+                          </option>
+                        ))}
+                      </select>
+                      {pricingKitchenId === 'all' && (
+                        <select
+                          value={pricingKitchenArea}
+                          onChange={(e) => setPricingKitchenArea(e.target.value)}
+                          className="w-full mt-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs text-gray-700"
+                        >
+                          {MONROVIA_NEIGHBORHOODS.map((nh) => (
+                            <option key={nh} value={nh}>{nh}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Customer Dropoff Destination */}
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>2. Customer Dropoff Destination</span>
+                        <span className="text-[10px] text-gray-400 font-normal">Destination</span>
+                      </label>
+                      <select
+                        value={pricingCustomerArea}
+                        onChange={(e) => setPricingCustomerArea(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                      >
+                        {MONROVIA_NEIGHBORHOODS.map((nh) => (
+                          <option key={nh} value={nh}>{nh}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Courier Proximity */}
+                    <div className="space-y-1">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>3. Courier / Rider Proximity</span>
+                        <span className="text-[10px] text-gray-400 font-normal">Pickup Approach</span>
+                      </label>
+                      <select
+                        value={pricingDriverMode}
+                        onChange={(e) => setPricingDriverMode(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                      >
+                        <option value="at-kitchen">At Kitchen (0.0 km approach)</option>
+                        <option value="nearby">Nearby Rider (~1.0 km approach)</option>
+                        <option value="moderate">Moderate Distance (~2.5 km approach)</option>
+                        <option value="far">Far Distance (~4.5 km approach)</option>
+                        {drivers.length > 0 && <option value="custom-driver">Live Rider from Fleet</option>}
+                      </select>
+                      {pricingDriverMode === 'custom-driver' && (
+                        <select
+                          value={pricingDriverId}
+                          onChange={(e) => setPricingDriverId(e.target.value)}
+                          className="w-full mt-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs text-gray-700"
+                        >
+                          <option value="">Select a courier...</option>
+                          {drivers.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name} ({d.baseZone}) - {d.isOnline ? '🟢 Online' : '⚪ Offline'}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Prep Time & Traffic Speed */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="font-extrabold text-gray-700">4. Kitchen Prep Time &amp; Speed</label>
+                        <span className="font-mono text-[11px] font-extrabold text-[#06C167]">
+                          {pricingPrepMins} mins
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={pricingPrepMins}
+                          onChange={(e) => setPricingPrepMins(parseInt(e.target.value))}
+                          className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        >
+                          <option value="5">5 mins (Fast Starter)</option>
+                          <option value="15">15 mins (Standard Dish)</option>
+                          <option value="25">25 mins (Fresh Cooked)</option>
+                          <option value="40">40 mins (Complex Platter)</option>
+                        </select>
+
+                        <select
+                          value={pricingTrafficSpeed}
+                          onChange={(e) => setPricingTrafficSpeed(parseInt(e.target.value))}
+                          className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        >
+                          <option value="22">22 km/h (Normal)</option>
+                          <option value="14">14 km/h (Heavy Traffic)</option>
+                          <option value="30">30 km/h (Fast Night)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Calculation Output Card */}
+                  <div className="p-4 bg-gradient-to-br from-gray-900 via-gray-900 to-slate-900 rounded-3xl text-white space-y-3.5 shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                      <div>
+                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-emerald-400 block">
+                          ⚡ Dynamic Delivery Fee Output
+                        </span>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-2xl sm:text-3xl font-black text-white font-mono">
+                            ${calculatedPricing.finalFee.toFixed(2)} USD
+                          </span>
+                          <span className="text-xs sm:text-sm font-mono font-extrabold text-emerald-300">
+                            ≈ L${Math.round(calculatedPricing.finalFee * (parseFloat(usdRateInput) || currentUsdRate)).toLocaleString()} LRD
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <span className="text-[10px] text-gray-400 block">Raw Formula Value</span>
+                        <span className="font-mono text-xs font-bold text-gray-300">
+                          ${calculatedPricing.rawFee.toFixed(2)} USD
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Step Ladder Meter */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        <span>Quantized Half-Dollar Step Ladder:</span>
+                        <span className="text-emerald-400 font-mono font-extrabold">
+                          ${calculatedPricing.finalFee.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {[0.50, 1.00, 1.50, 2.00, 2.50, 3.00].map((step) => {
+                          const isMatch = Math.abs(calculatedPricing.finalFee - step) < 0.01;
+                          return (
+                            <div
+                              key={step}
+                              className={`py-1.5 px-1 rounded-xl text-center font-mono text-[10px] font-black transition-all ${
+                                isMatch
+                                  ? 'bg-[#06C167] text-white shadow-md shadow-[#06C167]/30 scale-105 ring-2 ring-white/40'
+                                  : 'bg-white/10 text-gray-400'
+                              }`}
+                            >
+                              ${step.toFixed(2)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Detailed Transparent Breakdown Table */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono pt-1">
+                      <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span className="text-[9px] text-gray-400 uppercase font-sans block">Total Distance</span>
+                        <span className="font-extrabold text-white">{calculatedPricing.distanceKm} km</span>
+                        <span className="text-[9px] text-gray-400 block">Drop: {calculatedPricing.customerDropoffDistanceKm}km • Pick: {calculatedPricing.riderPickupDistanceKm}km</span>
+                      </div>
+
+                      <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span className="text-[9px] text-gray-400 uppercase font-sans block">Est. Transit</span>
+                        <span className="font-extrabold text-white">~{calculatedPricing.estimatedTransitMinutes} mins</span>
+                        <span className="text-[9px] text-gray-400 block">@ {pricingTrafficSpeed} km/h</span>
+                      </div>
+
+                      <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span className="text-[9px] text-gray-400 uppercase font-sans block">Kitchen Prep</span>
+                        <span className="font-extrabold text-white">~{calculatedPricing.estimatedWaitMinutes} mins</span>
+                        <span className="text-[9px] text-gray-400 block">Wait Factor: +25%</span>
+                      </div>
+
+                      <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                        <span className="text-[9px] text-gray-400 uppercase font-sans block">Base Fare</span>
+                        <span className="font-extrabold text-white">${calculatedPricing.baseFee.toFixed(2)}</span>
+                        <span className="text-[9px] text-emerald-400 block">+$0.18/km +$0.02/m</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dispatch Playground Simulation CTA */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      disabled={isSimulatingPricingOrder}
+                      onClick={handleSimulatePricingOrder}
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 hover:opacity-95 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      {isSimulatingPricingOrder ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Transmitting Simulated Order...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 text-purple-200" />
+                          <span>Dispatch Test Order with this Dynamic Fee (${calculatedPricing.finalFee.toFixed(2)})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {simulatedPricingOrderMsg && (
+                    <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-xs text-purple-900 flex items-start gap-2.5 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <span className="font-extrabold block">Dynamic Fee Simulation Success!</span>
+                        <p className="text-[11px] text-purple-800">{simulatedPricingOrderMsg}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               {/* RIGHT COLUMN: PLATFORM CONFIGURATIONS & CREDENTIALS (5 COLS) */}
               <div className="lg:col-span-5 space-y-6">
+
+                {/* Dollar Exchange Rate Management Card */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-[#048747] flex items-center justify-center font-black">
+                        <Coins className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          USD / LRD Exchange Rate
+                        </h3>
+                        <p className="text-[11px] text-gray-400">
+                          Set the platform-wide dollar conversion rate
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-black bg-emerald-100 text-emerald-800">
+                      Active: 1 USD = {currentUsdRate} LRD
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleUpdateDollarRate} className="space-y-3.5 text-xs">
+                    {/* Rate Input */}
+                    <div className="space-y-1.5">
+                      <label className="font-extrabold text-gray-700 flex items-center justify-between">
+                        <span>Exchange Rate (Liberian Dollars per $1 USD)</span>
+                        <span className="text-[10px] font-mono text-gray-400">Default: 195</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-mono font-black text-gray-400 text-xs">
+                            $1.00 = L$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="50"
+                            max="500"
+                            value={usdRateInput}
+                            onChange={(e) => setUsdRateInput(e.target.value)}
+                            className="w-full pl-22 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-black text-gray-900 focus:outline-none focus:border-[#06C167] focus:bg-white"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isSavingRate || !usdRateInput || parseFloat(usdRateInput) <= 0}
+                          className="px-4 py-2.5 bg-gray-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {isSavingRate ? (
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5 text-[#06C167]" />
+                          )}
+                          <span>Save Rate</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Quick Presets:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[190, 195, 198, 200, 205, 210].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => {
+                              setUsdRateInput(preset.toString());
+                              setUsdToLrdRate(preset);
+                              setRateSaveSuccess(`Exchange rate updated to 1 USD = ${preset} LRD!`);
+                              setTimeout(() => setRateSaveSuccess(''), 3000);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                              currentUsdRate === preset
+                                ? 'bg-[#06C167] text-white font-black shadow-xs'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            L${preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Live Conversion Preview Table */}
+                    <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                        Live Conversion Previews:
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                        <div className="bg-white p-2 rounded-xl border border-gray-200/60">
+                          <span className="text-[9px] text-gray-400 font-sans block">$1.00 USD</span>
+                          <span className="font-extrabold text-gray-900">
+                            L${Math.round(1 * (parseFloat(usdRateInput) || currentUsdRate)).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-gray-200/60">
+                          <span className="text-[9px] text-gray-400 font-sans block">$5.00 USD</span>
+                          <span className="font-extrabold text-gray-900">
+                            L${Math.round(5 * (parseFloat(usdRateInput) || currentUsdRate)).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-gray-200/60">
+                          <span className="text-[9px] text-gray-400 font-sans block">$15.00 USD</span>
+                          <span className="font-extrabold text-gray-900">
+                            L${Math.round(15 * (parseFloat(usdRateInput) || currentUsdRate)).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-gray-200/60">
+                          <span className="text-[9px] text-gray-400 font-sans block">$30.00 USD</span>
+                          <span className="font-extrabold text-gray-900">
+                            L${Math.round(30 * (parseFloat(usdRateInput) || currentUsdRate)).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {rateSaveSuccess && (
+                      <div className="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl flex items-center gap-1.5 animate-in fade-in">
+                        <Check className="w-3.5 h-3.5 text-[#06C167] stroke-[3]" />
+                        <span>{rateSaveSuccess}</span>
+                      </div>
+                    )}
+                  </form>
+                </div>
 
                 {/* Platform Configuration Settings */}
                 <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-100 shadow-xs space-y-4">
@@ -4459,7 +5021,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <div className="divide-y divide-gray-100 space-y-2">
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-gray-500 font-medium">Exchange Rate:</span>
-                      <span className="font-mono font-extrabold text-gray-900">1 USD = 195 LRD</span>
+                      <span className="font-mono font-extrabold text-emerald-700">1 USD = {currentUsdRate} LRD</span>
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
