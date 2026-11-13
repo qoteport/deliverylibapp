@@ -243,11 +243,11 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
   const filteredListings = listings.filter((l) => {
     if (filterType !== 'all' && l.type !== filterType) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       return (
-        l.title.toLowerCase().includes(q) ||
-        l.make.toLowerCase().includes(q) ||
-        l.location.toLowerCase().includes(q)
+        String(l?.title || '').toLowerCase().includes(q) ||
+        String(l?.make || '').toLowerCase().includes(q) ||
+        String(l?.location || '').toLowerCase().includes(q)
       );
     }
     return true;
@@ -497,7 +497,7 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
                         <span>Call</span>
                       </a>
                       <a
-                        href={`https://wa.me/${inq.customerPhone.replace(/[^0-9]/g, '')}`}
+                        href={`https://wa.me/${String(inq.customerPhone || '').replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-200"

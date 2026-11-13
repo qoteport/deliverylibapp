@@ -107,7 +107,7 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
     const demoUser: AppUser = {
       uid: `mgr-${Date.now()}`,
       name,
-      email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@aura.monrovia`,
+      email: `${String(name || 'manager').toLowerCase().replace(/[^a-z]/g, '')}@aura.monrovia`,
       phone: '+231 77 000 1122',
       role,
       ...specificId
@@ -131,9 +131,9 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
     }
 
     const unifiedUser: AppUser = {
-      uid: `user-${loginPhone.replace(/[^0-9]/g, '') || Date.now()}`,
+      uid: `user-${String(loginPhone || '').replace(/[^0-9]/g, '') || Date.now()}`,
       name: loginName.trim() || 'Monrovia Business Manager',
-      email: loginPhone.includes('@') ? loginPhone : `${loginPhone.replace(/[^0-9]/g, '')}@aura.monrovia`,
+      email: loginPhone.includes('@') ? loginPhone : `${String(loginPhone || '').replace(/[^0-9]/g, '')}@aura.monrovia`,
       phone: loginPhone,
       role: 'admin' // Unified manager has access to all portals
     };
@@ -203,7 +203,7 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
         uid: `drv-${Date.now()}`,
         name: driverName,
         phone: driverPhone,
-        email: `${driverPhone.replace(/[^0-9]/g, '')}@aura.monrovia`,
+        email: `${String(driverPhone || '').replace(/[^0-9]/g, '')}@aura.monrovia`,
         role: 'driver'
       };
       setUserDirectly(newDriverUser);
@@ -245,7 +245,7 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
         uid: `agency-${Date.now()}`,
         name: agencyName,
         phone: agencyPhone,
-        email: `${agencyPhone.replace(/[^0-9]/g, '')}@aura.monrovia`,
+        email: `${String(agencyPhone || '').replace(/[^0-9]/g, '')}@aura.monrovia`,
         role: 'admin'
       };
       setUserDirectly(newAgencyUser);
@@ -287,7 +287,7 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
         uid: `dealer-${Date.now()}`,
         name: dealerName,
         phone: dealerPhone,
-        email: `${dealerPhone.replace(/[^0-9]/g, '')}@aura.monrovia`,
+        email: `${String(dealerPhone || '').replace(/[^0-9]/g, '')}@aura.monrovia`,
         role: 'admin'
       };
       setUserDirectly(newDealerUser);

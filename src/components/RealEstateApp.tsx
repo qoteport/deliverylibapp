@@ -197,16 +197,16 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
 
       if (selectedDealType !== 'all' && prop.dealType !== selectedDealType) return false;
       if (selectedPropType !== 'all' && prop.propertyType !== selectedPropType) return false;
-      if (selectedNeighborhood !== 'All Monrovia' && !prop.neighborhood.toLowerCase().includes(selectedNeighborhood.toLowerCase())) return false;
+      if (selectedNeighborhood !== 'All Monrovia' && !String(prop?.neighborhood || '').toLowerCase().includes(String(selectedNeighborhood || '').toLowerCase())) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         return (
-          prop.title.toLowerCase().includes(q) ||
-          prop.neighborhood.toLowerCase().includes(q) ||
-          prop.address.toLowerCase().includes(q) ||
-          prop.description.toLowerCase().includes(q) ||
-          prop.features.some((f) => f.toLowerCase().includes(q))
+          String(prop?.title || '').toLowerCase().includes(q) ||
+          String(prop?.neighborhood || '').toLowerCase().includes(q) ||
+          String(prop?.address || '').toLowerCase().includes(q) ||
+          String(prop?.description || '').toLowerCase().includes(q) ||
+          (Array.isArray(prop?.features) && prop.features.some((f) => String(f || '').toLowerCase().includes(q)))
         );
       }
       return true;
@@ -712,9 +712,9 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
                 <span>Schedule a Viewing</span>
               </button>
 
-              {selectedPropertyDetails.agentWhatsapp && (
+              {(selectedPropertyDetails.agentWhatsapp || selectedPropertyDetails.agentPhone) && (
                 <a
-                  href={`https://wa.me/${selectedPropertyDetails.agentWhatsapp.replace(/\+/g, '')}?text=${encodeURIComponent(`Hello, I saw your property "${selectedPropertyDetails.title}" on Aura Real Estate. Is it still available?`)}`}
+                  href={`https://wa.me/${String(selectedPropertyDetails.agentWhatsapp || selectedPropertyDetails.agentPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hello, I saw your property "${selectedPropertyDetails.title}" on Aura Real Estate. Is it still available?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer transition"

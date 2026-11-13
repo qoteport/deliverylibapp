@@ -1017,7 +1017,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                   </div>
                   {activeRide.assignedDriverPhone && (
                     <a
-                      href={`tel:${activeRide.assignedDriverPhone.replace(/[^0-9]/g, '')}`}
+                      href={`tel:${String(activeRide.assignedDriverPhone || '').replace(/[^0-9]/g, '')}`}
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline mt-0.5"
                     >
                       <Phone className="w-3 h-3" />
@@ -1244,7 +1244,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                       ? 'bg-amber-100 text-amber-800'
                       : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {past.status.replace(/_/g, ' ')}
+                    {String(past.status || '').replace(/_/g, ' ')}
                   </span>
                 </div>
 

@@ -60,8 +60,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const customerUser: AppUser = {
-      uid: `cust-${cleanPhone.replace(/[^0-9]/g, '') || Date.now().toString().slice(-6)}`,
-      email: `${cleanPhone.replace(/[^0-9]/g, '')}@monrovia.aura`,
+      uid: `cust-${String(cleanPhone || '').replace(/[^0-9]/g, '') || Date.now().toString().slice(-6)}`,
+      email: `${String(cleanPhone || '').replace(/[^0-9]/g, '')}@monrovia.aura`,
       phone: cleanPhone,
       name: cleanName,
       role: 'customer',

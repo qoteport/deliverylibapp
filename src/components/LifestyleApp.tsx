@@ -188,18 +188,18 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
       }
 
       // Brand quick filter
-      if (quickBrandFilter !== 'all' && item.brand.toLowerCase() !== quickBrandFilter.toLowerCase()) {
+      if (quickBrandFilter !== 'all' && String(item?.brand || '').toLowerCase() !== String(quickBrandFilter || '').toLowerCase()) {
         return false;
       }
 
       // Search query
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesName = item.name.toLowerCase().includes(q);
-        const matchesBrand = item.brand.toLowerCase().includes(q);
-        const matchesDesc = item.description.toLowerCase().includes(q);
-        const matchesSub = item.subcategory?.toLowerCase().includes(q);
-        const matchesTags = item.tags?.some((t) => t.toLowerCase().includes(q));
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = String(item?.name || '').toLowerCase().includes(q);
+        const matchesBrand = String(item?.brand || '').toLowerCase().includes(q);
+        const matchesDesc = String(item?.description || '').toLowerCase().includes(q);
+        const matchesSub = String(item?.subcategory || '').toLowerCase().includes(q);
+        const matchesTags = Array.isArray(item?.tags) && item.tags.some((t) => String(t || '').toLowerCase().includes(q));
         if (!matchesName && !matchesBrand && !matchesDesc && !matchesSub && !matchesTags) {
           return false;
         }

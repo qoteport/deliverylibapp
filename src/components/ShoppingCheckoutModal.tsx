@@ -257,7 +257,7 @@ export const ShoppingCheckoutModal: React.FC<ShoppingCheckoutModalProps> = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-500">Payment</span>
-              <span className="font-bold uppercase text-gray-700">{completedOrder.paymentMethod.replace('-', ' ')}</span>
+              <span className="font-bold uppercase text-gray-700">{String(completedOrder.paymentMethod || 'momo').replace('-', ' ')}</span>
             </div>
           </div>
 

@@ -258,11 +258,11 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
   const filteredProperties = properties.filter((p) => {
     if (filterDeal !== 'all' && p.dealType !== filterDeal) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       return (
-        p.title.toLowerCase().includes(q) ||
-        p.neighborhood.toLowerCase().includes(q) ||
-        p.propertyType.toLowerCase().includes(q)
+        String(p?.title || '').toLowerCase().includes(q) ||
+        String(p?.neighborhood || '').toLowerCase().includes(q) ||
+        String(p?.propertyType || '').toLowerCase().includes(q)
       );
     }
     return true;
@@ -524,7 +524,7 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
                         <span>Call</span>
                       </a>
                       <a
-                        href={`https://wa.me/${inq.customerPhone.replace(/[^0-9]/g, '')}`}
+                        href={`https://wa.me/${String(inq.customerPhone || '').replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-200"

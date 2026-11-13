@@ -148,18 +148,18 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
       }
 
       // Make quick filter
-      if (selectedMake !== 'all' && item.make.toLowerCase() !== selectedMake.toLowerCase()) {
+      if (selectedMake !== 'all' && String(item?.make || '').toLowerCase() !== String(selectedMake || '').toLowerCase()) {
         return false;
       }
 
       // Search query
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = item.title.toLowerCase().includes(q);
-        const matchesMake = item.make.toLowerCase().includes(q);
-        const matchesModel = item.model.toLowerCase().includes(q);
-        const matchesDesc = item.description.toLowerCase().includes(q);
-        const matchesLoc = item.location.toLowerCase().includes(q);
+        const q = searchQuery.toLowerCase().trim();
+        const matchesTitle = String(item?.title || '').toLowerCase().includes(q);
+        const matchesMake = String(item?.make || '').toLowerCase().includes(q);
+        const matchesModel = String(item?.model || '').toLowerCase().includes(q);
+        const matchesDesc = String(item?.description || '').toLowerCase().includes(q);
+        const matchesLoc = String(item?.location || '').toLowerCase().includes(q);
         if (!matchesTitle && !matchesMake && !matchesModel && !matchesDesc && !matchesLoc) {
           return false;
         }
@@ -633,7 +633,7 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                     <span>Call Dealer</span>
                   </a>
                   <a
-                    href={`https://wa.me/${selectedListing.dealerWhatsApp.replace(/[^0-9]/g, '')}`}
+                    href={`https://wa.me/${String(selectedListing.dealerWhatsApp || selectedListing.dealerPhone || '').replace(/[^0-9]/g, '')}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-1.5 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100"
