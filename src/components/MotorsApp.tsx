@@ -20,10 +20,10 @@ import {
   ChevronRight,
   LayoutGrid,
   Tag,
-  Camera,
-  Film
+  Plus
 } from 'lucide-react';
 import { MediaGalleryViewer } from './MediaGalleryViewer';
+import { MediaUploadField } from './MediaUploadField';
 import {
   MotorListing,
   MotorListingType,
@@ -77,6 +77,28 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
   const [inquirySuccessId, setInquirySuccessId] = useState<string | null>(null);
+
+  // List Vehicle / Parts state (Multiple photos + 1 video)
+  const [isAddListingOpen, setIsAddListingOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState<MotorListingType>('sale');
+  const [newMake, setNewMake] = useState('Toyota');
+  const [newModel, setNewModel] = useState('');
+  const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
+  const [newPriceUsd, setNewPriceUsd] = useState('');
+  const [newPriceUnit, setNewPriceUnit] = useState<string>('');
+  const [newCondition, setNewCondition] = useState<MotorListing['condition']>('Clean Monrovia Used');
+  const [newMileage, setNewMileage] = useState('');
+  const [newTransmission, setNewTransmission] = useState<'Automatic' | 'Manual'>('Automatic');
+  const [newFuelType, setNewFuelType] = useState<'Gasoline' | 'Diesel' | 'Hybrid'>('Gasoline');
+  const [newLocation, setNewLocation] = useState('Sinkor Tubman Blvd');
+  const [newDealerName, setNewDealerName] = useState('Aura Monrovia Motors');
+  const [newDealerPhone, setNewDealerPhone] = useState('0886 443 210');
+  const [newDealerWhatsapp, setNewDealerWhatsapp] = useState('0886 443 210');
+  const [newDescription, setNewDescription] = useState('');
+  const [newImages, setNewImages] = useState<string[]>([]);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
+  const [isSavingListing, setIsSavingListing] = useState(false);
 
   // Firestore sync for motor_listings
   useEffect(() => {
@@ -221,6 +243,67 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
     }
   };
 
+  // Add new vehicle / parts listing with multiple photos + 1 video
+  const handleAddListingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newPriceUsd) return;
+
+    setIsSavingListing(true);
+    const fallbackImg = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80';
+    const finalImages = newImages.length > 0 ? newImages : [fallbackImg];
+
+    const newListingData: Omit<MotorListing, 'id'> = {
+      title: newTitle.trim(),
+      type: newType,
+      listingType: newType,
+      make: newMake,
+      model: newModel.trim() || newTitle.trim(),
+      year: parseInt(newYear) || new Date().getFullYear(),
+      priceUsd: parseFloat(newPriceUsd) || 0,
+      priceLrd: Math.round((parseFloat(newPriceUsd) || 0) * 198),
+      priceUnit: newType === 'rental' ? (newPriceUnit || '/day') : undefined,
+      rentalPeriod: newType === 'rental' ? 'day' : undefined,
+      condition: newCondition,
+      mileage: newMileage ? `${newMileage} miles` : undefined,
+      transmission: newType === 'parts' ? undefined : newTransmission,
+      fuelType: newType === 'parts' ? undefined : newFuelType,
+      location: newLocation.trim() || 'Central Monrovia',
+      dealerName: newDealerName.trim(),
+      dealerPhone: newDealerPhone.trim(),
+      dealerWhatsapp: newDealerWhatsapp.trim(),
+      dealerWhatsApp: newDealerWhatsapp.trim(),
+      description: newDescription.trim() || `${newTitle} in Monrovia`,
+      features: ['Air Conditioning', 'Power Steering', 'Clean Title', 'Inspection Ready'],
+      imageUrl: finalImages[0],
+      images: finalImages,
+      videoUrl: newVideoUrl.trim() || undefined,
+      isAvailable: true,
+      featured: true,
+      verified: true
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, 'motor_listings'), {
+        ...newListingData,
+        createdAt: serverTimestamp()
+      });
+      setListings((prev) => [{ ...newListingData, id: docRef.id } as MotorListing, ...prev]);
+    } catch (err) {
+      console.warn('Listing fallback creation:', err);
+      const mockId = 'mot-local-' + Date.now();
+      setListings((prev) => [{ ...newListingData, id: mockId } as MotorListing, ...prev]);
+    } finally {
+      setIsSavingListing(false);
+      setIsAddListingOpen(false);
+      setNewTitle('');
+      setNewPriceUsd('');
+      setNewModel('');
+      setNewDescription('');
+      setNewImages([]);
+      setNewVideoUrl('');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -261,6 +344,16 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
               <span className="text-[10px] text-gray-500 hidden sm:inline">
                 {currency === 'USD' ? '(Tap for LRD)' : '(Tap for USD)'}
               </span>
+            </button>
+
+            {/* List Vehicle / Parts Button */}
+            <button
+              type="button"
+              onClick={() => setIsAddListingOpen(true)}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">List Vehicle / Parts</span>
             </button>
           </div>
         </div>
@@ -379,20 +472,6 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                       : ((item as any).type || (item as any).listingType) === 'rental'
                       ? 'Rental'
                       : 'Auto Part'}
-                  </div>
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1 sm:gap-1.5 z-10">
-                    {Array.isArray(item.images) && item.images.length > 1 && (
-                      <span className="bg-black/70 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1">
-                        <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        {item.images.length}
-                      </span>
-                    )}
-                    {item.videoUrl && (
-                      <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1 shadow-xs">
-                        <Film className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        Video
-                      </span>
-                    )}
                   </div>
                   <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-xs text-gray-800 text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-full">
                     {item.condition}
@@ -734,6 +813,259 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
             >
               Back to Motors
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Vehicle / Parts Listing Modal (Multiple Photos + 1 Video) */}
+      {isAddListingOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 my-auto shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Car className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">List Vehicle or Auto Parts</h3>
+                  <p className="text-xs text-gray-500">Sell cars, list rental 4x4s, or offer genuine spare parts</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddListingOpen(false)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddListingSubmit} className="space-y-4 overflow-y-auto pr-1 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Listing Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. 2018 Toyota RAV4 AWD or Genuine Kekeh Carburetor"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-600 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Category / Type</label>
+                  <select
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-600"
+                  >
+                    <option value="sale">Car for Sale</option>
+                    <option value="rental">Vehicle for Rent (4x4, SUV, Sedan)</option>
+                    <option value="parts">Auto &amp; Kekeh Parts</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Make / Brand</label>
+                  <select
+                    value={newMake}
+                    onChange={(e) => setNewMake(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-600"
+                  >
+                    <option value="Toyota">Toyota</option>
+                    <option value="Nissan">Nissan</option>
+                    <option value="Honda">Honda</option>
+                    <option value="Hyundai">Hyundai</option>
+                    <option value="Mitsubishi">Mitsubishi</option>
+                    <option value="Ford">Ford</option>
+                    <option value="Kekeh Parts">TVS / Bajaj Kekeh</option>
+                    <option value="Universal">Universal / Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Model</label>
+                  <input
+                    type="text"
+                    value={newModel}
+                    onChange={(e) => setNewModel(e.target.value)}
+                    placeholder="e.g. Land Cruiser Prado"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Year</label>
+                  <input
+                    type="number"
+                    value={newYear}
+                    onChange={(e) => setNewYear(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Condition</label>
+                  <select
+                    value={newCondition}
+                    onChange={(e) => setNewCondition(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                  >
+                    <option value="Foreign Used">Foreign Used</option>
+                    <option value="Brand New">Brand New</option>
+                    <option value="Locally Used">Locally Used</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Price (USD $) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newPriceUsd}
+                    onChange={(e) => setNewPriceUsd(e.target.value)}
+                    placeholder="e.g. 12500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-600 font-mono font-bold"
+                  />
+                </div>
+
+                {newType === 'rental' ? (
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Rental Rate Period</label>
+                    <select
+                      value={newPriceUnit}
+                      onChange={(e) => setNewPriceUnit(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                    >
+                      <option value="/day">Per Day (/day)</option>
+                      <option value="/week">Per Week (/week)</option>
+                      <option value="/month">Per Month (/mo)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Mileage / Hours</label>
+                    <input
+                      type="text"
+                      value={newMileage}
+                      onChange={(e) => setNewMileage(e.target.value)}
+                      placeholder="e.g. 58,000"
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {newType !== 'parts' && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Transmission</label>
+                    <select
+                      value={newTransmission}
+                      onChange={(e) => setNewTransmission(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                    >
+                      <option value="Automatic">Automatic</option>
+                      <option value="Manual">Manual</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Fuel Type</label>
+                    <select
+                      value={newFuelType}
+                      onChange={(e) => setNewFuelType(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                    >
+                      <option value="Gasoline">Gasoline</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Hybrid">Hybrid</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Multiple Images + 1 Video Upload */}
+              <MediaUploadField
+                images={newImages}
+                onChangeImages={setNewImages}
+                videoUrl={newVideoUrl}
+                onChangeVideoUrl={setNewVideoUrl}
+                label="Vehicle / Parts Media (Upload Multiple Photos & 1 Video)"
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Location in Liberia</label>
+                  <input
+                    type="text"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    placeholder="e.g. Sinkor 24th Street"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Dealer / Seller Name</label>
+                  <input
+                    type="text"
+                    value={newDealerName}
+                    onChange={(e) => setNewDealerName(e.target.value)}
+                    placeholder="e.g. Monrovia Auto Hub"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Contact Phone / WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={newDealerPhone}
+                    onChange={(e) => {
+                      setNewDealerPhone(e.target.value);
+                      setNewDealerWhatsapp(e.target.value);
+                    }}
+                    placeholder="+231 77 000 0000"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Detail condition, customs duty paid status, features, maintenance history..."
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-amber-600"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 shrink-0 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddListingOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingListing}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isSavingListing ? 'Publishing...' : 'Publish Motor Listing'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

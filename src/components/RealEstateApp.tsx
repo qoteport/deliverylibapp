@@ -23,17 +23,18 @@ import {
   Zap,
   Droplets,
   Layers,
-  Film,
-  Camera
+  Plus
 } from 'lucide-react';
 import { MediaGalleryViewer } from './MediaGalleryViewer';
+import { MediaUploadField } from './MediaUploadField';
 import { 
   RealEstateProperty, 
   PropertyDealType, 
   PropertyType, 
   PropertyInquiry, 
   Currency, 
-  USD_TO_LRD_RATE 
+  USD_TO_LRD_RATE,
+  MONROVIA_NEIGHBORHOOD_COORDS
 } from '../types';
 import { INITIAL_PROPERTIES } from '../data/realEstateData';
 import { CustomSelect } from './common/CustomSelect';
@@ -81,6 +82,26 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
   const [inquiryNotes, setInquiryNotes] = useState('');
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
   const [toastNotice, setToastNotice] = useState<string | null>(null);
+
+  // List Property State (Multiple Images + 1 Video)
+  const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
+  const [newPropTitle, setNewPropTitle] = useState('');
+  const [newPropDealType, setNewPropDealType] = useState<PropertyDealType>('rent');
+  const [newPropType, setNewPropType] = useState<PropertyType>('apartment');
+  const [newPropPrice, setNewPropPrice] = useState('');
+  const [newPropPricePeriod, setNewPropPricePeriod] = useState<'month' | 'day' | 'year' | 'total'>('month');
+  const [newPropNeighborhood, setNewPropNeighborhood] = useState('Sinkor');
+  const [newPropAddress, setNewPropAddress] = useState('');
+  const [newPropBedrooms, setNewPropBedrooms] = useState('2');
+  const [newPropBathrooms, setNewPropBathrooms] = useState('2');
+  const [newPropAreaSqFt, setNewPropAreaSqFt] = useState('');
+  const [newPropAgentName, setNewPropAgentName] = useState('Monrovia Premier Realty');
+  const [newPropAgentPhone, setNewPropAgentPhone] = useState('0886 500 123');
+  const [newPropAgentWhatsapp, setNewPropAgentWhatsapp] = useState('0886 500 123');
+  const [newPropDescription, setNewPropDescription] = useState('');
+  const [newPropImages, setNewPropImages] = useState<string[]>([]);
+  const [newPropVideoUrl, setNewPropVideoUrl] = useState('');
+  const [isSavingProperty, setIsSavingProperty] = useState(false);
 
   // Saved Favorites State
   const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>(() => {
@@ -186,6 +207,66 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
     showToast(`Viewing request submitted for ${selectedPropertyDetails.title}! Agent will call ${clientPhone}.`);
   };
 
+  // Add new property listing with multiple photos + 1 video
+  const handleAddPropertySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPropTitle.trim() || !newPropPrice) return;
+
+    setIsSavingProperty(true);
+    const fallbackImage = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80';
+    const finalImages = newPropImages.length > 0 ? newPropImages : [fallbackImage];
+
+    const newPropertyData: Omit<RealEstateProperty, 'id'> = {
+      title: newPropTitle.trim(),
+      dealType: newPropDealType,
+      propertyType: newPropType,
+      priceUsd: Number(newPropPrice) || 0,
+      pricePeriod: newPropDealType === 'buy' ? 'total' : newPropPricePeriod,
+      neighborhood: newPropNeighborhood,
+      address: newPropAddress.trim() || `${newPropNeighborhood}, Monrovia`,
+      coords: MONROVIA_NEIGHBORHOOD_COORDS[newPropNeighborhood] || { lat: 6.3005, lng: -10.7969 },
+      bedrooms: Number(newPropBedrooms) || 0,
+      bathrooms: Number(newPropBathrooms) || 0,
+      areaSqFt: Number(newPropAreaSqFt) || undefined,
+      description: newPropDescription.trim() || `${newPropDealType === 'buy' ? 'For sale' : 'For rent'} in ${newPropNeighborhood}`,
+      features: ['24/7 LEC & Solar Backup', 'Security Guard', 'Running Water Reservoir', 'Gated Compound'],
+      imageUrl: finalImages[0],
+      images: finalImages,
+      videoUrl: newPropVideoUrl.trim() || undefined,
+      agentName: newPropAgentName.trim(),
+      agentPhone: newPropAgentPhone.trim(),
+      agentWhatsapp: newPropAgentWhatsapp.trim(),
+      isVerified: true,
+      featured: true,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      if (db) {
+        const docRef = await addDoc(collection(db, 'properties'), {
+          ...newPropertyData,
+          createdAt: new Date().toISOString()
+        });
+        setProperties((prev) => [{ ...newPropertyData, id: docRef.id } as RealEstateProperty, ...prev]);
+        showToast('Property listed successfully with photos & video!');
+      }
+    } catch (err) {
+      console.warn('Property fallback creation:', err);
+      const mockId = 'prop-' + Date.now();
+      setProperties((prev) => [{ ...newPropertyData, id: mockId } as RealEstateProperty, ...prev]);
+      showToast('Property listed locally!');
+    } finally {
+      setIsSavingProperty(false);
+      setIsAddPropertyOpen(false);
+      setNewPropTitle('');
+      setNewPropPrice('');
+      setNewPropAddress('');
+      setNewPropDescription('');
+      setNewPropImages([]);
+      setNewPropVideoUrl('');
+    }
+  };
+
   // Filter properties
   const filteredProperties = useMemo(() => {
     return properties.filter((prop) => {
@@ -277,6 +358,16 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
               <span className={currency === 'LRD' ? 'text-sky-600 font-black' : 'text-gray-400'}>LRD</span>
             </button>
           )}
+
+          {/* List Property Button */}
+          <button
+            type="button"
+            onClick={() => setIsAddPropertyOpen(true)}
+            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">List Property</span>
+          </button>
 
           <button
             onClick={() => {
@@ -497,21 +588,6 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
                         >
                           <Heart className={`w-4 h-4 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
                         </button>
-
-                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-10">
-                          {Array.isArray(prop.images) && prop.images.length > 1 && (
-                            <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <Camera className="w-3 h-3" />
-                              {prop.images.length}
-                            </span>
-                          )}
-                          {prop.videoUrl && (
-                            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                              <Film className="w-3 h-3" />
-                              Video
-                            </span>
-                          )}
-                        </div>
 
                         <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-xl text-white font-mono font-black text-xs">
                           {formatPrice(prop.priceUsd, prop.pricePeriod)}
@@ -932,6 +1008,211 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
           </button>
         </div>
       </div>
+
+      {/* List Property Modal (Supports Multiple Photos + 1 Video) */}
+      {isAddPropertyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-gray-900">List Real Estate Property</h3>
+                <p className="text-xs text-gray-500">Upload multiple photos and 1 video tour</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddPropertyOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddPropertySubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Property Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={newPropTitle}
+                  onChange={(e) => setNewPropTitle(e.target.value)}
+                  placeholder="e.g. Luxury 3-Bedroom Ocean View Penthouse"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600 transition"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Deal Type</label>
+                  <select
+                    value={newPropDealType}
+                    onChange={(e) => setNewPropDealType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600"
+                  >
+                    <option value="rent">For Rent (Long-term)</option>
+                    <option value="buy">For Sale (Buy Property)</option>
+                    <option value="short_stay">Short-Stay / Airbnb</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Property Type</label>
+                  <select
+                    value={newPropType}
+                    onChange={(e) => setNewPropType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600"
+                  >
+                    <option value="apartment">Apartment / Flat</option>
+                    <option value="house">Detached House / Villa</option>
+                    <option value="commercial">Commercial / Office</option>
+                    <option value="land">Land / Acreage</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Price in USD ($) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newPropPrice}
+                    onChange={(e) => setNewPropPrice(e.target.value)}
+                    placeholder="e.g. 1500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600 font-mono font-bold"
+                  />
+                </div>
+
+                {newPropDealType !== 'buy' && (
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Payment Period</label>
+                    <select
+                      value={newPropPricePeriod}
+                      onChange={(e) => setNewPropPricePeriod(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600"
+                    >
+                      <option value="month">Per Month (/mo)</option>
+                      <option value="day">Per Day (/day)</option>
+                      <option value="year">Per Year (/yr)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Neighborhood</label>
+                  <select
+                    value={newPropNeighborhood}
+                    onChange={(e) => setNewPropNeighborhood(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600"
+                  >
+                    <option value="Sinkor">Sinkor</option>
+                    <option value="Congotown">Congotown</option>
+                    <option value="Mamba Point">Mamba Point</option>
+                    <option value="Paynesville">Paynesville</option>
+                    <option value="Central Monrovia">Central Monrovia</option>
+                    <option value="Brewerville">Brewerville</option>
+                    <option value="Robertsfield Highway">Robertsfield Highway</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Specific Address</label>
+                  <input
+                    type="text"
+                    value={newPropAddress}
+                    onChange={(e) => setNewPropAddress(e.target.value)}
+                    placeholder="e.g. 18th Street Tubman Blvd"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-sky-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Beds</label>
+                  <input
+                    type="number"
+                    value={newPropBedrooms}
+                    onChange={(e) => setNewPropBedrooms(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Baths</label>
+                  <input
+                    type="number"
+                    value={newPropBathrooms}
+                    onChange={(e) => setNewPropBathrooms(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Sq Ft</label>
+                  <input
+                    type="number"
+                    value={newPropAreaSqFt}
+                    onChange={(e) => setNewPropAreaSqFt(e.target.value)}
+                    placeholder="1800"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Multiple Images + 1 Video Upload Field */}
+              <MediaUploadField
+                images={newPropImages}
+                onChangeImages={setNewPropImages}
+                videoUrl={newPropVideoUrl}
+                onChangeVideoUrl={setNewPropVideoUrl}
+                label="Property Media (Upload Multiple Photos & 1 Video Tour)"
+              />
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Agent / Agency Name</label>
+                  <input
+                    type="text"
+                    value={newPropAgentName}
+                    onChange={(e) => setNewPropAgentName(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Agent Phone / WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={newPropAgentPhone}
+                    onChange={(e) => {
+                      setNewPropAgentPhone(e.target.value);
+                      setNewPropAgentWhatsapp(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Property Description</label>
+                <textarea
+                  value={newPropDescription}
+                  onChange={(e) => setNewPropDescription(e.target.value)}
+                  placeholder="Compound amenities, security, water reservoir, backup solar..."
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl h-16 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingProperty}
+                className="w-full py-3 bg-sky-600 hover:bg-sky-700 active:scale-98 text-white font-black rounded-xl text-xs uppercase tracking-wider transition disabled:opacity-50 cursor-pointer shadow-md"
+              >
+                {isSavingProperty ? 'Publishing Property...' : 'Publish Property Listing'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

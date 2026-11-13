@@ -950,20 +950,6 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
                   <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[9px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full">
                     {item.condition}
                   </div>
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1 sm:gap-1.5 z-10">
-                    {Array.isArray(item.images) && item.images.length > 1 && (
-                      <span className="bg-black/70 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1">
-                        <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        {item.images.length}
-                      </span>
-                    )}
-                    {item.videoUrl && (
-                      <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1 shadow-xs">
-                        <Film className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        Video
-                      </span>
-                    )}
-                  </div>
                   {item.warranty && (
                     <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md">
                       {item.warranty}

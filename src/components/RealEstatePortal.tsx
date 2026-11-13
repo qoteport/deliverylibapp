@@ -435,20 +435,6 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
                       <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                         {prop.dealType}
                       </div>
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
-                        {Array.isArray(prop.images) && prop.images.length > 1 && (
-                          <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <Camera className="w-3 h-3" />
-                            {prop.images.length}
-                          </span>
-                        )}
-                        {prop.videoUrl && (
-                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                            <Film className="w-3 h-3" />
-                            Video Tour
-                          </span>
-                        )}
-                      </div>
                       <div
                         className={`absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
                           prop.status === 'available'

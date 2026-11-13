@@ -418,20 +418,6 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
                       <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                         {item.type}
                       </div>
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
-                        {Array.isArray(item.images) && item.images.length > 1 && (
-                          <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <Camera className="w-3 h-3" />
-                            {item.images.length}
-                          </span>
-                        )}
-                        {item.videoUrl && (
-                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                            <Film className="w-3 h-3" />
-                            Video
-                          </span>
-                        )}
-                      </div>
                       <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs text-gray-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
                         {item.condition}
                       </div>
