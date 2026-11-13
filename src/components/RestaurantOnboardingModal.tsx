@@ -798,6 +798,8 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
         isOpen={isMapPickerOpen}
         onClose={() => setIsMapPickerOpen(false)}
         title="Pick Kitchen Location"
+        locationType="kitchen"
+        confirmButtonText="Confirm Kitchen Location"
         initialCoords={locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood]}
         initialArea={neighborhood}
         initialAddress={address}

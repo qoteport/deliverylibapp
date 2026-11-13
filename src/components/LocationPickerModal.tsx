@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, MapPin, Navigation, Check, Search, Loader2 } from 'lucide-react';
 import { LocationCoords } from '../types';
 
+export type LocationContextType = 'kitchen' | 'restaurant' | 'delivery' | 'address' | 'generic';
+
 interface LocationPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  confirmButtonText?: string;
+  locationType?: LocationContextType;
   initialCoords?: LocationCoords | null;
   initialArea?: string;
   initialAddress?: string;
@@ -30,12 +34,67 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   isOpen,
   onClose,
   title,
+  confirmButtonText,
+  locationType,
   initialCoords,
   initialArea,
   initialAddress,
   onConfirmLocation,
 }) => {
   if (!isOpen) return null;
+
+  // Determine effective context from props or title
+  const effectiveContext = React.useMemo<LocationContextType>(() => {
+    if (locationType) return locationType;
+    const lower = (title || '').toLowerCase();
+    if (lower.includes('kitchen')) return 'kitchen';
+    if (lower.includes('restaurant')) return 'restaurant';
+    if (lower.includes('delivery')) return 'delivery';
+    if (lower.includes('address') || lower.includes('home')) return 'address';
+    return 'generic';
+  }, [locationType, title]);
+
+  // Context-aware labels
+  const resolvedLabels = React.useMemo(() => {
+    switch (effectiveContext) {
+      case 'kitchen':
+        return {
+          headerTitle: title || 'Pick Kitchen Location',
+          markerTitle: 'Kitchen Location Pinpoint',
+          fallbackArea: 'Monrovia Kitchen Location',
+          confirmAction: confirmButtonText || 'Confirm Kitchen Location',
+        };
+      case 'restaurant':
+        return {
+          headerTitle: title || 'Pick Restaurant Location',
+          markerTitle: 'Restaurant Location Pinpoint',
+          fallbackArea: 'Monrovia Restaurant Location',
+          confirmAction: confirmButtonText || 'Confirm Restaurant Location',
+        };
+      case 'delivery':
+        return {
+          headerTitle: title || 'Pinpoint Delivery Spot',
+          markerTitle: 'Delivery Destination Pinpoint',
+          fallbackArea: 'Monrovia Delivery Spot',
+          confirmAction: confirmButtonText || 'Confirm Delivery Location',
+        };
+      case 'address':
+        return {
+          headerTitle: title || 'Set Saved Address',
+          markerTitle: 'Address Pinpoint',
+          fallbackArea: 'Monrovia Saved Address',
+          confirmAction: confirmButtonText || 'Confirm Address',
+        };
+      case 'generic':
+      default:
+        return {
+          headerTitle: title || 'Pinpoint Location',
+          markerTitle: 'Location Pinpoint',
+          fallbackArea: 'Monrovia Location',
+          confirmAction: confirmButtonText || 'Confirm Location',
+        };
+    }
+  }, [effectiveContext, title, confirmButtonText]);
 
   const defaultCenter = initialCoords || { lat: 6.2907, lng: -10.7818 };
   const [selectedCoords, setSelectedCoords] = useState<LocationCoords>(defaultCenter);
@@ -146,7 +205,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         position: center,
         map,
         draggable: true,
-        title: 'Delivery Pinpoint',
+        title: resolvedLabels.markerTitle,
         animation: gmaps.Animation.DROP,
       });
 
@@ -316,7 +375,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
   const handleConfirm = () => {
     onConfirmLocation({
-      area: areaName.trim() || 'Monrovia Delivery Spot',
+      area: areaName.trim() || resolvedLabels.fallbackArea,
       address: landmarkDetails.trim(),
       coords: selectedCoords,
     });
@@ -334,7 +393,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               <MapPin className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="font-extrabold text-[#111827] text-sm">{title || "Pinpoint Delivery Spot"}</h3>
+              <h3 className="font-extrabold text-[#111827] text-sm">{resolvedLabels.headerTitle}</h3>
               <p className="text-[11px] text-gray-500">Google Places &amp; GPS Area Detection</p>
             </div>
           </div>
@@ -482,7 +541,9 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             className="w-full py-3.5 px-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>Confirm Delivery Location ({areaName || 'Selected Area'})</span>
+            <span>
+              {resolvedLabels.confirmAction} ({areaName || 'Selected Area'})
+            </span>
           </button>
         </div>
 

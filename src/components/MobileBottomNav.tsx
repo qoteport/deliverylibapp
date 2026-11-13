@@ -1,11 +1,11 @@
 import React from 'react';
-import { Utensils, Search, Clock, Heart, ArrowRight, User } from 'lucide-react';
+import { Utensils, LayoutGrid, Clock, Heart, ArrowRight, User } from 'lucide-react';
 import { Currency, USD_TO_LRD_RATE } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 interface MobileBottomNavProps {
-  activeTab: 'menu' | 'favorites' | 'orders';
-  onSelectTab: (tab: 'menu' | 'favorites' | 'orders') => void;
+  activeTab: 'menu' | 'apps' | 'favorites' | 'orders';
+  onSelectTab: (tab: 'menu' | 'apps' | 'favorites' | 'orders') => void;
   favoritesCount: number;
   activeOrderCount: number;
   cartCount: number;
@@ -85,15 +85,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           )}
         </button>
 
-        {/* Search Tab */}
-        <button
-          onClick={onFocusSearch}
-          className="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-gray-400 hover:text-gray-700 transition-colors"
-        >
-          <Search className="w-5 h-5 stroke-[1.8]" />
-          <span className="text-[10px] font-bold mt-1">Search</span>
-        </button>
-
         {/* Favorites Tab */}
         <button
           onClick={() => onSelectTab('favorites')}
@@ -124,6 +115,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           )}
           <span className="text-[10px] font-bold mt-1">Orders</span>
           {activeTab === 'orders' && (
+            <span className="absolute top-0 w-8 h-1 bg-[#06C167] rounded-full" />
+          )}
+        </button>
+
+        {/* Apps Tab (Rides, Shopping & more) - Positioned after Orders */}
+        <button
+          onClick={() => onSelectTab('apps')}
+          className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[44px] transition-all ${
+            activeTab === 'apps' ? 'text-[#06C167]' : 'text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <LayoutGrid className={`w-5 h-5 ${activeTab === 'apps' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+          <span className="text-[10px] font-bold mt-1">Apps</span>
+          {activeTab === 'apps' && (
             <span className="absolute top-0 w-8 h-1 bg-[#06C167] rounded-full" />
           )}
         </button>

@@ -378,6 +378,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       <LocationPickerModal
         isOpen={isMapPickerOpen}
         onClose={() => setIsMapPickerOpen(false)}
+        title="Set Delivery & Home Address"
+        locationType="address"
+        confirmButtonText="Confirm Address"
         initialCoords={coords || MONROVIA_NEIGHBORHOOD_COORDS[selectedNeighborhood]}
         initialArea={selectedNeighborhood}
         initialAddress={addressDetails}

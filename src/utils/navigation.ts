@@ -1,6 +1,11 @@
 // Lightweight URL and Path routing helper for AI Studio & Web
 export type AppRoute = 
   | { name: 'home' }
+  | { name: 'apps' }
+  | { name: 'rides' }
+  | { name: 'supermarket' }
+  | { name: 'supermarket-onboarding' }
+  | { name: 'supermarket-management'; supermarketId: string }
   | { name: 'admin' }
   | { name: 'restaurant'; restaurantId: string }
   | { name: 'driver'; driverId?: string };
@@ -19,6 +24,32 @@ export function parseRoute(pathname: any, hash: any): AppRoute {
   if (cleanPath.startsWith('/driver')) {
     const driverMatch = cleanPath.match(/^\/driver(?:\/|-portal\/)([a-zA-Z0-9_-]+)/);
     return { name: 'driver', driverId: driverMatch ? driverMatch[1] : undefined };
+  }
+
+  if (cleanPath.startsWith('/apps')) {
+    return { name: 'apps' };
+  }
+
+  if (cleanPath.startsWith('/rides')) {
+    return { name: 'rides' };
+  }
+
+  // Shopping / Supermarket Management portal: /shopping-management/:id or /supermarket-management/:id
+  const smManageMatch = cleanPath.match(/^\/(?:shopping|supermarket)-management(?:\/([a-zA-Z0-9_-]+))?/);
+  if (smManageMatch) {
+    const id = smManageMatch[1];
+    if (id === 'onboarding' || id === 'register') {
+      return { name: 'supermarket-onboarding' };
+    }
+    return { name: 'supermarket-management', supermarketId: id || '' };
+  }
+
+  if (cleanPath.startsWith('/register-shopping') || cleanPath.startsWith('/register-supermarket') || cleanPath.startsWith('/supermarket-onboarding') || cleanPath.startsWith('/shopping-onboarding')) {
+    return { name: 'supermarket-onboarding' };
+  }
+
+  if (cleanPath.startsWith('/shopping') || cleanPath.startsWith('/supermarket') || cleanPath.startsWith('/grocery')) {
+    return { name: 'supermarket' };
   }
 
   // Handle both /restaurant-management/:id and /resturant-management/:id (and without trailing id)
@@ -40,6 +71,18 @@ export function navigateTo(route: AppRoute) {
       : '/resturant-management';
   } else if (route.name === 'driver') {
     url = route.driverId ? `/driver/${route.driverId}` : '/driver';
+  } else if (route.name === 'apps') {
+    url = '/apps';
+  } else if (route.name === 'rides') {
+    url = '/rides';
+  } else if (route.name === 'supermarket') {
+    url = '/supermarket';
+  } else if (route.name === 'supermarket-onboarding') {
+    url = '/register-supermarket';
+  } else if (route.name === 'supermarket-management') {
+    url = route.supermarketId
+      ? `/supermarket-management/${route.supermarketId}`
+      : '/supermarket-management';
   }
 
   try {

@@ -8,7 +8,8 @@ import {
   UtensilsCrossed, 
   User, 
   LogOut, 
-  Utensils 
+  Utensils,
+  LayoutGrid
 } from 'lucide-react';
 import { DiningMode, Currency, USD_TO_LRD_RATE } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +33,7 @@ interface HeaderProps {
   onOpenRestaurantPortal: (restaurantId: string) => void;
   onOpenDriverPortal: () => void;
   onOpenDriverJoin: () => void;
+  onOpenApps?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -52,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminPortal,
   onOpenRestaurantPortal,
   onOpenDriverPortal,
+  onOpenDriverJoin,
+  onOpenApps,
 }) => {
   const { user } = useAuth();
 
@@ -125,6 +129,22 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[#06C167] font-mono font-bold">{currency === 'USD' ? '$' : 'L$'}</span>
             <span>{currency}</span>
           </button>
+
+          {/* Apps Portal Button - Hidden on mobile, available in bottom nav */}
+          {onOpenApps && (
+            <button
+              type="button"
+              onClick={onOpenApps}
+              className="hidden sm:flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 bg-[#E8F8EE] hover:bg-[#D4F4E0] border border-[#A7F3D0] text-[#059669] rounded-xl text-[11px] sm:text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+              title="Aura Apps (Rides, Supermarket & more)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="font-extrabold">Apps</span>
+              <span className="hidden xs:inline-block px-1 py-0.2 bg-[#06C167] text-white text-[8px] font-black rounded-full">
+                NEW
+              </span>
+            </button>
+          )}
 
           {/* User Account or Sign In */}
           <div className="hidden sm:flex items-center gap-1.5">

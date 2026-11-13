@@ -1,4 +1,4 @@
-import { Order, DeliveryDriver, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { Order, DeliveryDriver, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS, WeekDay, ActiveShiftSlot } from '../types';
 import { db } from '../firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
 import { sendBrowserNotification } from './browserNotifications';
@@ -21,6 +21,59 @@ export function calculateDistanceKm(from: LocationCoords, to: LocationCoords): n
   return Math.round(R * c * 10) / 10;
 }
 
+/**
+ * Evaluates whether a driver is scheduled to work at a given date/time
+ */
+export function isDriverScheduledNow(driver: DeliveryDriver, date: Date = new Date()): {
+  isDayActive: boolean;
+  isTimeActive: boolean;
+  isScheduledNow: boolean;
+  scheduleScore: number;
+} {
+  const dayNames: WeekDay[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const currentDay = dayNames[date.getDay()];
+  const currentHour = date.getHours();
+
+  // 1. Check day of week
+  const isDayActive =
+    !driver.activeDays ||
+    driver.activeDays.length === 0 ||
+    driver.activeDays.includes(currentDay);
+
+  // 2. Check time slots / hours
+  let isTimeActive = true;
+
+  if (driver.activeTimeSlots && driver.activeTimeSlots.length > 0) {
+    isTimeActive = driver.activeTimeSlots.some((slot) => {
+      if (slot === 'morning') return currentHour >= 6 && currentHour < 12;
+      if (slot === 'afternoon') return currentHour >= 12 && currentHour < 17;
+      if (slot === 'evening') return currentHour >= 17 && currentHour < 22;
+      if (slot === 'night') return currentHour >= 22 || currentHour < 6;
+      return true;
+    });
+  } else if (driver.activeHoursStart && driver.activeHoursEnd) {
+    const startHour = parseInt(driver.activeHoursStart.split(':')[0], 10) || 0;
+    const endHour = parseInt(driver.activeHoursEnd.split(':')[0], 10) || 24;
+    if (startHour <= endHour) {
+      isTimeActive = currentHour >= startHour && currentHour < endHour;
+    } else {
+      isTimeActive = currentHour >= startHour || currentHour < endHour;
+    }
+  }
+
+  const isScheduledNow = isDayActive && isTimeActive;
+
+  // Calculate schedule bonus score
+  let scheduleScore = 0;
+  if (isScheduledNow) {
+    scheduleScore = 40; // High bonus for on-shift driver
+  } else if (isDayActive) {
+    scheduleScore = 15; // Partial bonus for on-day driver
+  }
+
+  return { isDayActive, isTimeActive, isScheduledNow, scheduleScore };
+}
+
 // Find closest or best matched driver for a delivery order
 export function findBestDriverForOrder(
   order: Order,
@@ -29,10 +82,15 @@ export function findBestDriverForOrder(
 ): DeliveryDriver | null {
   const rejected = order.rejectedDriverIds || [];
 
-  // Filter only online, available drivers who haven't rejected this order
-  const availableDrivers = drivers.filter(
-    (d) => d.isOnline && d.status === 'available' && !rejected.includes(d.id)
-  );
+  // Filter only online, available drivers who are willing to deliver food/parcels ('delivery' or 'both')
+  const availableDrivers = drivers.filter((d) => {
+    if (!d.isOnline || d.status !== 'available' || rejected.includes(d.id)) {
+      return false;
+    }
+    // Must support deliveries (defaults to true if unset for backward compatibility)
+    const canDeliver = !d.serviceType || d.serviceType === 'delivery' || d.serviceType === 'both';
+    return canDeliver;
+  });
 
   if (availableDrivers.length === 0) {
     return null;
@@ -46,14 +104,30 @@ export function findBestDriverForOrder(
       lng: -10.7818,
     };
 
-  // Sort by closest distance to restaurant
-  const sorted = [...availableDrivers].sort((a, b) => {
-    const distA = calculateDistanceKm(a.currentLocation, targetLocation);
-    const distB = calculateDistanceKm(b.currentLocation, targetLocation);
-    return distA - distB;
+  const now = new Date();
+
+  // Rank by combined score: Proximity + Active Schedule Bonus + Rating
+  const scored = availableDrivers.map((driver) => {
+    const distanceKm = calculateDistanceKm(driver.currentLocation, targetLocation);
+    const { isScheduledNow, scheduleScore } = isDriverScheduledNow(driver, now);
+
+    // Distance penalty: -15 per km
+    // Schedule bonus: +40 if currently on shift
+    // Rating bonus: +5 per rating star
+    const score = scheduleScore + (driver.rating || 5.0) * 5 - distanceKm * 15;
+
+    return {
+      driver,
+      distanceKm,
+      isScheduledNow,
+      score,
+    };
   });
 
-  return sorted[0] || null;
+  // Sort descending by score (best match first)
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored[0]?.driver || null;
 }
 
 // Automatically delegate an unassigned order to the best driver
@@ -123,4 +197,87 @@ export async function delegateOrderToDriver(
   } catch {}
 
   return { success: true, assignedDriver: bestDriver, updatedOrder };
+}
+
+/**
+ * Ride matching algorithm:
+ * Uses driver serviceType ('rides' | 'both'), active scheduled days/times,
+ * vehicle type matching, and proximity to passenger coordinates.
+ */
+export function findBestDriverForRide(
+  pickupCoords: LocationCoords,
+  vehicleType: 'Motorbike' | 'Kekeh (Tricycle)' | 'Taxi (Car)',
+  drivers: DeliveryDriver[]
+): {
+  driver: DeliveryDriver;
+  distanceKm: number;
+  etaMinutes: number;
+  isScheduledNow: boolean;
+} | null {
+  if (!drivers || drivers.length === 0) return null;
+
+  // 1. Filter drivers eligible for rides
+  const eligible = drivers.filter((d) => {
+    // If status is offline, skip
+    if (d.isOnline === false || d.status === 'busy') return false;
+
+    // Check service type (default to true for backward compatibility)
+    const canDriveRiders = !d.serviceType || d.serviceType === 'rides' || d.serviceType === 'both';
+    if (!canDriveRiders) return false;
+
+    // Vehicle check
+    if (vehicleType === 'Motorbike') {
+      return d.vehicleType === 'Motorbike' || d.vehicleType === 'Bicycle' || !d.vehicleType;
+    }
+    if (vehicleType === 'Kekeh (Tricycle)') {
+      const v = (d.vehicleType || '').toLowerCase();
+      return v.includes('kekeh') || v.includes('tricycle') || v.includes('3-wheel');
+    }
+    if (vehicleType === 'Taxi (Car)') {
+      const v = (d.vehicleType || '').toLowerCase();
+      return v.includes('car') || v.includes('taxi') || v.includes('sedan');
+    }
+    return true;
+  });
+
+  const candidates = eligible.length > 0 ? eligible : drivers;
+  const now = new Date();
+
+  // Score each candidate
+  const scored = candidates.map((driver) => {
+    const loc = driver.currentLocation || { lat: 6.2907, lng: -10.7818 };
+    const distanceKm = calculateDistanceKm(loc, pickupCoords);
+    const { isScheduledNow, scheduleScore } = isDriverScheduledNow(driver, now);
+
+    // Score calculation:
+    // +40 for currently active scheduled shift (days & time slots)
+    // +5 * rating
+    // -12 * distanceKm
+    // +20 if vehicle matches specifically
+    const vehicleMatches = 
+      (vehicleType === 'Motorbike' && (driver.vehicleType === 'Motorbike' || driver.vehicleType === 'Bicycle')) ||
+      (vehicleType === 'Kekeh (Tricycle)' && driver.vehicleType?.toLowerCase().includes('kekeh')) ||
+      (vehicleType === 'Taxi (Car)' && driver.vehicleType?.toLowerCase().includes('car'));
+
+    const score = scheduleScore + (driver.rating || 4.8) * 5 - distanceKm * 12 + (vehicleMatches ? 20 : 0);
+    const etaMinutes = Math.max(2, Math.round(distanceKm * 2.5 + 2));
+
+    return {
+      driver,
+      distanceKm,
+      etaMinutes,
+      isScheduledNow,
+      score,
+    };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+
+  return best ? {
+    driver: best.driver,
+    distanceKm: best.distanceKm,
+    etaMinutes: best.etaMinutes,
+    isScheduledNow: best.isScheduledNow,
+  } : null;
 }

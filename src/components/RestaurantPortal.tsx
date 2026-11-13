@@ -10,6 +10,7 @@ import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
 import { CustomDropdown } from './CustomDropdown';
 import { saveRestaurantToApi, saveMenuItemToApi, deleteMenuItemFromApi } from '../utils/apiSync';
+import { sanitizeForFirestore } from '../utils/cleanData';
 
 interface RestaurantPortalProps {
   restaurant: Restaurant;
@@ -558,8 +559,9 @@ Status: ${orderToCopy.status.toUpperCase()}
 
     // Save to Firestore in Real Time (both 'menu' and 'menu_items' for compatibility)
     try {
-      await setDoc(doc(db, 'menu', targetDish.id), targetDish);
-      await setDoc(doc(db, 'menu_items', targetDish.id), targetDish);
+      const sanitized = sanitizeForFirestore(targetDish);
+      await setDoc(doc(db, 'menu', targetDish.id), sanitized);
+      await setDoc(doc(db, 'menu_items', targetDish.id), sanitized);
       console.log('Dish successfully synced to Firestore:', targetDish.id);
     } catch (err) {
       console.warn('Firestore dish write notice:', err);
@@ -2975,6 +2977,8 @@ Status: ${orderToCopy.status.toUpperCase()}
         isOpen={isMapPickerOpen}
         onClose={() => setIsMapPickerOpen(false)}
         title="Pick Kitchen Location"
+        locationType="kitchen"
+        confirmButtonText="Confirm Kitchen Location"
         initialCoords={restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood]}
         initialArea={restNeighborhood}
         initialAddress={restAddress}

@@ -338,6 +338,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       subtotal: 12.00,
       deliveryFee: calculatedPricing.finalFee,
       total: 12.00 + calculatedPricing.finalFee,
+      currency: 'USD',
       paymentMethod: 'momo-mtn',
       paymentNumber: '0886 554 321',
       paymentStatus: 'paid',
@@ -404,43 +405,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     customReasonText: string;
   } | null>(null);
 
-  // Automated background Firestore purifier for dummy / legacy demo items
-  useEffect(() => {
-    const purgeDummyDataFromFirestore = async () => {
-      try {
-        const menuSnap = await getDocs(collection(db, 'menu'));
-        menuSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (isDummyMenuItem({ ...data, id: docSnap.id })) {
-            deleteDoc(docSnap.ref).catch(() => {});
-            deleteMenuItemFromApi(docSnap.id).catch(() => {});
-          }
-        });
 
-        const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
-        menuItemsSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (isDummyMenuItem({ ...data, id: docSnap.id })) {
-            deleteDoc(docSnap.ref).catch(() => {});
-            deleteMenuItemFromApi(docSnap.id).catch(() => {});
-          }
-        });
-
-        const restSnap = await getDocs(collection(db, 'restaurants'));
-        restSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (isDummyRestaurant({ ...data, id: docSnap.id })) {
-            deleteDoc(docSnap.ref).catch(() => {});
-            deleteRestaurantFromApi(docSnap.id).catch(() => {});
-          }
-        });
-      } catch (e) {
-        // Silent background purifier notice
-      }
-    };
-
-    purgeDummyDataFromFirestore();
-  }, []);
 
   const handleExecuteDelete = async () => {
     if (!deleteConfirmationModal) return;

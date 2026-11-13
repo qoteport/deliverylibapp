@@ -24,10 +24,17 @@ import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { LoginModal } from './components/LoginModal';
 import { AccountModal } from './components/AccountModal';
 import { FloatingOrderTrackerFab } from './components/FloatingOrderTrackerFab';
-import { MenuItem, CartItem, Order, DiningMode, Currency, Restaurant, DeliveryDriver, MONROVIA_NEIGHBORHOOD_COORDS } from './types';
+import { AppsHubModal } from './components/AppsHubModal';
+import { AppsPage } from './components/AppsPage';
+import { RidesPortal } from './components/RidesPortal';
+import { SupermarketApp } from './components/SupermarketApp';
+import { SupermarketPortal } from './components/SupermarketPortal';
+import { SupermarketOnboardingModal } from './components/SupermarketOnboardingModal';
+import { MenuItem, CartItem, Order, DiningMode, Currency, Restaurant, DeliveryDriver, SupermarketStore, MONROVIA_NEIGHBORHOOD_COORDS } from './types';
 import { MENU_ITEMS } from './data/menuData';
 import { INITIAL_RESTAURANTS } from './data/demoRestaurants';
 import { INITIAL_DRIVERS } from './data/demoDrivers';
+import { SUPERMARKETS } from './data/supermarketData';
 import { db } from './firebase/config';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
@@ -64,7 +71,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('all');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('all');
-  const [mobileTab, setMobileTab] = useState<'menu' | 'favorites' | 'orders'>('menu');
+  const [mobileTab, setMobileTab] = useState<'menu' | 'apps' | 'favorites' | 'orders'>('menu');
 
   // Modal Visibilities
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -79,6 +86,9 @@ export default function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
   const [isOrderTrackerOpen, setIsOrderTrackerOpen] = useState(false);
+  const [isAppsHubOpen, setIsAppsHubOpen] = useState(false);
+  const [isRidesPortalOpen, setIsRidesPortalOpen] = useState(false);
+  const [isSupermarketOpen, setIsSupermarketOpen] = useState(false);
 
   // Restaurants & Menu Items (Clean state synced with Firestore)
   const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
@@ -111,6 +121,15 @@ export default function App() {
     } catch {
       return [];
     }
+  });
+
+  // Supermarkets & Stores State
+  const [supermarkets, setSupermarkets] = useState<SupermarketStore[]>(() => {
+    try {
+      const saved = localStorage.getItem('aura_monrovia_supermarkets');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return SUPERMARKETS;
   });
 
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -190,8 +209,18 @@ export default function App() {
   }, []);
 
 
+  // Handle URL route changes for Rides and Supermarket
+  useEffect(() => {
+    if (currentRoute.name === 'rides') {
+      setIsRidesPortalOpen(true);
+    } else if (currentRoute.name === 'supermarket') {
+      setIsSupermarketOpen(true);
+    }
+  }, [currentRoute]);
+
   // 1. Realtime Firestore Sync: Restaurants
   useEffect(() => {
+    if (!db) return;
     const unsub = onSnapshot(
       collection(db, 'restaurants'),
       (snapshot) => {
@@ -225,6 +254,7 @@ export default function App() {
 
   // 2. Realtime Firestore Sync & Auto-Population: Menu Items
   useEffect(() => {
+    if (!db) return;
     let hasAttemptedAutoSync = false;
 
     const unsub = onSnapshot(
@@ -234,14 +264,7 @@ export default function App() {
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as MenuItem;
           const item = { ...data, id: data.id || docSnap.id };
-          if (isDummyMenuItem(item)) {
-            // Actively purge dummy menu items from Firestore and local API
-            deleteDoc(doc(db, 'menu', docSnap.id)).catch(() => {});
-            deleteDoc(doc(db, 'menu_items', docSnap.id)).catch(() => {});
-            deleteMenuItemFromApi(item.id).catch(() => {});
-            return;
-          }
-          if (data && data.name) {
+          if (!isDummyMenuItem(item) && data && data.name) {
             remoteItems.push(item);
           }
         });
@@ -256,12 +279,7 @@ export default function App() {
             menuItemsSnap.forEach((docSnap) => {
               const data = docSnap.data() as MenuItem;
               const item = { ...data, id: data.id || docSnap.id };
-              if (isDummyMenuItem(item)) {
-                deleteDoc(docSnap.ref).catch(() => {});
-                deleteMenuItemFromApi(item.id).catch(() => {});
-                return;
-              }
-              if (data && data.name) {
+              if (!isDummyMenuItem(item) && data && data.name) {
                 fallbackRemote.push(item);
               }
             });
@@ -279,62 +297,69 @@ export default function App() {
           }
         }
 
-        // AUTO-SYNC TO FIREBASE:
-        // If Firebase is completely empty but the app has local menu items (in localStorage cache, API store, or state),
-        // automatically push them to Firebase so Firestore is populated and all devices/caches are updated!
-        if (cleanItems.length === 0 && !hasAttemptedAutoSync) {
-          hasAttemptedAutoSync = true;
-          let localItems: MenuItem[] = [];
-
+        // If Firestore has items, it is the authoritative remote source
+        if (cleanItems.length > 0) {
+          setMenuItems(cleanItems);
           try {
-            const saved = localStorage.getItem('aura_monrovia_menu');
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              localItems = cleanMenuList(parsed);
+            localStorage.setItem('aura_monrovia_menu', JSON.stringify(cleanItems));
+          } catch (e) {
+            console.warn('LocalStorage menu cache error:', e);
+          }
+          cleanItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+          return;
+        }
+
+        // If Firestore is empty, check if we have local menu items in localStorage or API cache
+        let localItems: MenuItem[] = [];
+        try {
+          const saved = localStorage.getItem('aura_monrovia_menu');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            localItems = cleanMenuList(parsed);
+          }
+        } catch {}
+
+        if (localItems.length === 0) {
+          try {
+            const apiItems = await fetchMenuFromApi();
+            if (apiItems && apiItems.length > 0) {
+              localItems = cleanMenuList(apiItems);
             }
           } catch {}
-
-          if (localItems.length === 0) {
-            try {
-              const apiItems = await fetchMenuFromApi();
-              if (apiItems && apiItems.length > 0) {
-                localItems = cleanMenuList(apiItems);
-              }
-            } catch {}
-          }
-
-          if (localItems.length > 0) {
-            console.log(`[Auto-Sync] Pushing ${localItems.length} menu items from client cache to empty Firebase database...`);
-            try {
-              const batch = writeBatch(db);
-              localItems.forEach((item) => {
-                const cleanItem = sanitizeForFirestore(item);
-                batch.set(doc(db, 'menu', item.id), cleanItem);
-                batch.set(doc(db, 'menu_items', item.id), cleanItem);
-                saveMenuItemToApi(item).catch(() => {});
-              });
-              await batch.commit();
-              console.log('[Auto-Sync] Successfully populated Firebase with client menu items.');
-            } catch (err) {
-              console.warn('[Auto-Sync] Batch write to Firebase notice:', err);
-            }
-
-            setMenuItems(localItems);
-            try {
-              localStorage.setItem('aura_monrovia_menu', JSON.stringify(localItems));
-            } catch {}
-            return;
-          }
         }
 
-        // When Firebase has items, it is the live authoritative source
-        setMenuItems(cleanItems);
-        try {
-          localStorage.setItem('aura_monrovia_menu', JSON.stringify(cleanItems));
-        } catch (e) {
-          console.warn('LocalStorage menu cache error:', e);
+        // If local items exist, preserve them and push to Firestore so they don't disappear!
+        if (localItems.length > 0) {
+          console.log(`[Auto-Sync] Syncing ${localItems.length} menu items from client cache to Firestore...`);
+          setMenuItems(localItems);
+          try {
+            const batch = writeBatch(db);
+            localItems.forEach((item) => {
+              const cleanItem = sanitizeForFirestore(item);
+              batch.set(doc(db, 'menu', item.id), cleanItem);
+              batch.set(doc(db, 'menu_items', item.id), cleanItem);
+              saveMenuItemToApi(item).catch(() => {});
+            });
+            await batch.commit();
+            console.log('[Auto-Sync] Successfully populated Firebase with client menu items.');
+          } catch (err) {
+            console.warn('[Auto-Sync] Batch write to Firebase notice:', err);
+          }
+          return;
         }
-        cleanItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+
+        // If both Firestore and local caches are empty, do not blindly wipe existing items if they exist in state!
+        setMenuItems((prev) => {
+          if (prev && prev.length > 0) {
+            // Re-sync existing dishes so they do not disappear
+            try {
+              localStorage.setItem('aura_monrovia_menu', JSON.stringify(prev));
+              prev.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
+            } catch {}
+            return prev;
+          }
+          return [];
+        });
       },
       (error) => {
         console.warn('Firestore menu snapshot notice:', error);
@@ -345,6 +370,7 @@ export default function App() {
 
   // 3. Realtime Firestore Sync: Drivers Fleet
   useEffect(() => {
+    if (!db) return;
     const unsub = onSnapshot(
       collection(db, 'drivers'),
       (snapshot) => {
@@ -378,6 +404,7 @@ export default function App() {
 
   // 4. Realtime Firestore Sync: Orders Feed
   useEffect(() => {
+    if (!db) return;
     const unsub = onSnapshot(
       collection(db, 'orders'),
       (snapshot) => {
@@ -410,6 +437,47 @@ export default function App() {
     );
     return () => unsub();
   }, []);
+
+  // 4b. Realtime Firestore Sync: Supermarkets Feed
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(
+      collection(db, 'supermarkets'),
+      (snapshot) => {
+        const remoteSm: SupermarketStore[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as SupermarketStore;
+          if (data && data.name) {
+            remoteSm.push({
+              ...data,
+              id: data.id || docSnap.id,
+            });
+          }
+        });
+        if (remoteSm.length > 0) {
+          setSupermarkets(remoteSm);
+          try {
+            localStorage.setItem('aura_monrovia_supermarkets', JSON.stringify(remoteSm));
+          } catch {}
+        }
+      },
+      (error) => {
+        console.warn('Firestore supermarkets snapshot notice:', error);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  const handleSupermarketCreated = (newSm: SupermarketStore) => {
+    setSupermarkets((prev) => {
+      const updated = [newSm, ...prev.filter((s) => s.id !== newSm.id)];
+      try {
+        localStorage.setItem('aura_monrovia_supermarkets', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast(`Supermarket ${newSm.name} registered successfully!`);
+  };
 
   // 5. Continuous Dual Realtime Sync with Backend API Store (Zero-Config, High Availability)
   useEffect(() => {
@@ -999,8 +1067,9 @@ export default function App() {
     showToast(`Saved "${item.name}"`);
     saveMenuItemToApi(item).catch((e) => console.warn('API save menu notice:', e));
     try {
-      await setDoc(doc(db, 'menu', item.id), item);
-      await setDoc(doc(db, 'menu_items', item.id), item);
+      const sanitized = sanitizeForFirestore(item);
+      await setDoc(doc(db, 'menu', item.id), sanitized);
+      await setDoc(doc(db, 'menu_items', item.id), sanitized);
     } catch (e) {
       console.warn('Firestore setDoc menu notice:', e);
     }
@@ -1072,8 +1141,9 @@ export default function App() {
     if (updatedItem) {
       saveMenuItemToApi(updatedItem).catch(() => {});
       try {
-        await setDoc(doc(db, 'menu', itemId), updatedItem, { merge: true });
-        await setDoc(doc(db, 'menu_items', itemId), updatedItem, { merge: true });
+        const sanitized = sanitizeForFirestore(updatedItem);
+        await setDoc(doc(db, 'menu', itemId), sanitized, { merge: true });
+        await setDoc(doc(db, 'menu_items', itemId), sanitized, { merge: true });
       } catch (e) {
         console.warn('Firestore toggle availability notice:', e);
       }
@@ -1277,7 +1347,111 @@ export default function App() {
   }
 
   // =========================================================================
-  // DISTINCT UI 4: MAIN CONSUMER FOOD ORDERING APP (/)
+  // DISTINCT UI 4: APPS HUB PAGE (/apps)
+  // =========================================================================
+  if (currentRoute.name === 'apps') {
+    return (
+      <ErrorBoundary>
+        <AppsPage
+          onBackToStorefront={() => navigateTo({ name: 'home' })}
+          onOpenRides={() => navigateTo({ name: 'rides' })}
+          onOpenSupermarket={() => navigateTo({ name: 'supermarket' })}
+          onOpenSupermarketOnboarding={() => navigateTo({ name: 'supermarket-onboarding' })}
+          onOpenKitchenOnboarding={() => setIsOnboardingOpen(true)}
+          onOpenLogin={() => {
+            setAuthModalMode('login');
+            setIsLoginOpen(true);
+          }}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI 5: AURA RIDES PORTAL PAGE (/rides)
+  // =========================================================================
+  if (currentRoute.name === 'rides') {
+    return (
+      <ErrorBoundary>
+        <RidesPortal
+          isOpen={true}
+          isPageMode={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          availableDrivers={drivers}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI 6: SUPERMARKET ECOMMERCE APP PAGE (/supermarket)
+  // =========================================================================
+  if (currentRoute.name === 'supermarket') {
+    return (
+      <ErrorBoundary>
+        <SupermarketApp
+          isOpen={true}
+          isPageMode={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          currency={currency}
+          onOrderPlaced={(order) => {
+            setOrders((prev) => [order, ...prev]);
+            setActiveTrackingOrder(order);
+            setIsOrderTrackerOpen(true);
+          }}
+          onOpenStorePortal={(storeId) => {
+            navigateTo({ name: 'supermarket-management', supermarketId: storeId });
+          }}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI 7: SUPERMARKET ONBOARDING & REGISTRATION (/supermarket-onboarding)
+  // =========================================================================
+  if (currentRoute.name === 'supermarket-onboarding') {
+    return (
+      <ErrorBoundary>
+        <SupermarketOnboardingModal
+          isOpen={true}
+          isFullPage={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          onSupermarketCreated={handleSupermarketCreated}
+          onOpenSupermarketPortal={(smId) => navigateTo({ name: 'supermarket-management', supermarketId: smId })}
+          isSuperAdminMode={user?.role === 'super_admin'}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI 8: SUPERMARKET MANAGEMENT PORTAL (/supermarket-management/:id)
+  // =========================================================================
+  if (currentRoute.name === 'supermarket-management') {
+    const store =
+      supermarkets.find((s) => s.id === currentRoute.supermarketId) ||
+      supermarkets[0] ||
+      SUPERMARKETS[0];
+
+    return (
+      <ErrorBoundary>
+        <SupermarketPortal
+          supermarket={store}
+          orders={orders}
+          onExitPortal={() => navigateTo({ name: 'apps' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+          onUpdateOrderStatus={handleUpdateOrderStatus}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI 9: MAIN CONSUMER FOOD ORDERING APP (/)
   // =========================================================================
     return (
       <ErrorBoundary>
@@ -1327,6 +1501,7 @@ export default function App() {
         onOpenRestaurantPortal={(id) => navigateTo({ name: 'restaurant', restaurantId: id })}
         onOpenDriverPortal={() => navigateTo({ name: 'driver' })}
         onOpenDriverJoin={() => setIsDriverJoinOpen(true)}
+        onOpenApps={() => setIsAppsHubOpen(true)}
       />
 
       <main className="flex-1 pb-20">
@@ -1384,7 +1559,9 @@ export default function App() {
         activeTab={mobileTab}
         onSelectTab={(tab) => {
           setMobileTab(tab);
-          if (tab === 'favorites') {
+          if (tab === 'apps') {
+            setIsAppsHubOpen(true);
+          } else if (tab === 'favorites') {
             setIsFavoritesOpen(true);
           } else if (tab === 'orders') {
             if (activeOrders.length > 0) {
@@ -1541,6 +1718,25 @@ export default function App() {
           isSuperAdminMode={user?.role === 'super_admin'}
         />
       )}
+
+      {/* Apps Ecosystem Hub Modal */}
+      <AppsHubModal
+        isOpen={isAppsHubOpen}
+        onClose={() => setIsAppsHubOpen(false)}
+        onOpenRides={() => {
+          setIsAppsHubOpen(false);
+          navigateTo({ name: 'rides' });
+        }}
+        onOpenSupermarket={() => {
+          setIsAppsHubOpen(false);
+          navigateTo({ name: 'supermarket' });
+        }}
+        onOpenFood={() => {
+          setIsAppsHubOpen(false);
+          setMobileTab('menu');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       </div>
     </ErrorBoundary>

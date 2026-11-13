@@ -783,6 +783,9 @@ Delivery Fee: $${calculatedDeliveryFee.toFixed(2)}
         <LocationPickerModal
           isOpen={isLocationPickerOpen}
           onClose={() => setIsLocationPickerOpen(false)}
+          title="Pinpoint Delivery Spot"
+          locationType="delivery"
+          confirmButtonText="Confirm Delivery Location"
           initialCoords={gpsCoords}
           initialArea={destinationArea}
           initialAddress={address}

@@ -1,18 +1,34 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, doc, getDocFromServer, Firestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore with forced long polling to bypass WebChannel CORS restrictions in sandbox iframes
-export const db = initializeFirestore(
-  app,
-  {
-    experimentalForceLongPolling: true,
-  },
-  firebaseConfig.firestoreDatabaseId
-);
+// Initialize Firestore with robust fallbacks so db is NEVER undefined
+let firestoreDb: Firestore;
+try {
+  firestoreDb = initializeFirestore(
+    app,
+    {
+      experimentalForceLongPolling: true,
+    },
+    firebaseConfig.firestoreDatabaseId || '(default)'
+  );
+} catch (e1) {
+  try {
+    firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
+  } catch (e2) {
+    try {
+      firestoreDb = getFirestore(app);
+    } catch (e3) {
+      console.warn('Fallback to standard firestore instance:', e3);
+      firestoreDb = getFirestore();
+    }
+  }
+}
+
+export const db: Firestore = firestoreDb;
 
 export const auth = getAuth(app);
 

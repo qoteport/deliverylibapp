@@ -32,14 +32,20 @@ import {
   ChevronUp,
   Copy,
   ExternalLink,
-  Package
+  Package,
+  Car,
+  Camera,
+  User,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
-import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant } from '../types';
+import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant, RideRequest, RideStatus } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { sendBrowserNotification } from '../utils/browserNotifications';
 import { playOrderAlertSound } from '../utils/audioAlert';
 import { db } from '../firebase/config';
-import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, onSnapshot, collection } from 'firebase/firestore';
+import { sanitizeForFirestore } from '../utils/cleanData';
 import { useAuth } from '../context/AuthContext';
 import { saveOrderToApi, saveDriverToApi, updateOrderStatusApi, updateDriverApi } from '../utils/apiSync';
 
@@ -167,6 +173,68 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<Order | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
+  // Passenger Rides Integration State
+  const [allRides, setAllRides] = useState<RideRequest[]>([]);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [facePhotoInput, setFacePhotoInput] = useState(driver.driverPhoto || driver.avatar || '');
+  const [vehiclePhotoInput, setVehiclePhotoInput] = useState(driver.vehiclePhoto || '');
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
+
+  // Real-time listener for incoming Monrovia passenger ride requests
+  useEffect(() => {
+    const unsubRides = onSnapshot(
+      collection(db, 'rides'),
+      (snapshot) => {
+        const fetched: RideRequest[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push(docSnap.data() as RideRequest);
+        });
+        setAllRides(fetched);
+      },
+      (err) => console.warn('Rides listener notice in DriverPortal:', err)
+    );
+    return () => unsubRides();
+  }, []);
+
+  // Helper to read and compress image files
+  const handleDriverImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          setter(canvas.toDataURL('image/jpeg', 0.82));
+        } else {
+          setter(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Keyboard Escape listener for history modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,6 +266,119 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       o.delegationStatus !== 'delivered' &&
       o.status !== 'completed'
   );
+
+  // Incoming Ride Request matching driver preference & active ride
+  const canTakeRides = driver.serviceType === 'rides' || driver.serviceType === 'both';
+  const offeredRide = isOnline && canTakeRides
+    ? allRides.find(
+        (r) =>
+          r.status === 'searching' ||
+          (r.status === 'pinging_driver' && r.assignedDriverId === driver.id)
+      )
+    : undefined;
+
+  const activeDriverRide = allRides.find(
+    (r) =>
+      r.assignedDriverId === driver.id &&
+      (r.status === 'accepted' || r.status === 'arriving' || r.status === 'in_transit')
+  );
+
+  const handleAcceptRide = async (ride: RideRequest) => {
+    const updatedRide: RideRequest = {
+      ...ride,
+      status: 'accepted',
+      assignedDriverId: driver.id,
+      assignedDriverName: driver.name,
+      assignedDriverPhone: driver.phone,
+      driverVehicle: driver.vehicleType,
+      driverPlate: driver.plateNumber || 'Monrovia Fleet',
+      driverRating: driver.rating || 5.0,
+      driverPhoto: driver.driverPhoto || driver.avatar,
+      vehiclePhoto: driver.vehiclePhoto,
+      acceptedAtTimestamp: Date.now(),
+      driverEtaMinutes: 3,
+      driverLocation: driver.currentLocation,
+    };
+    try {
+      await updateDoc(doc(db, 'rides', ride.id), sanitizeForFirestore(updatedRide) as any);
+    } catch (err) {
+      console.warn('Error accepting ride:', err);
+    }
+    playOrderAlertSound();
+    sendBrowserNotification({
+      title: 'Ride Request Accepted! 🛵',
+      body: `You are assigned to passenger ${ride.customerName}. Head to ${ride.pickupAddress}!`,
+      tag: `driver-ride-${ride.id}`,
+    });
+  };
+
+  const handleDeclineRide = async (rideId: string) => {
+    try {
+      await updateDoc(doc(db, 'rides', rideId), {
+        status: 'searching',
+        assignedDriverId: null,
+      });
+    } catch {}
+  };
+
+  const handleAdvanceDriverRide = async (rideId: string, status: RideStatus) => {
+    const ride = allRides.find((r) => r.id === rideId);
+    if (!ride) return;
+
+    try {
+      await updateDoc(doc(db, 'rides', rideId), {
+        status,
+        ...(status === 'arriving' ? { arrivedAtTimestamp: Date.now() } : {}),
+        ...(status === 'in_transit' ? { startedAtTimestamp: Date.now() } : {}),
+        ...(status === 'completed' ? { completedAtTimestamp: Date.now() } : {}),
+      });
+
+      if (status === 'completed') {
+        const fare = ride.fareUsd || 2.50;
+        const updatedDriver: DeliveryDriver = {
+          ...driver,
+          totalDeliveries: (driver.totalDeliveries || 0) + 1,
+          earningsTodayUsd: (driver.earningsTodayUsd || 0) + fare,
+        };
+        onUpdateDriver(updatedDriver);
+        await updateDoc(doc(db, 'drivers', driver.id), {
+          totalDeliveries: updatedDriver.totalDeliveries,
+          earningsTodayUsd: updatedDriver.earningsTodayUsd,
+        });
+        playOrderAlertSound();
+        sendBrowserNotification({
+          title: 'Ride Completed! 🏁',
+          body: `Earned +$${fare.toFixed(2)} USD from passenger ride to ${ride.destinationAddress}.`,
+          tag: `driver-ride-done-${ride.id}`,
+        });
+      }
+    } catch (err) {
+      console.warn('Error advancing ride:', err);
+    }
+  };
+
+  const handleSaveDriverPhotos = async () => {
+    setIsSavingPhotos(true);
+    try {
+      const updated: DeliveryDriver = {
+        ...driver,
+        avatar: facePhotoInput || driver.avatar,
+        driverPhoto: facePhotoInput || driver.driverPhoto,
+        vehiclePhoto: vehiclePhotoInput || driver.vehiclePhoto,
+      };
+      onUpdateDriver(updated);
+      await updateDoc(doc(db, 'drivers', driver.id), {
+        avatar: facePhotoInput || null,
+        driverPhoto: facePhotoInput || null,
+        vehiclePhoto: vehiclePhotoInput || null,
+      });
+      setShowPhotoModal(false);
+    } catch (err) {
+      console.warn('Error saving photos:', err);
+    } finally {
+      setIsSavingPhotos(false);
+    }
+  };
 
   // Delivery History: All completed trips assigned to this rider
   const completedDriverOrders = orders
@@ -539,6 +720,16 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Driver Profile Photos Modal Button */}
+            <button
+              onClick={() => setShowPhotoModal(true)}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition flex items-center gap-1 cursor-pointer"
+              title="Manage Driver Face & Vehicle Photos"
+            >
+              <Camera className="w-3.5 h-3.5 text-[#06C167]" />
+              <span className="hidden sm:inline">Photos</span>
+            </button>
+
             {/* Currency Switcher */}
             <button
               onClick={onToggleCurrency}
@@ -684,6 +875,154 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ============================================================ */}
+        {/* 1A. INCOMING PASSENGER RIDE REQUEST BANNER                  */}
+        {/* ============================================================ */}
+        {offeredRide && (
+          <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-600 via-teal-700 to-green-800 text-white rounded-3xl shadow-xl shadow-emerald-600/25 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-white animate-ping" />
+                <span className="font-black text-sm uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <Car className="w-4 h-4 text-white" />
+                  <span>New Monrovia Passenger Ride Request!</span>
+                </span>
+              </div>
+              <span className="font-mono text-xs text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full font-bold">
+                #{offeredRide.id}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-white">
+              <div className="space-y-1">
+                <div className="text-white/80 text-[11px] font-bold uppercase tracking-wider">Pickup Spot:</div>
+                <div className="font-extrabold text-white text-sm flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-200" />
+                  <span className="truncate">{offeredRide.pickupAddress}</span>
+                </div>
+                <div className="text-white/80 text-[11px]">Passenger: {offeredRide.customerName} ({offeredRide.customerPhone})</div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-white/80 text-[11px] font-bold uppercase tracking-wider">Drop-off Destination:</div>
+                <div className="font-extrabold text-white text-sm flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-red-300" />
+                  <span className="truncate">{offeredRide.destinationAddress}</span>
+                </div>
+                <div className="text-white/80 text-[11px]">Requested: {offeredRide.vehiclePreference}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">Trip Fare:</div>
+                <div className="font-mono text-2xl font-black text-white">
+                  +${offeredRide.fareUsd?.toFixed(2) || '2.50'} <span className="text-xs font-normal opacity-80">(L${offeredRide.fareLrd || Math.round((offeredRide.fareUsd || 2.5) * USD_TO_LRD_RATE)})</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeclineRide(offeredRide.id)}
+                  className="px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-2xl transition cursor-pointer"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAcceptRide(offeredRide)}
+                  className="px-5 py-2.5 bg-white hover:bg-gray-100 text-[#048747] text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>Accept Ride</span>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* 1B. ACTIVE PASSENGER RIDE IN PROGRESS                        */}
+        {/* ============================================================ */}
+        {activeDriverRide && (
+          <div className="p-5 sm:p-6 bg-white border-2 border-[#06C167] rounded-3xl shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-extrabold text-[#048747] uppercase tracking-wider flex items-center gap-1.5">
+                  <Car className="w-4 h-4 animate-bounce" />
+                  <span>Active Passenger Trip</span>
+                </div>
+                <h3 className="text-base font-black text-gray-900 mt-0.5">
+                  Passenger: {activeDriverRide.customerName}
+                </h3>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-gray-400 font-bold uppercase">Fare</span>
+                <div className="font-mono text-xl font-black text-[#048747]">
+                  +${activeDriverRide.fareUsd?.toFixed(2) || '2.50'}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-50 rounded-2xl text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-gray-900">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#06C167] shrink-0" />
+                <span>Pickup: {activeDriverRide.pickupAddress}</span>
+              </div>
+              <div className="flex items-center gap-2 font-bold text-gray-700">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                <span>Drop-off: {activeDriverRide.destinationAddress}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                <a
+                  href={`tel:${activeDriverRide.customerPhone?.replace(/[^0-9]/g, '')}`}
+                  className="px-3 py-1.5 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call Passenger ({activeDriverRide.customerPhone})</span>
+                </a>
+                <span className="font-mono text-[11px] text-gray-500">
+                  Status: <strong>{activeDriverRide.status.toUpperCase()}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Stage Buttons */}
+            <div className="grid grid-cols-3 gap-2 text-xs font-bold pt-1">
+              <button
+                type="button"
+                onClick={() => handleAdvanceDriverRide(activeDriverRide.id, 'arriving')}
+                className={`py-2.5 px-2 rounded-xl border text-center transition cursor-pointer ${
+                  activeDriverRide.status === 'arriving'
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                1. Arrived at Pickup
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdvanceDriverRide(activeDriverRide.id, 'in_transit')}
+                className={`py-2.5 px-2 rounded-xl border text-center transition cursor-pointer ${
+                  activeDriverRide.status === 'in_transit'
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                2. Start Ride
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdvanceDriverRide(activeDriverRide.id, 'completed')}
+                className="py-2.5 px-2 rounded-xl bg-gray-900 hover:bg-black text-white text-center transition cursor-pointer"
+              >
+                3. Complete Ride &rarr;
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* 1. INCOMING DELIVERY OFFER BANNER                            */}
@@ -1564,6 +1903,118 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                 className="w-full sm:w-auto px-5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-black uppercase rounded-xl transition-all cursor-pointer"
               >
                 Close Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Driver Photos (Face & Vehicle) Modal */}
+      {showPhotoModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowPhotoModal(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-gray-100 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-[#06C167]" />
+                <h3 className="font-extrabold text-base text-gray-900">Manage Driver Photos</h3>
+              </div>
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Upload a clear face photo and a photo of your vehicle. These are shown to passengers when you accept rides across Monrovia.
+            </p>
+
+            {/* Face Photo */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                <span>Driver Face Photo / Portrait</span>
+                {facePhotoInput && (
+                  <button
+                    type="button"
+                    onClick={() => setFacePhotoInput('')}
+                    className="text-red-500 text-[11px] hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </label>
+              {facePhotoInput ? (
+                <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-emerald-200 bg-gray-50">
+                  <img src={facePhotoInput} alt="Driver Face" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-gray-300 hover:border-[#06C167] rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-gray-50 h-32 group transition">
+                  <Camera className="w-6 h-6 text-gray-400 group-hover:text-[#06C167] mb-1" />
+                  <span className="text-xs font-bold text-gray-700 group-hover:text-[#06C167]">Upload Face Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleDriverImageUpload(e, setFacePhotoInput)}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Vehicle Photo */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                <span>Vehicle Photo ({driver.vehicleType})</span>
+                {vehiclePhotoInput && (
+                  <button
+                    type="button"
+                    onClick={() => setVehiclePhotoInput('')}
+                    className="text-red-500 text-[11px] hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </label>
+              {vehiclePhotoInput ? (
+                <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-emerald-200 bg-gray-50">
+                  <img src={vehiclePhotoInput} alt="Vehicle Photo" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-gray-300 hover:border-[#06C167] rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-gray-50 h-32 group transition">
+                  <Bike className="w-6 h-6 text-gray-400 group-hover:text-[#06C167] mb-1" />
+                  <span className="text-xs font-bold text-gray-700 group-hover:text-[#06C167]">Upload Vehicle Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleDriverImageUpload(e, setVehiclePhotoInput)}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPhotoModal(false)}
+                className="w-1/2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDriverPhotos}
+                disabled={isSavingPhotos}
+                className="w-1/2 py-2.5 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
+              >
+                {isSavingPhotos ? 'Saving...' : 'Save Photos'}
               </button>
             </div>
           </div>

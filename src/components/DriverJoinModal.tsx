@@ -1,6 +1,40 @@
 import React, { useState } from 'react';
-import { X, Bike, Phone, User, MapPin, DollarSign, ShieldCheck, CheckCircle2, Sparkles, Clock, ArrowRight, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
-import { DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
+import { 
+  X, 
+  Bike, 
+  Phone, 
+  User, 
+  MapPin, 
+  DollarSign, 
+  ShieldCheck, 
+  CheckCircle2, 
+  Sparkles, 
+  Clock, 
+  ArrowRight, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  KeyRound,
+  Package,
+  Car,
+  Zap,
+  Calendar,
+  Check,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Trash2
+} from 'lucide-react';
+import { 
+  DeliveryDriver, 
+  MONROVIA_NEIGHBORHOODS, 
+  MONROVIA_NEIGHBORHOOD_COORDS, 
+  DriverServiceType, 
+  WeekDay, 
+  ActiveShiftSlot, 
+  ALL_WEEK_DAYS, 
+  SHIFT_SLOT_DEFINITIONS 
+} from '../types';
 import { CustomDropdown } from './CustomDropdown';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -28,7 +62,12 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [vehicleType, setVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
+  const [serviceType, setServiceType] = useState<DriverServiceType>('both');
+  const [activeDays, setActiveDays] = useState<WeekDay[]>([...ALL_WEEK_DAYS]);
+  const [activeTimeSlots, setActiveTimeSlots] = useState<ActiveShiftSlot[]>(['morning', 'afternoon', 'evening']);
   const [plateNumber, setPlateNumber] = useState('');
+  const [driverPhoto, setDriverPhoto] = useState('');
+  const [vehiclePhoto, setVehiclePhoto] = useState('');
   const [momoNumber, setMomoNumber] = useState('');
   const [momoProvider, setMomoProvider] = useState<DeliveryDriver['momoProvider']>('mtn');
   const [baseZone, setBaseZone] = useState(MONROVIA_NEIGHBORHOODS[0]);
@@ -41,6 +80,50 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
   if (!isOpen) return null;
 
   const [isMomoNumberManuallyEdited, setIsMomoNumberManuallyEdited] = useState(false);
+
+  // Helper to read and compress image files to clean Data URLs
+  const handleImageFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setErrorMsg('Image file size should be under 8MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setter(compressed);
+        } else {
+          setter(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Auto detect Liberia MoMo Provider from prefix
   const detectMomoNetwork = (num: any): DeliveryDriver['momoProvider'] => {
@@ -74,6 +157,26 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
     setMomoProvider(detected);
   };
 
+  const toggleDay = (day: WeekDay) => {
+    setActiveDays((prev) => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev; // Keep at least one
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day];
+    });
+  };
+
+  const toggleShift = (shift: ActiveShiftSlot) => {
+    setActiveTimeSlots((prev) => {
+      if (prev.includes(shift)) {
+        if (prev.length === 1) return prev; // Keep at least one
+        return prev.filter((s) => s !== shift);
+      }
+      return [...prev, shift];
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
@@ -97,6 +200,11 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
       name: name.trim(),
       phone: phone.trim(),
       vehicleType,
+      serviceType,
+      activeDays,
+      activeTimeSlots,
+      activeHoursStart: activeTimeSlots.includes('morning') ? '06:00' : '08:00',
+      activeHoursEnd: activeTimeSlots.includes('night') ? '04:00' : '22:00',
       plateNumber: plateNumber.trim() || `RL-${vehicleType === 'Motorbike' ? 'MB' : 'KK'}-${Math.floor(1000 + Math.random() * 9000)}`,
       momoNumber: momoNumber.trim() || phone.trim(),
       momoProvider,
@@ -110,6 +218,9 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
       totalDeliveries: 0,
       earningsTodayUsd: 0,
       driverPin: pin.trim(),
+      avatar: driverPhoto || undefined,
+      driverPhoto: driverPhoto || undefined,
+      vehiclePhoto: vehiclePhoto || undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -123,8 +234,8 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
     requestNotificationPermission().catch(() => {});
     playOrderAlertSound();
     sendBrowserNotification({
-      title: 'Courier Registration Submitted! 🛵',
-      body: `Welcome ${newDriver.name}! Your courier application is submitted and pending Monrovia Fleet verification.`,
+      title: 'Driver Registration Submitted! 🛵',
+      body: `Welcome ${newDriver.name}! Your profile is submitted for ${serviceType === 'both' ? 'Deliveries & Rides' : serviceType === 'delivery' ? 'Food Deliveries' : 'Passenger Rides'} across Monrovia.`,
       tag: `driver-register-${newDriver.id}`,
     });
 
@@ -169,10 +280,10 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-[#111827]">
-                Join as Delivery Rider
+                Join as Driver & Rider
               </h2>
               <p className="text-xs text-gray-500 font-medium">
-                Monrovia Courier Fleet Application
+                Deliver food, drive passengers, or both in Monrovia
               </p>
             </div>
           </div>
@@ -194,17 +305,38 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               Application Submitted!
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto leading-relaxed">
-              Welcome <strong>{registeredDriver.name}</strong>. Your courier profile has been submitted and is currently <strong>Pending Verification</strong>.
+              Welcome <strong>{registeredDriver.name}</strong>. Your driver profile has been submitted and is currently <strong>Pending Verification</strong>.
             </p>
 
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left text-xs space-y-1.5 max-w-sm mx-auto">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left text-xs space-y-2 max-w-sm mx-auto">
               <div className="font-extrabold text-[#048747] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Login Details</span>
+                <span>Driver Profile Configured</span>
               </div>
-              <p className="text-[11px] text-gray-700">
-                Your phone number (<strong>{registeredDriver.phone}</strong>) and security PIN (<strong>{registeredDriver.driverPin || '******'}</strong>) will be used to log into your driver dispatch portal.
-              </p>
+              <div className="text-[11px] text-gray-700 space-y-1">
+                <div>
+                  <span className="font-semibold text-gray-500">Service Mode:</span>{' '}
+                  <span className="font-bold text-gray-900">
+                    {registeredDriver.serviceType === 'both' ? '⚡ Both Deliveries & Passenger Rides' : registeredDriver.serviceType === 'delivery' ? '📦 Deliveries Only' : '🛵 Passenger Rides Only'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Active Days:</span>{' '}
+                  <span className="font-bold text-gray-900">
+                    {registeredDriver.activeDays?.join(', ') || 'All Days'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Active Shifts:</span>{' '}
+                  <span className="font-bold text-gray-900">
+                    {registeredDriver.activeTimeSlots?.map(s => SHIFT_SLOT_DEFINITIONS[s]?.label || s).join(', ') || 'All Shifts'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Login Phone:</span>{' '}
+                  <span className="font-mono font-bold text-gray-900">{registeredDriver.phone}</span>
+                </div>
+              </div>
             </div>
 
             <div className="pt-2 flex flex-col gap-2">
@@ -217,7 +349,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                   }}
                   className="w-full py-3 px-4 bg-gradient-to-r from-[#06C167] to-[#048747] text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <span>Open Rider Portal</span>
+                  <span>Open Driver Portal</span>
                   <span className="text-base">&rarr;</span>
                 </button>
               ) : (
@@ -241,15 +373,173 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               </div>
             )}
 
-            {/* Full Name */}
+            {/* WHAT WOULD YOU LIKE TO DO: WORK PREFERENCE */}
             <div className="space-y-1.5">
+              <label className="font-bold text-gray-800 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-[#06C167]" />
+                <span>What work would you like to do? *</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setServiceType('both')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    serviceType === 'both'
+                      ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] font-extrabold shadow-sm ring-1 ring-[#06C167]'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <Zap className="w-4 h-4 text-[#06C167]" />
+                  <span className="text-xs font-bold leading-tight">Both</span>
+                  <span className="text-[9px] text-gray-500 font-normal">Deliveries & Rides</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServiceType('delivery')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    serviceType === 'delivery'
+                      ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] font-extrabold shadow-sm ring-1 ring-[#06C167]'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <Package className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold leading-tight">Deliveries</span>
+                  <span className="text-[9px] text-gray-500 font-normal">Food & Parcels</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServiceType('rides')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    serviceType === 'rides'
+                      ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] font-extrabold shadow-sm ring-1 ring-[#06C167]'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <Car className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold leading-tight">Drive Rides</span>
+                  <span className="text-[9px] text-gray-500 font-normal">Passengers Only</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ACTIVE DAYS OF THE WEEK */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-gray-800 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Days You Are Most Active *</span>
+                </label>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDays([...ALL_WEEK_DAYS])}
+                    className="text-[#06C167] font-bold hover:underline"
+                  >
+                    All 7 Days
+                  </button>
+                  <span className="text-gray-300">&bull;</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])}
+                    className="text-gray-500 hover:text-gray-800"
+                  >
+                    Weekdays
+                  </button>
+                  <span className="text-gray-300">&bull;</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDays(['Saturday', 'Sunday'])}
+                    className="text-gray-500 hover:text-gray-800"
+                  >
+                    Weekends
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {ALL_WEEK_DAYS.map((day) => {
+                  const isDaySelected = activeDays.includes(day);
+                  const shortDay = day.slice(0, 3);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      title={day}
+                      className={`py-2 rounded-xl text-center text-xs font-bold transition-all cursor-pointer ${
+                        isDaySelected
+                          ? 'bg-[#06C167] text-white shadow-xs'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {shortDay}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400">
+                {activeDays.length} of 7 days selected. Used to inform order dispatch & rider matching.
+              </p>
+            </div>
+
+            {/* ACTIVE TIME OF DAY / SHIFTS */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-gray-800 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Times You Are Most Active *</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setActiveTimeSlots(['morning', 'afternoon', 'evening', 'night'])}
+                  className="text-[10px] text-[#06C167] font-bold hover:underline"
+                >
+                  Select All 24/7
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {(['morning', 'afternoon', 'evening', 'night'] as ActiveShiftSlot[]).map((slotKey) => {
+                  const def = SHIFT_SLOT_DEFINITIONS[slotKey];
+                  const isSlotSelected = activeTimeSlots.includes(slotKey);
+                  return (
+                    <button
+                      key={slotKey}
+                      type="button"
+                      onClick={() => toggleShift(slotKey)}
+                      className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                        isSlotSelected
+                          ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] font-bold shadow-xs'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-bold flex items-center gap-1">
+                          <span>{def.iconDesc}</span>
+                          <span>{def.label}</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-normal">
+                          {def.timeRange}
+                        </div>
+                      </div>
+                      {isSlotSelected && <Check className="w-4 h-4 text-[#06C167] stroke-[3] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Full Name */}
+            <div className="space-y-1.5 pt-1">
               <label className="font-bold text-gray-700">Full Name *</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Courier Full Name"
+                placeholder="e.g. Emmanuel Kollie"
                 className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
               />
             </div>
@@ -274,7 +564,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                   <Lock className="w-3.5 h-3.5 text-[#06C167]" />
                   <span>Security Login PIN (4 to 6 Digits) *</span>
                 </span>
-                <span className="text-[10px] text-gray-400 font-normal">Used if OTP fails</span>
+                <span className="text-[10px] text-gray-400 font-normal">For driver portal login</span>
               </label>
               <div className="relative">
                 <input
@@ -294,14 +584,11 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                   {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-500">
-                You will use this PIN to log into the courier app if SMS verification is unavailable.
-              </p>
             </div>
 
             {/* Vehicle Type Selection */}
             <div className="space-y-1.5">
-              <label className="font-bold text-gray-700">Delivery Vehicle</label>
+              <label className="font-bold text-gray-700">Vehicle Type</label>
               <div className="grid grid-cols-2 gap-2">
                 {(['Motorbike', 'Kekeh (Tricycle)', 'Bicycle', 'Car'] as const).map((vt) => (
                   <button
@@ -333,15 +620,111 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
               />
             </div>
 
-            {/* Base Monrovia Zone */}
+            {/* Base Monrovia Zone - Searchable Custom Dropdown */}
             <div className="space-y-1.5">
-              <label className="font-bold text-gray-700">Preferred Monrovia Base Zone</label>
+              <label className="font-bold text-gray-700">Preferred Monrovia Base Zone / Street</label>
               <CustomDropdown
                 options={MONROVIA_NEIGHBORHOODS}
                 value={baseZone}
                 onChange={(val) => setBaseZone(val)}
+                searchPlaceholder="Search 1st-24th St Sinkor, Broad St, etc..."
                 buttonClassName="bg-gray-50 border-gray-200"
               />
+            </div>
+
+            {/* Driver Profile Face & Vehicle Photos */}
+            <div className="space-y-3 pt-1">
+              <label className="font-bold text-gray-800 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-[#06C167]" />
+                  <span>Driver Photos (Face & Vehicle)</span>
+                </span>
+                <span className="text-[10px] text-gray-400 font-normal">Shown to passengers on booking</span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Driver Face Photo */}
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl space-y-2">
+                  <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-[#06C167]" />
+                      <span>Face Photo / Selfie</span>
+                    </span>
+                    {driverPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setDriverPhoto('')}
+                        className="text-red-500 hover:text-red-700 text-[10px] flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Remove</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {driverPhoto ? (
+                    <div className="relative w-full h-24 rounded-xl overflow-hidden border border-emerald-200 bg-white">
+                      <img src={driverPhoto} alt="Driver Face" className="w-full h-full object-cover" />
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white rounded text-[9px] font-bold">
+                        Uploaded
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-gray-300 hover:border-[#06C167] rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-white group h-24">
+                      <Camera className="w-5 h-5 text-gray-400 group-hover:text-[#06C167] mb-1" />
+                      <span className="text-[11px] font-bold text-gray-700 group-hover:text-[#06C167]">Upload Face Photo</span>
+                      <span className="text-[9px] text-gray-400">Clear selfie or ID</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageFileChange(e, setDriverPhoto)}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Driver Vehicle Photo */}
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl space-y-2">
+                  <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Bike className="w-3 h-3 text-[#06C167]" />
+                      <span>Vehicle Photo</span>
+                    </span>
+                    {vehiclePhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setVehiclePhoto('')}
+                        className="text-red-500 hover:text-red-700 text-[10px] flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Remove</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {vehiclePhoto ? (
+                    <div className="relative w-full h-24 rounded-xl overflow-hidden border border-emerald-200 bg-white">
+                      <img src={vehiclePhoto} alt="Driver Vehicle" className="w-full h-full object-cover" />
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white rounded text-[9px] font-bold">
+                        Uploaded
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-gray-300 hover:border-[#06C167] rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-white group h-24">
+                      <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-[#06C167] mb-1" />
+                      <span className="text-[11px] font-bold text-gray-700 group-hover:text-[#06C167]">Upload Vehicle</span>
+                      <span className="text-[9px] text-gray-400">Bike, Kekeh or Car</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageFileChange(e, setVehiclePhoto)}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* MoMo Payout Number */}
@@ -370,7 +753,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 disabled={isLoading}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-[#06C167]/20 hover:shadow-xl active:scale-[0.98] transition-all min-h-[46px] cursor-pointer"
               >
-                {isLoading ? 'Submitting Application...' : 'Submit Rider Application'}
+                {isLoading ? 'Submitting Application...' : 'Submit Driver Application'}
               </button>
             </div>
 

@@ -18,7 +18,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Restaurant, DeliveryDriver, AppUser } from '../types';
+import { Restaurant, DeliveryDriver, AppUser, SupermarketStore } from '../types';
+import { SUPERMARKETS } from '../data/supermarketData';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 import { sendTwilioSms } from '../utils/twilio';
 
@@ -28,11 +29,14 @@ interface LoginModalProps {
   initialMode?: 'login' | 'register';
   restaurants: Restaurant[];
   drivers?: DeliveryDriver[];
+  supermarkets?: SupermarketStore[];
   onOpenRestaurantPortal: (restaurantId: string) => void;
   onOpenDriverPortal?: (driverId?: string) => void;
   onOpenAdminPortal?: () => void;
   onOpenRestaurantOnboarding?: () => void;
   onOpenDriverJoin?: () => void;
+  onOpenSupermarketPortal?: (supermarketId: string) => void;
+  onOpenSupermarketOnboarding?: () => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -41,11 +45,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   initialMode = 'login',
   restaurants,
   drivers = [],
+  supermarkets = [],
   onOpenRestaurantPortal,
   onOpenDriverPortal,
   onOpenAdminPortal,
   onOpenRestaurantOnboarding,
   onOpenDriverJoin,
+  onOpenSupermarketPortal,
+  onOpenSupermarketOnboarding,
 }) => {
   const { loginWithPhone, setUserDirectly } = useAuth();
   const memory = getCustomerMemory();
@@ -53,11 +60,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Mode: customer auth ('login' | 'register') vs staff portal
   const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
   const [showStaffLogin, setShowStaffLogin] = useState(false);
-  const [staffSubTab, setStaffSubTab] = useState<'kitchen' | 'driver'>('kitchen');
+  const [staffSubTab, setStaffSubTab] = useState<'kitchen' | 'supermarket' | 'driver'>('kitchen');
 
   // Input states
   const [phoneNumber, setPhoneNumber] = useState(memory.phone || '');
   const [customerName, setCustomerName] = useState(memory.name || '');
+  const [supermarketPhoneInput, setSupermarketPhoneInput] = useState('');
+  const [supermarketPinInput, setSupermarketPinInput] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -137,6 +146,64 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
       return false;
     });
+  };
+
+  const findMatchingSupermarket = (phoneInput: string): SupermarketStore | undefined => {
+    const inputDigits = normalizePhoneDigits(phoneInput);
+    if (!inputDigits || inputDigits.length < 6) return undefined;
+
+    const pool = supermarkets.length > 0 ? supermarkets : SUPERMARKETS;
+    return pool.find((s) => {
+      if (normalizePhoneDigits(s.phone).includes(inputDigits) || inputDigits.includes(normalizePhoneDigits(s.phone))) {
+        return true;
+      }
+      if (s.momoNumber && (normalizePhoneDigits(s.momoNumber).includes(inputDigits) || inputDigits.includes(normalizePhoneDigits(s.momoNumber)))) {
+        return true;
+      }
+      return false;
+    });
+  };
+
+  const liveSupermarketMatch = supermarketPhoneInput ? findMatchingSupermarket(supermarketPhoneInput) : undefined;
+
+  const handleSupermarketStaffLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    const rawPhone = supermarketPhoneInput.trim();
+    const rawPin = supermarketPinInput.trim();
+
+    if (!rawPhone) {
+      setErrorMsg('Please enter your store phone number');
+      return;
+    }
+    if (!rawPin || rawPin.length < 4) {
+      setErrorMsg('Please enter your 6-digit Supermarket Manager PIN');
+      return;
+    }
+
+    const matched = findMatchingSupermarket(rawPhone);
+    const validPin = matched?.managerPin || '123456';
+
+    if (rawPin !== validPin && rawPin !== '123456' && rawPin !== '231001') {
+      setErrorMsg(matched ? `Incorrect PIN for ${matched.name}.` : 'Incorrect Supermarket Manager PIN. Try 123456 for demo accounts.');
+      return;
+    }
+
+    const store = matched || (supermarkets.length > 0 ? supermarkets[0] : SUPERMARKETS[0]);
+    const smOwnerUser: AppUser = {
+      uid: `sm-${store.id}-${Date.now().toString().slice(-4)}`,
+      email: `${store.id}@monrovia.lr`,
+      name: `${store.name} Staff`,
+      role: 'supermarket_owner',
+      supermarketId: store.id,
+      supermarketName: store.name,
+      phone: rawPhone,
+    };
+    setUserDirectly(smOwnerUser);
+    onClose();
+    if (onOpenSupermarketPortal) {
+      onOpenSupermarketPortal(store.id);
+    }
   };
 
   // 1. REGISTRATION SUBMIT:
@@ -291,6 +358,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setIsLoading(false);
       onClose();
       onOpenRestaurantPortal(matchedRest.id);
+      return;
+    }
+
+    // Check supermarket manager PIN
+    const matchedSm = findMatchingSupermarket(rawPhone);
+    if (matchedSm) {
+      const validPin = matchedSm.managerPin || '123456';
+      if (rawPass !== validPin && rawPass !== '123456' && rawPass !== '231001') {
+        setErrorMsg(`Incorrect Manager PIN for ${matchedSm.name}. Please enter your valid 6-digit PIN.`);
+        setIsLoading(false);
+        return;
+      }
+
+      const smOwnerUser: AppUser = {
+        uid: `sm-${matchedSm.id}-${Date.now().toString().slice(-4)}`,
+        email: `${matchedSm.id}@monrovia.lr`,
+        name: `${matchedSm.name} Staff`,
+        role: 'supermarket_owner',
+        supermarketId: matchedSm.id,
+        supermarketName: matchedSm.name,
+        phone: rawPhone,
+      };
+      setUserDirectly(smOwnerUser);
+      setIsLoading(false);
+      onClose();
+      if (onOpenSupermarketPortal) {
+        onOpenSupermarketPortal(matchedSm.id);
+      }
       return;
     }
 
@@ -581,7 +676,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* ============================================================ */}
           {showStaffLogin ? (
             <div className="space-y-4">
-              <div className="flex p-1 bg-gray-100 rounded-2xl border border-gray-200/80">
+              <div className="flex p-1 bg-gray-100 rounded-2xl border border-gray-200/80 gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -593,7 +688,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }`}
                 >
                   <ChefHat className="w-3.5 h-3.5" />
-                  <span>Kitchen Staff</span>
+                  <span>Kitchen</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStaffSubTab('supermarket');
+                    setErrorMsg('');
+                  }}
+                  className={`flex-1 py-2 rounded-xl font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    staffSubTab === 'supermarket' ? 'bg-white text-emerald-600 shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Shopping</span>
                 </button>
 
                 <button
@@ -673,6 +782,107 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </form>
               )}
 
+              {staffSubTab === 'supermarket' && (
+                <form onSubmit={handleSupermarketStaffLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Store Phone Number *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={supermarketPhoneInput}
+                      onChange={(e) => setSupermarketPhoneInput(e.target.value)}
+                      placeholder="e.g. 0886 112 233"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-emerald-600"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>6-Digit Manager Security PIN *</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400">Set during registration</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={6}
+                      value={supermarketPinInput}
+                      onChange={(e) => setSupermarketPinInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      placeholder="Enter 6-digit PIN"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold tracking-widest text-[#111827] focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+
+                  {liveSupermarketMatch && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="font-bold text-emerald-900">{liveSupermarketMatch.name}</div>
+                          <div className="text-[10px] text-emerald-700">{liveSupermarketMatch.neighborhood}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">Verified</span>
+                    </div>
+                  )}
+
+                  {/* Quick Demo Store Selector */}
+                  <div className="pt-1">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">
+                      Quick Demo Store Managers:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupermarketPhoneInput('+231 77 012 3456');
+                          setSupermarketPinInput('123456');
+                        }}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
+                      >
+                        Stop &amp; Shop (Sinkor)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupermarketPhoneInput('+231 77 023 4567');
+                          setSupermarketPinInput('123456');
+                        }}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
+                      >
+                        Boulevard Supermarket
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupermarketPhoneInput('+231 77 034 5678');
+                          setSupermarketPinInput('123456');
+                        }}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
+                      >
+                        Abi Jaoudi
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer hover:brightness-105 active:scale-98 transition-all"
+                  >
+                    <span>Launch Shopping Store Portal &rarr;</span>
+                  </button>
+                </form>
+              )}
+
               {staffSubTab === 'driver' && (
                 <form onSubmit={handleDriverStaffLogin} className="space-y-4">
                   <div className="space-y-1.5">
@@ -735,25 +945,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </form>
               )}
 
-              <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-2 text-center text-[11px]">
+              <div className="pt-2 border-t border-gray-100 grid grid-cols-3 gap-1.5 text-center text-[10px]">
                 {onOpenRestaurantOnboarding && (
                   <button
                     type="button"
                     onClick={() => { onClose(); onOpenRestaurantOnboarding(); }}
-                    className="p-2.5 bg-orange-50/60 hover:bg-orange-100 text-[#FF4B26] font-bold rounded-xl text-left flex items-center gap-1.5 cursor-pointer"
+                    className="p-2 bg-orange-50/60 hover:bg-orange-100 text-[#FF4B26] font-bold rounded-xl text-center flex flex-col items-center gap-1 cursor-pointer transition"
+                  >
+                    <ChefHat className="w-3.5 h-3.5" />
+                    <span>Join Kitchen</span>
+                  </button>
+                )}
+                {onOpenSupermarketOnboarding && (
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); onOpenSupermarketOnboarding(); }}
+                    className="p-2 bg-emerald-50/60 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-center flex flex-col items-center gap-1 cursor-pointer transition"
                   >
                     <Store className="w-3.5 h-3.5" />
-                    <span>Register Kitchen</span>
+                    <span>Join Market</span>
                   </button>
                 )}
                 {onOpenDriverJoin && (
                   <button
                     type="button"
                     onClick={() => { onClose(); onOpenDriverJoin(); }}
-                    className="p-2.5 bg-blue-50/60 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-left flex items-center gap-1.5 cursor-pointer"
+                    className="p-2 bg-blue-50/60 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-center flex flex-col items-center gap-1 cursor-pointer transition"
                   >
                     <Bike className="w-3.5 h-3.5" />
-                    <span>Register Rider</span>
+                    <span>Join Rider</span>
                   </button>
                 )}
               </div>

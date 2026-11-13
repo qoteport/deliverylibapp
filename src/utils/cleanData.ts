@@ -27,9 +27,6 @@ export function sanitizeForFirestore<T>(obj: T): T {
   return cleaned as T;
 }
 
-/**
- * Blacklist of known dummy/placeholder food items from early fine-dining demo templates
- */
 export const DUMMY_DISH_PATTERNS = [
   'molten chocolate tart',
   'wild morel risotto',
@@ -37,48 +34,31 @@ export const DUMMY_DISH_PATTERNS = [
   'creamy burrata salad',
   'blood orange spritz',
   'warm hearth sourdough',
-  'burrata salad',
-  'morel risotto',
-  'truffle tagliolini',
-  'blood orange',
-  'hearth sourdough',
-  'chocolate tart',
-  'tagliolini',
-  'risotto',
-  'burrata',
 ];
 
 /**
- * Checks if a given menu item is a dummy / legacy demo template dish
+ * Checks if a given menu item is a legacy dummy / demo template dish from early prototypes
  */
 export function isDummyMenuItem(item: any): boolean {
   if (!item) return false;
   const name = String(item.name || '').toLowerCase().trim();
   const id = String(item.id || '').toLowerCase().trim();
-  const desc = String(item.description || '').toLowerCase();
 
-  // Explicit dummy dish pattern checks
-  if (DUMMY_DISH_PATTERNS.some((pattern) => name.includes(pattern) || id.includes(pattern))) {
+  // Explicit legacy template full dish name matches
+  if (DUMMY_DISH_PATTERNS.some((pattern) => name === pattern || id === pattern)) {
     return true;
   }
 
-  // Legacy demo ID prefixes
+  // Legacy demo ID prefixes from initial boilerplate
   if (
-    id.startsWith('dish_living') ||
-    id.startsWith('dish_evelyn') ||
-    id.startsWith('dish_demo') ||
-    id.startsWith('demo_') ||
-    id.startsWith('dish-art-')
+    id.startsWith('dish_living_') ||
+    id.startsWith('dish_evelyn_') ||
+    id.startsWith('dish_demo_') ||
+    id.startsWith('demo_dish_') ||
+    id.startsWith('dish-art-demo')
   ) {
     return true;
   }
-
-  // Check specific fine-dining keywords
-  if (name.includes('tart') && (desc.includes('gelato') || desc.includes('vanilla') || name.includes('molten'))) return true;
-  if (name.includes('risotto') || name.includes('morel')) return true;
-  if (name.includes('tagliolini') || name.includes('burrata')) return true;
-  if (name.includes('sourdough') && (name.includes('hearth') || desc.includes('honey-salted'))) return true;
-  if (name.includes('spritz') && (name.includes('blood orange') || desc.includes('sicilian'))) return true;
 
   return false;
 }
