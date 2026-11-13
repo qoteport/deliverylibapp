@@ -9,7 +9,6 @@ import {
   Clock, 
   Power, 
   ShieldAlert, 
-  Sparkles, 
   ShieldCheck, 
   ArrowLeft, 
   Wallet, 
@@ -1737,7 +1736,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
               <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl text-[11px] text-emerald-900 space-y-1">
                 <div className="font-extrabold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Courier Delivery Fee Setting</span>
                 </div>
                 <p className="leading-relaxed text-emerald-800">

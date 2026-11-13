@@ -16,7 +16,6 @@ import {
   ArrowLeft, 
   ShieldCheck, 
   Layers, 
-  Sparkles, 
   CheckCircle2, 
   AlertCircle, 
   ExternalLink,

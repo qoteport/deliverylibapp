@@ -3,15 +3,15 @@ import {
   Navigation, 
   MapPin, 
   Bike, 
-  Radio, 
-  Car, 
+  CarTaxiFront, 
   Maximize2, 
   Compass, 
-  RefreshCw,
-  Clock,
-  ShieldCheck,
-  User
+  RefreshCw, 
+  Clock, 
+  ShieldCheck, 
+  User 
 } from 'lucide-react';
+import { KekehIcon } from './KekehIcon';
 import { LocationCoords, RideStatus, RideVehicleType } from '../types';
 
 interface RideLiveMapProps {
@@ -122,7 +122,7 @@ export const RideLiveMap: React.FC<RideLiveMapProps> = ({
     )
   ).toFixed(1);
 
-  const VehicleIcon = vehicleType === 'Taxi (Car)' ? Car : vehicleType === 'Kekeh (Tricycle)' ? Radio : Bike;
+  const VehicleIcon = vehicleType === 'Taxi (Car)' ? CarTaxiFront : vehicleType === 'Kekeh (Tricycle)' ? KekehIcon : Bike;
 
   return (
     <div className="relative rounded-3xl overflow-hidden border border-gray-800 bg-gray-950 text-white shadow-2xl flex flex-col">

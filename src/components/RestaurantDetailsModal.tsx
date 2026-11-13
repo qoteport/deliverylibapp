@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Sparkles, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle, Bike, Calendar } from 'lucide-react';
+import { X, Store, Phone, MapPin, Clock, DollarSign, Star, ShieldCheck, Navigation, Copy, Check, Utensils, CheckCircle2, AlertCircle, Bike, Calendar } from 'lucide-react';
 import { Restaurant, MenuItem, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
 import { formatDisplayPhoneNumber } from '../utils/phoneUtils';
@@ -167,7 +167,7 @@ export const RestaurantDetailsModal: React.FC<RestaurantDetailsModalProps> = ({
               </span>
               {restaurant.is24Hours ? (
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-2xs">
-                  <Sparkles className="w-3 h-3" />
+                  <Clock className="w-3 h-3" />
                   <span>24 Hours Open</span>
                 </span>
               ) : (

@@ -4,7 +4,7 @@ import {
   Bike, 
   ShoppingBag, 
   Utensils, 
-  Sparkles, 
+  LayoutGrid, 
   ArrowRight, 
   ShieldCheck, 
   Clock, 
@@ -53,7 +53,7 @@ export const AppsHubModal: React.FC<AppsHubModalProps> = ({
         <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-emerald-400 flex items-center justify-center text-white shadow-md shadow-[#06C167]/20">
-              <Sparkles className="w-4 h-4 stroke-[2.5]" />
+              <LayoutGrid className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">

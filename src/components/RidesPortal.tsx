@@ -5,7 +5,7 @@ import {
   Navigation, 
   Bike, 
   Phone, 
-  Radio, 
+  CarTaxiFront, 
   CheckCircle2, 
   Clock, 
   AlertCircle, 
@@ -14,7 +14,6 @@ import {
   Compass, 
   ArrowRight,
   ArrowLeft,
-  Car,
   Loader2,
   RefreshCw,
   Share2,
@@ -43,6 +42,7 @@ import { sendBrowserNotification } from '../utils/browserNotifications';
 import { searchPlacesWithGoogleOrFallback, getExactCoordinates, PlaceSuggestion } from '../utils/placesAutocomplete';
 import { LocationPickerModal } from './LocationPickerModal';
 import { RideLiveMap } from './RideLiveMap';
+import { KekehIcon } from './KekehIcon';
 
 interface RidesPortalProps {
   isOpen: boolean;
@@ -539,8 +539,8 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
             <div className="grid grid-cols-3 gap-2">
               {[
                 { type: 'Motorbike' as RideVehicleType, label: 'Moto-Bike', icon: Bike, desc: 'Fastest in traffic', fare: '~$1.50' },
-                { type: 'Kekeh (Tricycle)' as RideVehicleType, label: 'Kekeh', icon: Radio, desc: 'Covered & breezy', fare: '~$2.50' },
-                { type: 'Taxi (Car)' as RideVehicleType, label: 'Town Taxi', icon: Car, desc: 'Private & AC', fare: '~$4.00' },
+                { type: 'Kekeh (Tricycle)' as RideVehicleType, label: 'Kekeh', icon: KekehIcon, desc: 'Covered & breezy', fare: '~$2.50' },
+                { type: 'Taxi (Car)' as RideVehicleType, label: 'Town Taxi', icon: CarTaxiFront, desc: 'Private & AC', fare: '~$4.00' },
               ].map((v) => {
                 const Icon = v.icon;
                 const isSelected = vehicleType === v.type;

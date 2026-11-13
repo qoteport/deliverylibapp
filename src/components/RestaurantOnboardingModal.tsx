@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2, Calendar, Sparkles, Bike } from 'lucide-react';
+import { X, Store, Check, Plus, MapPin, Phone, DollarSign, Clock, ShieldCheck, Users, Info, Navigation, Trash2, Calendar, Bike } from 'lucide-react';
 import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS, LocationCoords, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -680,7 +680,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Clock className="w-3 h-3" />
                   <span>{is24Hours ? '✓ Open 24 Hours' : 'Set 24 Hours'}</span>
                 </button>
               </div>

@@ -4,7 +4,8 @@ import {
   Bike, 
   ShoppingBag, 
   Utensils, 
-  Sparkles, 
+  LayoutGrid,
+  Layers, 
   ArrowRight, 
   ShieldCheck, 
   Clock, 
@@ -69,7 +70,7 @@ export const AppsPage: React.FC<AppsPageProps> = ({
           
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-emerald-400 text-white flex items-center justify-center shadow-md shadow-[#06C167]/20 shrink-0">
-              <Sparkles className="w-4 h-4 stroke-[2.5]" />
+              <LayoutGrid className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -124,7 +125,7 @@ export const AppsPage: React.FC<AppsPageProps> = ({
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-gray-950 via-gray-900 to-black text-white p-6 sm:p-10 shadow-xl border border-white/10">
           <div className="relative z-10 max-w-xl space-y-2.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-semibold text-emerald-400">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Layers className="w-3.5 h-3.5" />
               <span>Multi-Service Monrovia Super-App</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">

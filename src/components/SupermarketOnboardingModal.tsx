@@ -11,7 +11,6 @@ import {
   ShieldCheck, 
   ShoppingBag, 
   Navigation, 
-  Sparkles, 
   Lock,
   ArrowRight,
   Eye,

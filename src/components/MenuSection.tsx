@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Heart, Plus, Sparkles, Filter, Flame, Clock, Zap, Store, MapPin } from 'lucide-react';
+import { Heart, Plus, ChefHat, Filter, Flame, Clock, Zap, Store, MapPin } from 'lucide-react';
 import { MenuItem, Restaurant, Category, Currency, USD_TO_LRD_RATE } from '../types';
 import { CATEGORIES } from '../data/monroviaData';
 import { DishIllustration } from './DishIllustration';
@@ -246,7 +246,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
       {filteredItems.length === 0 && (
         <div className="py-16 text-center bg-white rounded-3xl border border-gray-100 mt-4 p-8 shadow-xs space-y-3">
           <div className="w-14 h-14 rounded-3xl bg-[#E8F8EE] text-[#06C167] flex items-center justify-center mx-auto shadow-inner">
-            <Sparkles className="w-7 h-7" />
+            <ChefHat className="w-7 h-7" />
           </div>
           <h4 className="font-extrabold text-lg text-[#111827]">
             {menuItems.length === 0 ? 'Ready for Real Monrovia Kitchens & Menus' : 'No dishes match your filter'}

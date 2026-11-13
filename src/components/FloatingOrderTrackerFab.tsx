@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Bike, Flame, ChefHat, CheckCircle2, ChevronUp, X, Sparkles } from 'lucide-react';
+import { Clock, Bike, Flame, ChefHat, CheckCircle2, ChevronUp, X } from 'lucide-react';
 import { Order, MONROVIA_NEIGHBORHOOD_COORDS } from '../types';
 import { calculateDistanceKm } from '../utils/pricingEngine';
 

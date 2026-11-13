@@ -14,7 +14,6 @@ import {
   DollarSign,
   User,
   Phone,
-  Sparkles,
   LogIn,
   PlusCircle,
   ExternalLink,

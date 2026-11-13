@@ -18,7 +18,6 @@ import {
   Check,
   X,
   ShieldCheck,
-  Sparkles,
   Tag,
   Camera,
   Film

@@ -7,7 +7,7 @@ import {
   Laptop,
   SunMedium,
   Shirt,
-  Sparkles,
+  LayoutGrid,
   Footprints,
   Headphones,
   Check,
@@ -58,12 +58,12 @@ interface LifestyleAppProps {
 }
 
 const CATEGORIES: { id: LifestyleCategory | 'all'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'all', label: 'All Items', icon: Sparkles },
+  { id: 'all', label: 'All Items', icon: LayoutGrid },
   { id: 'smartphones', label: 'Smartphones & Tablets', icon: Smartphone },
   { id: 'laptops', label: 'Laptops & Computers', icon: Laptop },
   { id: 'solar', label: 'Solar & Power Backup', icon: SunMedium },
   { id: 'clothing-men', label: "Men's Clothing", icon: Shirt },
-  { id: 'clothing-women', label: "Women's Fashion", icon: Sparkles },
+  { id: 'clothing-women', label: "Women's Fashion", icon: Heart },
   { id: 'shoes', label: 'Footwear & Shoes', icon: Footprints },
   { id: 'audio-accessories', label: 'Audio & Tech Accessories', icon: Headphones }
 ];

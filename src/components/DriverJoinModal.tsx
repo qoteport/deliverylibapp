@@ -8,7 +8,6 @@ import {
   DollarSign, 
   ShieldCheck, 
   CheckCircle2, 
-  Sparkles, 
   Clock, 
   ArrowRight, 
   Lock, 
@@ -16,7 +15,7 @@ import {
   EyeOff, 
   KeyRound,
   Package,
-  Car,
+  CarTaxiFront,
   Zap,
   Calendar,
   Check,
@@ -25,6 +24,7 @@ import {
   Image as ImageIcon,
   Trash2
 } from 'lucide-react';
+import { KekehIcon } from './KekehIcon';
 import { 
   DeliveryDriver, 
   MONROVIA_NEIGHBORHOODS, 
@@ -592,21 +592,24 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
             <div className="space-y-1.5">
               <label className="font-bold text-gray-700">Vehicle Type</label>
               <div className="grid grid-cols-2 gap-2">
-                {(['Motorbike', 'Kekeh (Tricycle)', 'Bicycle', 'Car'] as const).map((vt) => (
-                  <button
-                    key={vt}
-                    type="button"
-                    onClick={() => setVehicleType(vt)}
-                    className={`p-2.5 border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      vehicleType === vt
-                        ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <Bike className="w-3.5 h-3.5" />
-                    <span>{vt}</span>
-                  </button>
-                ))}
+                {(['Motorbike', 'Kekeh (Tricycle)', 'Bicycle', 'Car'] as const).map((vt) => {
+                  const VIcon = vt === 'Car' ? CarTaxiFront : vt === 'Kekeh (Tricycle)' ? KekehIcon : Bike;
+                  return (
+                    <button
+                      key={vt}
+                      type="button"
+                      onClick={() => setVehicleType(vt)}
+                      className={`p-2.5 border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        vehicleType === vt
+                          ? 'border-[#06C167] bg-[#E8F8EE] text-[#048747] shadow-xs'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <VIcon className="w-3.5 h-3.5" />
+                      <span>{vt}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

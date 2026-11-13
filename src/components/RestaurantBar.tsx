@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, MapPin, Zap, Sparkles, Utensils } from 'lucide-react';
+import { Star, MapPin, Zap, Utensils } from 'lucide-react';
 import { Restaurant, MenuItem, MONROVIA_NEIGHBORHOODS } from '../types';
 
 interface RestaurantBarProps {

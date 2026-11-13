@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bike, ShoppingBag, UtensilsCrossed, Search, Flame, ArrowRight, Zap, ShieldCheck, Sparkles, Store } from 'lucide-react';
+import { Bike, ShoppingBag, UtensilsCrossed, Search, Flame, ArrowRight, Zap, ShieldCheck, Store } from 'lucide-react';
 import { DiningMode, Currency, USD_TO_LRD_RATE, MenuItem } from '../types';
 
 interface HeroProps {
@@ -185,7 +185,7 @@ export const Hero: React.FC<HeroProps> = ({
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1.5 max-w-xl">
               <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[11px] font-extrabold uppercase tracking-wide">
-                <Sparkles className="w-3.5 h-3.5" />
+                <UtensilsCrossed className="w-3.5 h-3.5" />
                 <span>Monrovia Food Network</span>
               </div>
 

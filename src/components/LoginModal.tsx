@@ -16,7 +16,6 @@ import {
   EyeOff,
   KeyRound,
   ArrowRight,
-  Sparkles,
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -843,7 +842,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       }}
                       className="text-[11px] text-[#FF4B26] hover:underline font-bold flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <KeyRound className="w-3 h-3" />
                       <span>Quick Demo: Auto-fill Kitchen Credentials</span>
                     </button>
                   </div>
@@ -922,7 +921,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       }}
                       className="text-[11px] text-emerald-700 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <KeyRound className="w-3 h-3" />
                       <span>Quick Demo: Stop &amp; Shop Manager</span>
                     </button>
                   </div>
@@ -1001,7 +1000,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       }}
                       className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <KeyRound className="w-3 h-3" />
                       <span>Quick Demo: Courier Emmanuel Kollie</span>
                     </button>
                   </div>

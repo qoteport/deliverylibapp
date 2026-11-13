@@ -41,7 +41,6 @@ import {
   ArrowUpRight,
   Search,
   Timer,
-  Sparkles,
   ChefHat,
   Settings,
   Sliders,

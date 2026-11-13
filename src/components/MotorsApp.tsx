@@ -18,7 +18,7 @@ import {
   Check,
   ExternalLink,
   ChevronRight,
-  Sparkles,
+  LayoutGrid,
   Tag,
   Camera,
   Film
@@ -49,7 +49,7 @@ interface MotorsAppProps {
 }
 
 const LISTING_TYPES: { id: MotorListingType | 'all'; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'all', label: 'All Motors', icon: Sparkles },
+  { id: 'all', label: 'All Motors', icon: LayoutGrid },
   { id: 'sale', label: 'Buy Cars', icon: Car },
   { id: 'rental', label: 'Rentals & 4x4', icon: Key },
   { id: 'parts', label: 'Auto & Kekeh Parts', icon: Wrench }

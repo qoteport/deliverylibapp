@@ -15,7 +15,6 @@ import {
   CheckCircle2, 
   X, 
   SlidersHorizontal, 
-  Sparkles, 
   Heart, 
   Check, 
   Share2, 

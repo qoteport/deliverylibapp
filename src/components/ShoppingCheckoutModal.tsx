@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   Clock, 
   ShieldCheck, 
-  Sparkles, 
   ArrowLeft,
   Store,
   ChevronDown,
@@ -262,7 +261,7 @@ export const ShoppingCheckoutModal: React.FC<ShoppingCheckoutModalProps> = ({
           </div>
 
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-[11px] text-blue-900 text-left flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <ShoppingBag className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <span>
               Your grocery shopper at <strong>{storeNames}</strong> is handpicking your items. If any item is unavailable, we will respect your policy (<strong>{substitutionPreference === 'call_me' ? 'Call you first' : substitutionPreference === 'substitute_best' ? 'Substitute best brand' : 'Refund'}</strong>).
             </span>
