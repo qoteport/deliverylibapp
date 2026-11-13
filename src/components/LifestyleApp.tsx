@@ -582,28 +582,6 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
               </span>
             </button>
 
-            {/* Vendor Orders / Shop Toggle */}
-            <button
-              onClick={() => {
-                const nextMode = viewMode === 'shop' ? 'vendor_orders' : 'shop';
-                setViewMode(nextMode);
-                setActiveBottomTab(nextMode === 'vendor_orders' ? 'vendor_orders' : 'shop');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border cursor-pointer ${
-                viewMode === 'vendor_orders'
-                  ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>{viewMode === 'vendor_orders' ? 'Back to Shop' : 'Vendor Portal'}</span>
-              {vendorOrders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                  {vendorOrders.filter(o => o.status === 'pending').length}
-                </span>
-              )}
-            </button>
-
             {/* List Product Button */}
             <button
               onClick={() => setIsAddProductOpen(true)}
