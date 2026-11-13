@@ -141,6 +141,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
   const [isBasketOpen, setIsBasketOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeNavTab, setActiveNavTab] = useState<'stores' | 'aisles' | 'search' | 'basket'>('stores');
+  const [selectedProductDetails, setSelectedProductDetails] = useState<SupermarketItem | null>(null);
 
   useEffect(() => {
     try {
@@ -491,7 +492,8 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="bg-white rounded-3xl border border-gray-200/80 p-3.5 flex flex-col justify-between hover:shadow-lg hover:border-gray-300 transition-all duration-200 group relative"
+                    onClick={() => setSelectedProductDetails(item)}
+                    className="bg-white rounded-3xl border border-gray-200/80 p-3.5 flex flex-col justify-between hover:shadow-lg hover:border-emerald-300 transition-all duration-200 group relative cursor-pointer"
                   >
                     <div>
                       {/* Product Image */}
@@ -544,10 +546,16 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                       </div>
 
                       {inBasket ? (
-                        <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 rounded-xl p-1 shadow-2xs">
+                        <div 
+                          className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 rounded-xl p-1 shadow-2xs"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
-                            onClick={() => handleUpdateQuantity(item.id, -1)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateQuantity(item.id, -1);
+                            }}
                             className="w-6 h-6 rounded-lg bg-white text-emerald-800 flex items-center justify-center font-bold hover:bg-emerald-100 cursor-pointer shadow-2xs active:scale-95 transition"
                           >
                             <Minus className="w-3 h-3 stroke-[2.5]" />
@@ -557,7 +565,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleUpdateQuantity(item.id, 1)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateQuantity(item.id, 1);
+                            }}
                             className="w-6 h-6 rounded-lg bg-[#06C167] text-white flex items-center justify-center font-bold hover:brightness-105 cursor-pointer shadow-2xs active:scale-95 transition"
                           >
                             <Plus className="w-3 h-3 stroke-[2.5]" />
@@ -566,7 +577,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                       ) : (
                         <button
                           type="button"
-                          onClick={() => handleAddToCart(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCart(item);
+                          }}
                           className="py-1.5 px-3.5 bg-gradient-to-r from-[#06C167] to-[#048747] hover:brightness-105 active:scale-95 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-sm cursor-pointer transition-all"
                         >
                           <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -584,6 +598,173 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
 
 
 
+      </div>
+    </div>
+  );
+
+  // Product Details Popup Sheet / Modal
+  const productDetailsSheet = selectedProductDetails && (
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+      onClick={() => setSelectedProductDetails(null)}
+    >
+      <div 
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <div className="absolute top-3 right-3 z-20">
+          <button
+            type="button"
+            onClick={() => setSelectedProductDetails(null)}
+            className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:text-black flex items-center justify-center shadow-md border border-gray-100 transition cursor-pointer"
+            aria-label="Close product details"
+          >
+            <X className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {/* Product Image */}
+          <div className="relative aspect-4/3 bg-gray-100 overflow-hidden">
+            <img
+              src={selectedProductDetails.image}
+              alt={selectedProductDetails.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <span className="px-2.5 py-1 bg-black/75 backdrop-blur-md text-white text-xs font-black rounded-xl shadow-xs">
+                {selectedProductDetails.unitWeight}
+              </span>
+              {selectedProductDetails.inStock ? (
+                <span className="px-2.5 py-1 bg-emerald-500/90 text-white text-xs font-black uppercase rounded-xl shadow-xs">
+                  In Stock
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 bg-red-500/90 text-white text-xs font-black uppercase rounded-xl shadow-xs">
+                  Out of Stock
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Product Details Content */}
+          <div className="p-5 space-y-4">
+            {/* Store Badge & Category */}
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStoreId(selectedProductDetails.supermarketId);
+                  setSelectedProductDetails(null);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-[#059669] hover:bg-emerald-100 rounded-xl text-xs font-extrabold transition cursor-pointer border border-emerald-200/60"
+                title="Filter to this supermarket"
+              >
+                <Store className="w-3.5 h-3.5 shrink-0" />
+                <span>{selectedProductDetails.supermarketName}</span>
+              </button>
+              <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-xl text-[11px] font-bold">
+                {selectedProductDetails.category}
+              </span>
+            </div>
+
+            {/* Title & Pricing */}
+            <div>
+              <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight leading-snug">
+                {selectedProductDetails.name}
+              </h3>
+              <div className="flex items-baseline gap-2.5 mt-2">
+                <span className="text-2xl font-black font-mono text-gray-900">
+                  {formatPrice(selectedProductDetails.priceUsd)}
+                </span>
+                <span className="text-xs font-bold text-gray-500">
+                  {currency === 'USD' 
+                    ? `≈ L$${Math.round(selectedProductDetails.priceUsd * USD_TO_LRD_RATE).toLocaleString()}` 
+                    : `$${selectedProductDetails.priceUsd.toFixed(2)} USD`}
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5 border-t border-gray-100 pt-3">
+              <div className="text-xs font-black uppercase tracking-wider text-gray-500">
+                Product Information
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-normal">
+                {selectedProductDetails.description || 'Verified supermarket product available for express delivery to your home or office in Monrovia.'}
+              </p>
+            </div>
+
+            {/* Monrovia Service Assurances */}
+            <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-bold text-gray-600">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                <ShieldCheck className="w-4 h-4 text-[#06C167] shrink-0" />
+                <span>Original &amp; Sealed</span>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                <Clock className="w-4 h-4 text-[#06C167] shrink-0" />
+                <span>25–40m Courier Dispatch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Footer */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50">
+          {(() => {
+            const inBasket = shoppingCart.find((i) => i.item.id === selectedProductDetails.id);
+            const qty = inBasket ? inBasket.quantity : 0;
+            return (
+              <div className="flex items-center justify-between w-full gap-3">
+                <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl p-1 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateQuantity(selectedProductDetails.id, -1)}
+                    disabled={qty <= 0}
+                    className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center font-bold cursor-pointer transition active:scale-95"
+                  >
+                    <Minus className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                  <span className="font-mono font-black text-sm text-gray-900 w-8 text-center">
+                    {qty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (qty === 0) {
+                        handleAddToCart(selectedProductDetails);
+                      } else {
+                        handleUpdateQuantity(selectedProductDetails.id, 1);
+                      }
+                    }}
+                    className="w-9 h-9 rounded-xl bg-[#06C167] hover:bg-[#05A357] text-white flex items-center justify-center font-bold cursor-pointer transition active:scale-95"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (qty === 0) {
+                      handleAddToCart(selectedProductDetails);
+                    }
+                    setSelectedProductDetails(null);
+                    setIsBasketOpen(true);
+                  }}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-[#059669] via-[#06C167] to-[#048747] hover:brightness-105 active:scale-98 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>{qty > 0 ? 'View In Basket' : `Add to Basket • ${formatPrice(selectedProductDetails.priceUsd)}`}</span>
+                </button>
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
@@ -934,6 +1115,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </main>
 
         {mobileBottomBar}
+        {productDetailsSheet}
         {basketDrawer}
         {checkoutModal}
       </div>
@@ -994,6 +1176,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         {mobileBottomBar}
       </div>
 
+      {productDetailsSheet}
       {basketDrawer}
       {checkoutModal}
     </div>

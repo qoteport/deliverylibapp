@@ -512,21 +512,16 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
 
       {/* ================================================================= */}
       {/* PAGE MODE HEADER (when in full screen route mode)                  */}
-      {/* NOTE: Monrovia Streets badge & Aura Apps REMOVED per user request */}
       {/* ================================================================= */}
       {isPageMode && (
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
           <div>
-            <h2 className="text-base font-black text-gray-900">Request a Ride in Monrovia</h2>
-            <p className="text-xs text-gray-500">Fast pickup &bull; Motorbike, Kekeh or Town Taxi</p>
+            <h2 className="text-base font-black text-gray-900 tracking-tight">Request a Ride in Monrovia</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Fast pickup &bull; Motorbike, Kekeh or Town Taxi</p>
           </div>
-          <button
-            onClick={() => setShowHistoryModal(true)}
-            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <History className="w-3.5 h-3.5 text-[#06C167]" />
-            <span>Ride History</span>
-          </button>
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-[#048747] border border-emerald-200/60 shadow-2xs">
+            Live Fleet Active
+          </span>
         </div>
       )}
 
@@ -826,7 +821,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
           {/* Request Button */}
           <button
             type="submit"
-            className="w-full py-4 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-xl shadow-[#06C167]/20 hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+            className="w-full py-3.5 px-5 bg-gradient-to-r from-[#06C167] via-[#05A357] to-[#048747] hover:brightness-105 active:scale-98 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
           >
             <span>Request {vehicleType} Ride</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
@@ -1291,37 +1286,38 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
     return (
       <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans">
         {/* Full-width sticky top navbar */}
-        <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-950 via-gray-900 to-black text-white px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-gray-800 shadow-md">
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md text-gray-900 px-4 sm:px-8 py-3 flex items-center justify-between border-b border-gray-200 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              className="p-1.5 sm:px-3 sm:py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl transition flex items-center gap-1.5 text-xs font-bold cursor-pointer shrink-0"
+              title="Back to Apps"
             >
               <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              <span>Back</span>
+              <span className="hidden sm:inline">Aura Apps</span>
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-[#06C167] text-white flex items-center justify-center shadow-md shadow-[#06C167]/30 shrink-0">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-[#048747] text-white flex items-center justify-center shadow-xs shrink-0">
                 <Bike className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div>
-                <h1 className="font-extrabold text-sm sm:text-base text-white tracking-wide">AURA Ride</h1>
-                <p className="text-[11px] text-gray-400 hidden sm:block">Moto-Bikes, Kekehs &amp; Town Taxis across Monrovia</p>
+                <h1 className="font-extrabold text-sm sm:text-base text-gray-900 tracking-tight">AURA Ride</h1>
+                <p className="text-[11px] text-gray-500 hidden sm:block">Moto-Bikes, Kekehs &amp; Town Taxis across Monrovia</p>
               </div>
             </div>
           </div>
 
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
           >
-            <History className="w-4 h-4 text-[#06C167]" />
+            <History className="w-3.5 h-3.5 text-[#06C167]" />
             <span>Ride History</span>
           </button>
         </header>
 
-        <main className="flex-1 max-w-2xl w-full mx-auto p-3 sm:p-6 pb-24">
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col">
+        <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-5 pb-24">
+          <div className="w-full flex-1 flex flex-col bg-white rounded-3xl border border-gray-200/80 shadow-xs overflow-hidden">
             {cardContent}
           </div>
         </main>

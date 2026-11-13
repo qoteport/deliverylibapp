@@ -1145,25 +1145,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               </div>
 
-              {/* Quick Demo Customer Pill */}
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  Test Credentials:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhoneNumber('0886 554 123');
-                    setPassword('aura2026');
-                    setCustomerName('Koffa Davies');
-                  }}
-                  className="text-[10px] text-[#FF4B26] hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Fill Demo Customer</span>
-                </button>
-              </div>
-
               {/* 3A. SIGN IN FORM */}
               {authMode === 'login' && (
                 <form 
