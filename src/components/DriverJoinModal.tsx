@@ -71,6 +71,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
   const [momoNumber, setMomoNumber] = useState('');
   const [momoProvider, setMomoProvider] = useState<DeliveryDriver['momoProvider']>('mtn');
   const [baseZone, setBaseZone] = useState(MONROVIA_NEIGHBORHOODS[0]);
+  const [deliveryFeeUsd, setDeliveryFeeUsd] = useState('2.00');
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -217,6 +218,7 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
       rating: 5.0,
       totalDeliveries: 0,
       earningsTodayUsd: 0,
+      deliveryFeeUsd: parseFloat(deliveryFeeUsd) || 2.0,
       driverPin: pin.trim(),
       avatar: driverPhoto || undefined,
       driverPhoto: driverPhoto || undefined,
@@ -630,6 +632,27 @@ export const DriverJoinModal: React.FC<DriverJoinModalProps> = ({
                 searchPlaceholder="Search 1st-24th St Sinkor, Broad St, etc..."
                 buttonClassName="bg-gray-50 border-gray-200"
               />
+            </div>
+
+            {/* Custom Courier Delivery Fee */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-gray-700 flex items-center justify-between">
+                <span>Your Standard Delivery Fee ($ USD)</span>
+                <span className="text-[10px] text-emerald-600 font-bold">~L${Math.round((parseFloat(deliveryFeeUsd) || 2) * 195).toLocaleString()} LRD</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.5"
+                  required
+                  value={deliveryFeeUsd}
+                  onChange={(e) => setDeliveryFeeUsd(e.target.value)}
+                  placeholder="2.00"
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                />
+              </div>
             </div>
 
             {/* Driver Profile Face & Vehicle Photos */}

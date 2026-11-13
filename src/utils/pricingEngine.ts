@@ -20,7 +20,9 @@ export interface DeliveryPricingParams {
   customerNeighborhood?: string;
   restaurantLocation?: LocationCoords;
   restaurantNeighborhood?: string;
+  restaurantDeliveryFee?: number;
   driverLocation?: LocationCoords;
+  driverDeliveryFee?: number;
   prepDurationMinutes?: number;
 }
 
@@ -35,8 +37,12 @@ export interface DeliveryFeeBreakdown {
   finalFee: number;
 }
 
-// Uber Eats / Bolt Food dynamic pricing parameters (capped for Monrovia market)
+// Global flag: Dynamic pricing disabled for now - restaurants & couriers set their own fees
+export const IS_DYNAMIC_PRICING_ENABLED = false;
+
+// Delivery pricing parameters (configurable for Monrovia market)
 export const PRICING_CONFIG = {
+  ENABLE_DYNAMIC_PRICING: false, // Disabled for now: restaurants & drivers set custom flat fees
   MIN_FEE: 0.50,           // Base minimum fee: $0.50 USD
   MAX_FEE: 3.00,           // Upper cap: $3.00 USD
   BASE_FARE: 0.50,         // Starting dispatch fare: $0.50 USD
@@ -65,12 +71,12 @@ export function quantizeAndCapFee(amount: number, config = PRICING_CONFIG): numb
 }
 
 /**
- * Calculates dynamic delivery fee based on:
- * 1. Distance between restaurant and customer (Dropoff Leg)
- * 2. Distance between rider and restaurant (Pickup Leg)
- * 3. Wait time (kitchen prep duration + transit time)
+ * Calculates delivery fee:
+ * When ENABLE_DYNAMIC_PRICING is false (default):
+ * Uses the restaurant's custom set delivery fee or driver's custom set delivery fee.
  * 
- * Result is strictly quantized in $0.50 increments and capped between $0.50 and $3.00 (or custom config).
+ * When ENABLE_DYNAMIC_PRICING is true:
+ * Calculates dynamic delivery fee based on distance and transit time.
  */
 export function calculateDynamicDeliveryFee(
   params: DeliveryPricingParams,
@@ -106,15 +112,34 @@ export function calculateDynamicDeliveryFee(
     Math.round((totalDistanceKm / (cfg.AVG_SPEED_KMH || 22)) * 60)
   );
   const prepMins = params.prepDurationMinutes ?? 20;
-  const timeFactorMins = estimatedTransitMins + prepMins * 0.25;
 
-  // 6. Uber / Bolt Dynamic Pricing Formula
+  // 6. If dynamic pricing is disabled: Allow restaurants and delivery drivers to set their own fees!
+  if (!cfg.ENABLE_DYNAMIC_PRICING) {
+    const fixedFee = (params.restaurantDeliveryFee !== undefined && params.restaurantDeliveryFee > 0)
+      ? params.restaurantDeliveryFee
+      : (params.driverDeliveryFee !== undefined && params.driverDeliveryFee > 0)
+        ? params.driverDeliveryFee
+        : 2.00;
+
+    return {
+      baseFee: fixedFee,
+      distanceKm: totalDistanceKm,
+      riderPickupDistanceKm: pickupDistKm,
+      customerDropoffDistanceKm: dropoffDistKm,
+      estimatedTransitMinutes: estimatedTransitMins,
+      estimatedWaitMinutes: prepMins,
+      rawFee: fixedFee,
+      finalFee: fixedFee,
+    };
+  }
+
+  // Dynamic pricing calculation
+  const timeFactorMins = estimatedTransitMins + prepMins * 0.25;
   const rawFee =
     cfg.BASE_FARE +
     totalDistanceKm * cfg.PER_KM_RATE +
     timeFactorMins * cfg.PER_MINUTE_RATE;
 
-  // 7. Quantize to step increments and clamp
   const finalFee = quantizeAndCapFee(rawFee, cfg);
 
   return {

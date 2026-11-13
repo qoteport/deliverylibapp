@@ -145,19 +145,22 @@ export async function delegateOrderToDriver(
     return { success: false };
   }
 
-  const dynamicFee = order.deliveryFee && order.deliveryFee >= 0.5
-    ? order.deliveryFee
-    : calculateDynamicDeliveryFee({
-        customerNeighborhood: order.deliveryArea,
-        customerLocation: order.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea] : undefined,
-        restaurantLocation: restaurantCoords,
-        driverLocation: bestDriver.currentLocation,
-        prepDurationMinutes: order.prepDurationMinutes || 20,
-      }).finalFee;
+  const resolvedFee = (bestDriver.deliveryFeeUsd && bestDriver.deliveryFeeUsd > 0)
+    ? bestDriver.deliveryFeeUsd
+    : (order.deliveryFee && order.deliveryFee >= 0.5)
+      ? order.deliveryFee
+      : calculateDynamicDeliveryFee({
+          customerNeighborhood: order.deliveryArea,
+          customerLocation: order.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea] : undefined,
+          restaurantLocation: restaurantCoords,
+          driverLocation: bestDriver.currentLocation,
+          driverDeliveryFee: bestDriver.deliveryFeeUsd,
+          prepDurationMinutes: order.prepDurationMinutes || 20,
+        }).finalFee;
 
   const updatedOrder: Order = {
     ...order,
-    deliveryFee: dynamicFee,
+    deliveryFee: resolvedFee,
     assignedDriverId: bestDriver.id,
     assignedDriverName: bestDriver.name,
     assignedDriverPhone: bestDriver.phone,

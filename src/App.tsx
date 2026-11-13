@@ -1634,6 +1634,7 @@ export default function App() {
         diningMode={diningMode}
         onChangeDiningMode={(mode) => setDiningMode(mode)}
         currency={currency}
+        restaurants={restaurants}
         onProceedToCheckout={handleProceedToCheckout}
       />
 

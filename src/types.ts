@@ -191,6 +191,7 @@ export interface DeliveryDriver {
   earningsTodayUsd: number;
   activeOrderId?: string;
   driverPin?: string; // 4 to 6 digit security PIN for login
+  deliveryFeeUsd?: number; // Custom delivery fee set by courier driver (USD)
   serviceType?: DriverServiceType; // 'delivery' | 'rides' | 'both'
   activeDays?: WeekDay[]; // e.g. ['Monday', 'Tuesday', ...]
   activeTimeSlots?: ActiveShiftSlot[]; // e.g. ['morning', 'afternoon', 'evening']

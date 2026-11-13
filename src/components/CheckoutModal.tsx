@@ -107,17 +107,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const restaurantName = targetRestaurant?.name || 'Monrovia Kitchen';
   const restaurantPhone = targetRestaurant?.momoNumber || targetRestaurant?.phone || '0886 554 123';
 
-  // Dynamic Uber/Bolt delivery fee calculation based on customer distance & wait time
+  // Restaurant/Courier custom delivery fee (Dynamic pricing disabled)
   const dynamicPricing = calculateDynamicDeliveryFee({
     customerLocation: gpsCoords || undefined,
     customerNeighborhood: destinationArea,
     restaurantLocation: targetRestaurant?.location,
     restaurantNeighborhood: targetRestaurant?.neighborhood,
+    restaurantDeliveryFee: targetRestaurant?.deliveryFeeUsd,
     prepDurationMinutes: diningMode === 'pickup' ? 15 : diningMode === 'dine-in' ? 12 : 25,
   });
 
   const calculatedDeliveryFee = diningMode === 'delivery' 
-    ? (cartTotals.subtotal > 35 ? 0 : dynamicPricing.finalFee) 
+    ? (cartTotals.subtotal > 35 ? 0 : (targetRestaurant?.deliveryFeeUsd ?? dynamicPricing.finalFee)) 
     : 0;
 
   const computedTotal = Math.max(

@@ -158,6 +158,7 @@ Status: ${orderToCopy.status.toUpperCase()}
   const [newStaffPhoneInput, setNewStaffPhoneInput] = useState('');
   const [staffPhoneError, setStaffPhoneError] = useState('');
   const [restPrepTime, setRestPrepTime] = useState((restaurant?.deliveryTimeMinutes ?? 25).toString());
+  const [restDeliveryFee, setRestDeliveryFee] = useState((restaurant?.deliveryFeeUsd ?? 2.0).toString());
   const [restIsOpen, setRestIsOpen] = useState(restaurant?.isOpen ?? true);
   const [restOperatingDays, setRestOperatingDays] = useState<string[]>(
     restaurant?.operatingDays && restaurant.operatingDays.length > 0
@@ -183,6 +184,7 @@ Status: ${orderToCopy.status.toUpperCase()}
           : (restaurant.phone ? [restaurant.phone] : [])
       );
       setRestPrepTime((restaurant.deliveryTimeMinutes ?? 25).toString());
+      setRestDeliveryFee((restaurant.deliveryFeeUsd ?? 2.0).toString());
       setRestIsOpen(restaurant.isOpen ?? true);
       setRestOperatingDays(
         restaurant.operatingDays && restaurant.operatingDays.length > 0
@@ -595,6 +597,8 @@ Status: ${orderToCopy.status.toUpperCase()}
       );
 
       const finalLocation = restLocation || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || { lat: 6.2907, lng: -10.7818 };
+      const parsedDeliveryFee = parseFloat(restDeliveryFee);
+      const finalDeliveryFee = !isNaN(parsedDeliveryFee) && parsedDeliveryFee >= 0 ? parsedDeliveryFee : 2.0;
 
       const updatedRestaurant: Restaurant = {
         ...restaurant,
@@ -603,7 +607,7 @@ Status: ${orderToCopy.status.toUpperCase()}
         address: restAddress,
         phone: restPhone,
         momoNumber: restMomoNumber,
-        deliveryFeeUsd: restaurant.deliveryFeeUsd || 2.0,
+        deliveryFeeUsd: finalDeliveryFee,
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
@@ -623,7 +627,7 @@ Status: ${orderToCopy.status.toUpperCase()}
         address: restAddress,
         phone: restPhone,
         momoNumber: restMomoNumber,
-        deliveryFeeUsd: restaurant.deliveryFeeUsd || 2.0,
+        deliveryFeeUsd: finalDeliveryFee,
         deliveryTimeMinutes: parseInt(restPrepTime) || 25,
         isOpen: restIsOpen,
         allowedPhoneNumbers: phonesList,
@@ -1872,6 +1876,28 @@ Status: ${orderToCopy.status.toUpperCase()}
                     onChange={(e) => setRestPrepTime(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold"
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-gray-700">Restaurant Delivery Fee ($ USD)</label>
+                    <span className="text-[10px] text-emerald-600 font-bold">
+                      ~L${Math.round((parseFloat(restDeliveryFee) || 2) * USD_TO_LRD_RATE).toLocaleString()} LRD
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <DollarSign className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      required
+                      value={restDeliveryFee}
+                      onChange={(e) => setRestDeliveryFee(e.target.value)}
+                      placeholder="2.00"
+                      className="w-full pl-9 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#FF4B26]"
+                    />
+                  </div>
                 </div>
               </div>
 

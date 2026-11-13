@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Trash2, Plus, Minus, ArrowRight, Tag, Bike, ShoppingBag, UtensilsCrossed } from 'lucide-react';
-import { CartItem, DiningMode, Currency, USD_TO_LRD_RATE } from '../types';
+import { CartItem, DiningMode, Currency, USD_TO_LRD_RATE, Restaurant } from '../types';
 import { DishIllustration } from './DishIllustration';
 import { calculateDynamicDeliveryFee } from '../utils/pricingEngine';
 
@@ -8,6 +8,7 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
+  restaurants?: Restaurant[];
   onUpdateQuantity: (cartItemId: string, newQuantity: number) => void;
   onRemoveItem: (cartItemId: string) => void;
   diningMode: DiningMode;
@@ -34,6 +35,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   diningMode,
   onChangeDiningMode,
   currency,
+  restaurants,
   onProceedToCheckout,
 }) => {
   if (!isOpen) return null;
@@ -60,10 +62,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
+  const primaryRest = restaurants?.find((r) => r.id === items[0]?.menuItem?.restaurantId);
   const dynamicPricing = calculateDynamicDeliveryFee({
-    restaurantNeighborhood: items[0]?.menuItem?.provenance,
+    restaurantNeighborhood: primaryRest?.neighborhood || items[0]?.menuItem?.provenance,
+    restaurantDeliveryFee: primaryRest?.deliveryFeeUsd,
   });
-  const deliveryFee = diningMode === 'delivery' ? (subtotal > 35 ? 0 : dynamicPricing.finalFee) : 0;
+  const deliveryFee = diningMode === 'delivery' 
+    ? (subtotal > 35 ? 0 : (primaryRest?.deliveryFeeUsd ?? dynamicPricing.finalFee)) 
+    : 0;
   const serviceFee = 0;
   const tax = subtotal * 0.04;
   const total = Math.max(0, subtotal - discountAmount + deliveryFee + tax);

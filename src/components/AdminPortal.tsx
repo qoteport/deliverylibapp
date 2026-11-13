@@ -623,6 +623,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
   const [driverPin, setDriverPin] = useState('');
+  const [driverDeliveryFee, setDriverDeliveryFee] = useState('2.00');
   const [driverVehicleType, setDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [driverPlate, setDriverPlate] = useState('');
   const [driverBaseZone, setDriverBaseZone] = useState<string>('Sinkor');
@@ -635,6 +636,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [editDriverName, setEditDriverName] = useState('');
   const [editDriverPhone, setEditDriverPhone] = useState('');
   const [editDriverPin, setEditDriverPin] = useState('');
+  const [editDriverDeliveryFee, setEditDriverDeliveryFee] = useState('2.00');
   const [editDriverVehicleType, setEditDriverVehicleType] = useState<DeliveryDriver['vehicleType']>('Motorbike');
   const [editDriverPlate, setEditDriverPlate] = useState('');
   const [editDriverBaseZone, setEditDriverBaseZone] = useState<string>('Sinkor');
@@ -1094,6 +1096,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       vehicleType: driverVehicleType,
       plateNumber: driverPlate.trim() || `LR-${Math.floor(1000 + Math.random() * 9000)}`,
       baseZone: driverBaseZone,
+      deliveryFeeUsd: parseFloat(driverDeliveryFee) || 2.0,
       momoNumber: driverMomoNumber.trim() || driverPhone.trim(),
       momoProvider: driverMomoProvider,
       driverPin: driverPin.trim() || '1234',
@@ -1120,6 +1123,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setDriverName('');
     setDriverPhone('');
     setDriverPin('');
+    setDriverDeliveryFee('2.00');
     setDriverPlate('');
     setDriverMomoNumber('');
   };
@@ -1130,6 +1134,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setEditDriverName(driver.name);
     setEditDriverPhone(driver.phone);
     setEditDriverPin(driver.driverPin || '');
+    setEditDriverDeliveryFee((driver.deliveryFeeUsd ?? 2.0).toString());
     setEditDriverVehicleType(driver.vehicleType);
     setEditDriverPlate(driver.plateNumber || '');
     setEditDriverBaseZone(driver.baseZone);
@@ -1151,6 +1156,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       name: editDriverName.trim(),
       phone: editDriverPhone.trim(),
       driverPin: editDriverPin.trim() || undefined,
+      deliveryFeeUsd: parseFloat(editDriverDeliveryFee) || 2.0,
       vehicleType: editDriverVehicleType,
       plateNumber: editDriverPlate.trim() || undefined,
       baseZone: editDriverBaseZone,
@@ -2297,7 +2303,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             </td>
 
                             <td className="p-3 sm:p-4 text-[11px] font-semibold">
-                              {(d.baseZone || 'Monrovia').split(' ')[0]}
+                              <div>{(d.baseZone || 'Monrovia').split(' ')[0]}</div>
+                              <div className="text-[10px] text-emerald-700 font-mono font-bold">
+                                ${(d.deliveryFeeUsd ?? 2.0).toFixed(2)} fee
+                              </div>
                             </td>
 
                             <td className="p-3 sm:p-4 font-mono font-bold">
@@ -4470,10 +4479,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       </div>
                     </div>
 
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
-                      <Gauge className="w-3 h-3" />
-                      <span>$0.50 Step Clamped</span>
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5 shadow-xs">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Dynamic Pricing Inactive (Flat Fees Active)</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                        <Gauge className="w-3 h-3" />
+                        <span>$0.50 Step Clamped</span>
+                      </span>
+                    </div>
                   </div>
 
                   {/* Playground Controls Grid */}
@@ -5094,7 +5109,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Plate / Registration</label>
                   <input
@@ -5117,6 +5132,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <option key={nh} value={nh}>{nh}</option>
                     ))}
                   </CustomSelect>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-gray-700">Delivery Fee ($ USD)</label>
+                    <span className="text-[10px] text-gray-400 font-mono">≈ L${Math.round((parseFloat(driverDeliveryFee) || 2.0) * USD_TO_LRD_RATE)}</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={driverDeliveryFee}
+                    onChange={(e) => setDriverDeliveryFee(e.target.value)}
+                    placeholder="2.00"
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                  />
                 </div>
               </div>
 
@@ -5258,7 +5289,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Plate Number</label>
                   <input
@@ -5280,6 +5311,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <option key={nh} value={nh}>{nh}</option>
                     ))}
                   </CustomSelect>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-gray-700">Delivery Fee ($ USD)</label>
+                    <span className="text-[10px] text-gray-400 font-mono">≈ L${Math.round((parseFloat(editDriverDeliveryFee) || 2.0) * USD_TO_LRD_RATE)}</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={editDriverDeliveryFee}
+                    onChange={(e) => setEditDriverDeliveryFee(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                  />
                 </div>
               </div>
 

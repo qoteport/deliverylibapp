@@ -137,6 +137,32 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   const isDriverVerified = driver.isVerified !== false && driver.verificationStatus !== 'pending';
   const isOnline = isDriverVerified ? (driver.isOnline ?? false) : false;
 
+  const [customFeeInput, setCustomFeeInput] = useState<string>((driver.deliveryFeeUsd ?? 2.0).toString());
+  const [isSavingFee, setIsSavingFee] = useState(false);
+  const [feeSaveSuccess, setFeeSaveSuccess] = useState(false);
+
+  const handleSaveCustomFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseFloat(customFeeInput);
+    if (isNaN(parsed) || parsed < 0) return;
+    setIsSavingFee(true);
+    try {
+      await updateDoc(doc(db, 'drivers', driver.id), {
+        deliveryFeeUsd: parsed,
+      });
+      onUpdateDriver({
+        ...driver,
+        deliveryFeeUsd: parsed,
+      });
+      setFeeSaveSuccess(true);
+      setTimeout(() => setFeeSaveSuccess(false), 3000);
+    } catch (err) {
+      console.warn('Driver fee update notice:', err);
+    } finally {
+      setIsSavingFee(false);
+    }
+  };
+
   useEffect(() => {
     if (!driver?.id) return;
     let previousVerified = isDriverVerified;
@@ -1712,11 +1738,37 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl text-[11px] text-emerald-900 space-y-1">
                 <div className="font-extrabold flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Automated Delivery Fee Settlement</span>
+                  <span>Courier Delivery Fee Setting</span>
                 </div>
                 <p className="leading-relaxed text-emerald-800">
-                  Each completed trip delivery fee ($2.00 &ndash; $3.50 USD depending on distance) is credited immediately to your driver profile and settled directly to your registered Mobile Money number upon trip completion.
+                  Dynamic pricing is currently disabled. You have full control over your delivery dispatch fee! Enter your preferred rate below:
                 </p>
+
+                <form onSubmit={handleSaveCustomFee} className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">$</span>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0.5"
+                      required
+                      value={customFeeInput}
+                      onChange={(e) => setCustomFeeInput(e.target.value)}
+                      placeholder="2.00"
+                      className="w-full pl-7 pr-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                    />
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-bold self-center">
+                    ~L${Math.round((parseFloat(customFeeInput) || 2) * USD_TO_LRD_RATE).toLocaleString()} LRD
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isSavingFee}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    {isSavingFee ? 'Saving...' : feeSaveSuccess ? 'Saved ✓' : 'Update My Delivery Fee'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>

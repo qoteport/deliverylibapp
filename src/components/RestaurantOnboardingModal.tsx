@@ -38,6 +38,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
   const [momoProvider, setMomoProvider] = useState<'mtn' | 'orange' | 'both'>('mtn');
   const [kitchenPin, setKitchenPin] = useState('');
   const [deliveryTimeMinutes, setDeliveryTimeMinutes] = useState(25);
+  const [deliveryFeeUsd, setDeliveryFeeUsd] = useState(2.00);
   const [minOrderUsd, setMinOrderUsd] = useState(5.00);
   const [tagline, setTagline] = useState('');
   const [operatingDays, setOperatingDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
@@ -147,7 +148,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
       rating: 5.0,
       reviewCount: 1,
       deliveryTimeMinutes: Number(deliveryTimeMinutes) || 25,
-      deliveryFeeUsd: 2.0,
+      deliveryFeeUsd: Number(deliveryFeeUsd) || 2.0,
       minOrderUsd: Number(minOrderUsd) || 5.0,
       isOpen: true,
       isVerified,
@@ -619,15 +620,27 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
                 </div>
                 <div className="space-y-0.5 min-w-0">
                   <div className="font-black text-[#048747] text-xs sm:text-sm">
-                    Centralized AURA Fleet Delivery
+                    Custom Kitchen Delivery Fee
                   </div>
                   <p className="text-[11px] text-emerald-800 leading-relaxed">
-                    All customer deliveries are fulfilled by verified AURA platform couriers. Delivery fees are set and calculated dynamically by the platform based on customer distance—your kitchen only focuses on cooking!
+                    Set your own customized flat delivery fee for customers ordering from your kitchen. You have full control over your delivery rates!
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                <div className="space-y-1">
+                  <label className="text-gray-600 font-bold">Kitchen Delivery Fee ($ USD)</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={deliveryFeeUsd}
+                    onChange={(e) => setDeliveryFeeUsd(Number(e.target.value))}
+                    placeholder="2.00"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#06C167]"
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="text-gray-600 font-bold">Avg Kitchen Prep Time (mins)</label>
                   <input
