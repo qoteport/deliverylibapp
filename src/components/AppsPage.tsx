@@ -44,36 +44,38 @@ export const AppsPage: React.FC<AppsPageProps> = ({
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#111827] flex flex-col font-sans selection:bg-[#06C167]/20 selection:text-[#06C167]">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onBackToStorefront}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer"
+            title="Back to Food Storefront"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-            <span>Food Storefront</span>
+            <span className="hidden sm:inline">Food Storefront</span>
           </button>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-emerald-400 text-white flex items-center justify-center shadow-md shadow-[#06C167]/20">
+          
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-[#06C167] to-emerald-400 text-white flex items-center justify-center shadow-md shadow-[#06C167]/20 shrink-0">
               <Sparkles className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-sm sm:text-base text-gray-900 tracking-tight">Aura Apps Hub</h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-[#06C167] border border-emerald-200">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="font-extrabold text-xs sm:text-base text-gray-900 tracking-tight truncate">Aura Apps Hub</h1>
+                <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-[#06C167] border border-emerald-200 shrink-0">
                   Monrovia Ecosystem
                 </span>
               </div>
-              <p className="text-[11px] text-gray-500 hidden sm:block">Seamless on-demand services: Rides, Supermarkets & Dining</p>
+              <p className="text-[11px] text-gray-500 hidden lg:block truncate">Seamless on-demand services: Rides, Supermarkets & Dining</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Dual Currency Pill */}
           <button
             onClick={onToggleCurrency}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black rounded-xl transition flex items-center gap-1 cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black rounded-xl transition flex items-center gap-0.5 sm:gap-1 cursor-pointer shrink-0"
             title="Toggle USD / Liberian Dollars"
           >
             <span className={currency === 'USD' ? 'text-[#06C167]' : 'text-gray-400'}>USD</span>
@@ -83,10 +85,11 @@ export const AppsPage: React.FC<AppsPageProps> = ({
 
           <button
             onClick={onOpenLogin}
-            className="px-3.5 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-2.5 sm:px-3.5 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+            title="Sign In / Staff"
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Sign In / Staff</span>
+            <span className="hidden xs:inline">Sign In / Staff</span>
           </button>
         </div>
       </header>
