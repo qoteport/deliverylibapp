@@ -33,6 +33,9 @@ import { SupermarketOnboardingModal } from './components/SupermarketOnboardingMo
 import { RealEstateApp } from './components/RealEstateApp';
 import { LifestyleApp } from './components/LifestyleApp';
 import { MotorsApp } from './components/MotorsApp';
+import { UnifiedPortalHub } from './components/UnifiedPortalHub';
+import { RealEstatePortal } from './components/RealEstatePortal';
+import { MotorsPortal } from './components/MotorsPortal';
 import { MenuItem, CartItem, Order, DiningMode, Currency, Restaurant, DeliveryDriver, SupermarketStore, MONROVIA_NEIGHBORHOOD_COORDS } from './types';
 import { MENU_ITEMS } from './data/menuData';
 import { INITIAL_RESTAURANTS } from './data/demoRestaurants';
@@ -1362,6 +1365,7 @@ export default function App() {
           onOpenRealEstate={() => navigateTo({ name: 'real-estate' })}
           onOpenLifestyle={() => navigateTo({ name: 'lifestyle' })}
           onOpenMotors={() => navigateTo({ name: 'motors' })}
+          onOpenPortal={() => navigateTo({ name: 'portal' })}
           onOpenSupermarketOnboarding={() => navigateTo({ name: 'supermarket-onboarding' })}
           onOpenKitchenOnboarding={() => setIsOnboardingOpen(true)}
           onOpenLogin={() => {
@@ -1502,10 +1506,71 @@ export default function App() {
         <SupermarketPortal
           supermarket={store}
           orders={orders}
-          onExitPortal={() => navigateTo({ name: 'apps' })}
+          onExitPortal={() => navigateTo({ name: 'portal' })}
           currency={currency}
           onToggleCurrency={handleToggleCurrency}
           onUpdateOrderStatus={handleUpdateOrderStatus}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: UNIFIED BUSINESS & MANAGEMENT PORTAL (/portal)
+  // =========================================================================
+  if (currentRoute.name === 'portal') {
+    return (
+      <ErrorBoundary>
+        <UnifiedPortalHub
+          restaurants={restaurants}
+          drivers={drivers}
+          supermarkets={supermarkets}
+          onOpenKitchenPortal={(restId) =>
+            navigateTo({ name: 'restaurant', restaurantId: restId || restaurants[0]?.id || '' })
+          }
+          onOpenDriverPortal={(drvId) =>
+            navigateTo({ name: 'driver', driverId: drvId || drivers[0]?.id })
+          }
+          onOpenSupermarketPortal={(smId) =>
+            navigateTo({ name: 'supermarket-management', supermarketId: smId || supermarkets[0]?.id || '' })
+          }
+          onOpenRealEstatePortal={() => navigateTo({ name: 'real-estate-management' })}
+          onOpenMotorsPortal={() => navigateTo({ name: 'motors-management' })}
+          onOpenKitchenRegistration={() => setIsOnboardingOpen(true)}
+          onOpenSupermarketRegistration={() => navigateTo({ name: 'supermarket-onboarding' })}
+          onBackToStorefront={() => navigateTo({ name: 'home' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: REAL ESTATE AGENCY & LANDLORD PORTAL (/real-estate-management)
+  // =========================================================================
+  if (currentRoute.name === 'real-estate-management') {
+    return (
+      <ErrorBoundary>
+        <RealEstatePortal
+          onExitPortal={() => navigateTo({ name: 'portal' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: MOTORS & PARTS DEALERSHIP PORTAL (/motors-management)
+  // =========================================================================
+  if (currentRoute.name === 'motors-management') {
+    return (
+      <ErrorBoundary>
+        <MotorsPortal
+          onExitPortal={() => navigateTo({ name: 'portal' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
         />
       </ErrorBoundary>
     );

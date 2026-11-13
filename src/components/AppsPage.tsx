@@ -31,6 +31,7 @@ interface AppsPageProps {
   onOpenRealEstate?: () => void;
   onOpenLifestyle?: () => void;
   onOpenMotors?: () => void;
+  onOpenPortal?: () => void;
   onOpenSupermarketOnboarding: () => void;
   onOpenKitchenOnboarding: () => void;
   onOpenLogin: () => void;
@@ -45,6 +46,7 @@ export const AppsPage: React.FC<AppsPageProps> = ({
   onOpenRealEstate,
   onOpenLifestyle,
   onOpenMotors,
+  onOpenPortal,
   onOpenSupermarketOnboarding,
   onOpenKitchenOnboarding,
   onOpenLogin,
@@ -92,6 +94,17 @@ export const AppsPage: React.FC<AppsPageProps> = ({
             <span className="text-gray-300">/</span>
             <span className={currency === 'LRD' ? 'text-[#06C167]' : 'text-gray-400'}>LRD</span>
           </button>
+
+          {onOpenPortal && (
+            <button
+              onClick={onOpenPortal}
+              className="px-2.5 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#06C167] border border-emerald-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              title="Aura Business & Management Center"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Merchant Portal</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenLogin}

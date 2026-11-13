@@ -11,7 +11,10 @@ export type AppRoute =
   | { name: 'motors' }
   | { name: 'admin' }
   | { name: 'restaurant'; restaurantId: string }
-  | { name: 'driver'; driverId?: string };
+  | { name: 'driver'; driverId?: string }
+  | { name: 'portal'; portalType?: 'kitchen' | 'rides' | 'supermarket' | 'real-estate' | 'motors' | 'admin' }
+  | { name: 'real-estate-management' }
+  | { name: 'motors-management' };
 
 export function parseRoute(pathname: any, hash: any): AppRoute {
   const safeHash = typeof hash === 'string' ? hash : '';
@@ -22,6 +25,27 @@ export function parseRoute(pathname: any, hash: any): AppRoute {
 
   if (cleanPath.startsWith('/admin')) {
     return { name: 'admin' };
+  }
+
+  // Central Management Portal: /portal, /portals, /management, /partner, /business
+  if (
+    cleanPath.startsWith('/portal') || 
+    cleanPath.startsWith('/portals') || 
+    cleanPath.startsWith('/management') || 
+    cleanPath.startsWith('/partner') || 
+    cleanPath.startsWith('/business')
+  ) {
+    const portalSubMatch = cleanPath.match(/^\/(?:portal|portals|management|partner|business)\/([a-zA-Z0-9_-]+)/);
+    const sub = portalSubMatch ? portalSubMatch[1] : undefined;
+    return { name: 'portal', portalType: sub as any };
+  }
+
+  if (cleanPath.startsWith('/real-estate-management') || cleanPath.startsWith('/property-management')) {
+    return { name: 'real-estate-management' };
+  }
+
+  if (cleanPath.startsWith('/motors-management') || cleanPath.startsWith('/auto-management') || cleanPath.startsWith('/cars-management')) {
+    return { name: 'motors-management' };
   }
 
   if (cleanPath.startsWith('/driver')) {
@@ -104,6 +128,12 @@ export function navigateTo(route: AppRoute) {
     url = route.supermarketId
       ? `/supermarket-management/${route.supermarketId}`
       : '/supermarket-management';
+  } else if (route.name === 'portal') {
+    url = route.portalType ? `/portal/${route.portalType}` : '/portal';
+  } else if (route.name === 'real-estate-management') {
+    url = '/real-estate-management';
+  } else if (route.name === 'motors-management') {
+    url = '/motors-management';
   }
 
   try {
