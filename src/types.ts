@@ -428,3 +428,129 @@ export interface SupermarketItem {
   featured?: boolean;
 }
 
+// ============================================================================
+// REAL ESTATE (MONROVIA APARTMENTS, RENTALS, HOUSES & LAND)
+// ============================================================================
+export type PropertyDealType = 'rent' | 'buy' | 'short_stay';
+export type PropertyType = 'apartment' | 'house' | 'commercial' | 'land';
+
+export interface RealEstateProperty {
+  id: string;
+  title: string;
+  dealType: PropertyDealType;
+  propertyType: PropertyType;
+  priceUsd: number;
+  pricePeriod?: 'month' | 'year' | 'day' | 'total';
+  neighborhood: string;
+  address: string;
+  bedrooms: number;
+  bathrooms: number;
+  sizeSqm?: number;
+  features: string[];
+  description: string;
+  images: string[];
+  agentName: string;
+  agentPhone: string;
+  agentWhatsapp?: string;
+  isVerified: boolean;
+  featured?: boolean;
+  createdAt?: string;
+}
+
+export interface PropertyInquiry {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  clientName: string;
+  clientPhone: string;
+  inquiryType: 'viewing' | 'question' | 'offer';
+  preferredDate?: string;
+  notes?: string;
+  status: 'pending' | 'contacted' | 'completed';
+  createdAt: string;
+}
+
+// ============================================================================
+// ELECTRONICS, APPARELS & CLOTHING (LIFESTYLE & FASHION)
+// ============================================================================
+export type LifestyleCategory = 
+  | 'All Items'
+  | 'Smartphones & Tablets'
+  | 'Laptops & Computers'
+  | 'Solar & Backup Power'
+  | 'Men\'s Clothing'
+  | 'Women\'s Fashion'
+  | 'Footwear & Shoes'
+  | 'Audio & Accessories';
+
+export interface LifestyleItem {
+  id: string;
+  name: string;
+  category: LifestyleCategory;
+  vendorName: string;
+  vendorPhone: string;
+  vendorNeighborhood: string;
+  priceUsd: number;
+  originalPriceUsd?: number;
+  condition: 'Brand New' | 'Certified Used' | 'Handcrafted';
+  rating: number;
+  reviewsCount: number;
+  description: string;
+  specifications: Record<string, string>;
+  sizes?: string[];
+  colors?: string[];
+  image: string;
+  inStock: boolean;
+  featured?: boolean;
+}
+
+export interface LifestyleCartItem {
+  item: LifestyleItem;
+  quantity: number;
+  selectedSize?: string;
+  selectedColor?: string;
+}
+
+// ============================================================================
+// MOTORS, CAR RENTALS & AUTO PARTS
+// ============================================================================
+export type MotorListingType = 'sale' | 'rental' | 'part';
+
+export interface MotorListing {
+  id: string;
+  title: string;
+  listingType: MotorListingType;
+  make: string;
+  model: string;
+  year: number;
+  priceUsd: number;
+  rentalPeriod?: 'day' | 'week' | 'month';
+  condition: 'Brand New' | 'Clean Monrovia Used' | 'Foreign Used' | 'OEM Genuine Part';
+  mileageKm?: number;
+  transmission?: 'Automatic' | 'Manual';
+  fuelType?: 'Gasoline' | 'Diesel' | 'Hybrid';
+  location: string;
+  dealerName: string;
+  dealerPhone: string;
+  dealerWhatsapp?: string;
+  description: string;
+  features: string[];
+  image: string;
+  isAvailable: boolean;
+  featured?: boolean;
+}
+
+export interface MotorInquiry {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  listingType: MotorListingType;
+  clientName: string;
+  clientPhone: string;
+  inquiryType: 'buy' | 'rental_booking' | 'test_drive' | 'parts_order';
+  rentalDays?: number;
+  notes?: string;
+  status: 'pending' | 'contacted' | 'completed';
+  createdAt: string;
+}
+

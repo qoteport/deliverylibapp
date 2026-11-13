@@ -13,6 +13,10 @@ import {
   Package,
   Pill,
   Store,
+  Building2,
+  Key,
+  Wrench,
+  Shirt,
   ChevronRight,
   UserCheck,
   CheckCircle2,
@@ -24,6 +28,9 @@ interface AppsPageProps {
   onBackToStorefront: () => void;
   onOpenRides: () => void;
   onOpenSupermarket: () => void;
+  onOpenRealEstate?: () => void;
+  onOpenLifestyle?: () => void;
+  onOpenMotors?: () => void;
   onOpenSupermarketOnboarding: () => void;
   onOpenKitchenOnboarding: () => void;
   onOpenLogin: () => void;
@@ -35,6 +42,9 @@ export const AppsPage: React.FC<AppsPageProps> = ({
   onBackToStorefront,
   onOpenRides,
   onOpenSupermarket,
+  onOpenRealEstate,
+  onOpenLifestyle,
+  onOpenMotors,
   onOpenSupermarketOnboarding,
   onOpenKitchenOnboarding,
   onOpenLogin,
@@ -121,10 +131,10 @@ export const AppsPage: React.FC<AppsPageProps> = ({
               <h3 className="text-lg font-black text-gray-900">Featured Apps</h3>
               <p className="text-xs text-gray-500">Tap any application to launch full-screen</p>
             </div>
-            <span className="text-xs font-bold text-[#06C167]">2 Live &bull; 1 Main</span>
+            <span className="text-xs font-bold text-[#06C167]">5 Live Apps • Super-App</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             
             {/* APP 1: AURA RIDES */}
             <div 
@@ -212,6 +222,141 @@ export const AppsPage: React.FC<AppsPageProps> = ({
 
               <div className="mt-5 pt-3 flex items-center justify-between text-xs font-bold text-emerald-700">
                 <span>Launch Shopping</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* APP 3: AURA REAL ESTATE */}
+            <div 
+              onClick={onOpenRealEstate}
+              className="group relative overflow-hidden rounded-3xl border-2 border-sky-500/30 bg-gradient-to-br from-sky-50/70 via-white to-sky-50/30 p-6 hover:border-sky-500 hover:shadow-xl transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/25 group-hover:scale-105 transition-transform">
+                    <Building2 className="w-7 h-7 stroke-[2.5]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-sky-600 text-white shadow-xs">
+                      Properties
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-sky-100 group-hover:bg-sky-600 group-hover:text-white text-sky-600 flex items-center justify-center transition-all">
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                  </div>
+                </div>
+
+                <h4 className="text-xl font-black text-gray-900 group-hover:text-sky-600 transition-colors">
+                  Aura Real Estate
+                </h4>
+                <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
+                  Rent luxury apartments, purchase residential homes & titled land in Mamba Point, Sinkor, Congo Town, Paynesville, and ELWA.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-sky-100/80 text-[11px] text-gray-600 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Rentals & Purchases</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Verified Mother Deeds</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 flex items-center justify-between text-xs font-bold text-sky-700">
+                <span>Launch Real Estate</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* APP 4: AURA LIFESTYLE & TECH */}
+            <div 
+              onClick={onOpenLifestyle}
+              className="group relative overflow-hidden rounded-3xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-50/70 via-white to-purple-50/30 p-6 hover:border-purple-500 hover:shadow-xl transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
+                    <ShoppingBag className="w-7 h-7 stroke-[2.5]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs">
+                      Tech & Fashion
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-purple-100 group-hover:bg-purple-600 group-hover:text-white text-purple-600 flex items-center justify-center transition-all">
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                  </div>
+                </div>
+
+                <h4 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors">
+                  Aura Lifestyle & Tech
+                </h4>
+                <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
+                  Smartphones, laptops, solar power backup units, authentic handwoven Liberian country cloth gowns, and sneakers delivered to your gate.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-purple-100/80 text-[11px] text-gray-600 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Shirt className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Electronics & Apparel</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Monrovia Delivery</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 flex items-center justify-between text-xs font-bold text-purple-700">
+                <span>Launch Lifestyle</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* APP 5: AURA MOTORS & RENTALS */}
+            <div 
+              onClick={onOpenMotors}
+              className="group relative overflow-hidden rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 p-6 hover:border-amber-500 hover:shadow-xl transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:scale-105 transition-transform">
+                    <Car className="w-7 h-7 stroke-[2.5]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-600 text-white shadow-xs">
+                      Motors
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-amber-100 group-hover:bg-amber-600 group-hover:text-white text-amber-600 flex items-center justify-center transition-all">
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                  </div>
+                </div>
+
+                <h4 className="text-xl font-black text-gray-900 group-hover:text-amber-600 transition-colors">
+                  Aura Motors & Rentals
+                </h4>
+                <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
+                  Buy foreign & Monrovia-used cars, rent chauffeur-driven 4x4 Land Cruisers, or order genuine auto & kekeh spare parts.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-amber-100/80 text-[11px] text-gray-600 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Car Sales & Rentals</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Auto & Kekeh Spares</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 flex items-center justify-between text-xs font-bold text-amber-700">
+                <span>Launch Motors</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>

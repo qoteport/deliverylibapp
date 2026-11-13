@@ -514,9 +514,9 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
       {/* PAGE MODE HEADER (when in full screen route mode)                  */}
       {/* ================================================================= */}
       {isPageMode && (
-        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
+        <div className="pb-4 mb-2 border-b border-gray-200/80 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-black text-gray-900 tracking-tight">Request a Ride in Monrovia</h2>
+            <h2 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">Request a Ride in Monrovia</h2>
             <p className="text-xs text-gray-500 mt-0.5">Fast pickup &bull; Motorbike, Kekeh or Town Taxi</p>
           </div>
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-[#048747] border border-emerald-200/60 shadow-2xs">
@@ -529,7 +529,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
       {/* STEP 1: PICKUP & DESTINATION FORM (REAL ADDRESS ONLY)             */}
       {/* ================================================================= */}
       {portalStep === 'input' && (
-        <form onSubmit={handleRequestRide} className="p-5 overflow-y-auto space-y-4">
+        <form onSubmit={handleRequestRide} className={`${isPageMode ? 'space-y-4' : 'p-5 overflow-y-auto space-y-4'}`}>
           
           {/* Vehicle Selection Tabs */}
           <div className="space-y-1.5">
@@ -549,10 +549,10 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                     key={v.type}
                     type="button"
                     onClick={() => setVehicleType(v.type)}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-[#06C167] bg-[#E8F8EE] text-gray-900 shadow-xs ring-1 ring-[#06C167]'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600'
+                        ? 'border-[#06C167] bg-[#E8F8EE] text-gray-900 ring-2 ring-[#06C167]/30 shadow-xs'
+                        : 'border-gray-200/90 bg-white hover:bg-gray-50 text-gray-600'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -570,7 +570,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
           </div>
 
           {/* Pickup Location Box - Real Address with Google Places Autocomplete */}
-          <div className="p-4 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-2.5 relative">
+          <div className="p-4 bg-white border border-gray-200/90 rounded-2xl space-y-2.5 relative shadow-2xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#06C167]" />
@@ -676,7 +676,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
           </div>
 
           {/* Drop-off Destination Location Box - Real Address with Google Places Autocomplete */}
-          <div className="p-4 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-2.5 relative">
+          <div className="p-4 bg-white border border-gray-200/90 rounded-2xl space-y-2.5 relative shadow-2xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
@@ -773,7 +773,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
           </div>
 
           {/* Passenger Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label className="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider block mb-1">
                 Your Name
@@ -783,7 +783,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                 value={passengerName}
                 onChange={(e) => setPassengerName(e.target.value)}
                 placeholder="e.g. Mary Williams"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
+                className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167] focus:ring-2 focus:ring-[#06C167]/20 transition-all shadow-2xs"
               />
             </div>
 
@@ -797,13 +797,13 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                 value={passengerPhone}
                 onChange={(e) => setPassengerPhone(e.target.value)}
                 placeholder="+231 77..."
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:outline-none focus:border-[#06C167] focus:ring-2 focus:ring-[#06C167]/20 transition-all shadow-2xs"
               />
             </div>
           </div>
 
           {/* Fare Summary Box */}
-          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs">
+          <div className="p-3.5 bg-gradient-to-r from-emerald-50/90 via-emerald-50/50 to-white border border-emerald-200/90 rounded-2xl flex items-center justify-between text-xs shadow-2xs">
             <div>
               <span className="font-extrabold text-gray-800">Estimated Trip Fare:</span>
               <div className="text-[10px] text-gray-500">Pay cash or MoMo upon arrival</div>
@@ -813,7 +813,7 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
                 ${estimatedFareUsd.toFixed(2)} USD
               </div>
               <div className="text-[10px] font-bold text-gray-500 font-mono">
-                L${Math.round(estimatedFareUsd * USD_TO_LRD_RATE).toLocaleString()}
+                ≈ L${Math.round(estimatedFareUsd * USD_TO_LRD_RATE).toLocaleString()}
               </div>
             </div>
           </div>
@@ -1316,8 +1316,8 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
           </button>
         </header>
 
-        <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-5 pb-24">
-          <div className="w-full flex-1 flex flex-col bg-white rounded-3xl border border-gray-200/80 shadow-xs overflow-hidden">
+        <main className="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-4 pb-24">
+          <div className="w-full flex-1 flex flex-col">
             {cardContent}
           </div>
         </main>

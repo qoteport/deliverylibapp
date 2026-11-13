@@ -30,6 +30,9 @@ import { RidesPortal } from './components/RidesPortal';
 import { SupermarketApp } from './components/SupermarketApp';
 import { SupermarketPortal } from './components/SupermarketPortal';
 import { SupermarketOnboardingModal } from './components/SupermarketOnboardingModal';
+import { RealEstateApp } from './components/RealEstateApp';
+import { LifestyleApp } from './components/LifestyleApp';
+import { MotorsApp } from './components/MotorsApp';
 import { MenuItem, CartItem, Order, DiningMode, Currency, Restaurant, DeliveryDriver, SupermarketStore, MONROVIA_NEIGHBORHOOD_COORDS } from './types';
 import { MENU_ITEMS } from './data/menuData';
 import { INITIAL_RESTAURANTS } from './data/demoRestaurants';
@@ -1356,6 +1359,9 @@ export default function App() {
           onBackToStorefront={() => navigateTo({ name: 'home' })}
           onOpenRides={() => navigateTo({ name: 'rides' })}
           onOpenSupermarket={() => navigateTo({ name: 'supermarket' })}
+          onOpenRealEstate={() => navigateTo({ name: 'real-estate' })}
+          onOpenLifestyle={() => navigateTo({ name: 'lifestyle' })}
+          onOpenMotors={() => navigateTo({ name: 'motors' })}
           onOpenSupermarketOnboarding={() => navigateTo({ name: 'supermarket-onboarding' })}
           onOpenKitchenOnboarding={() => setIsOnboardingOpen(true)}
           onOpenLogin={() => {
@@ -1408,6 +1414,57 @@ export default function App() {
           onOpenSupermarketOnboarding={() => {
             navigateTo({ name: 'supermarket-onboarding' });
           }}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: AURA REAL ESTATE APP PAGE (/real-estate)
+  // =========================================================================
+  if (currentRoute.name === 'real-estate') {
+    return (
+      <ErrorBoundary>
+        <RealEstateApp
+          isOpen={true}
+          isPageMode={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: AURA LIFESTYLE & TECH APP PAGE (/lifestyle)
+  // =========================================================================
+  if (currentRoute.name === 'lifestyle') {
+    return (
+      <ErrorBoundary>
+        <LifestyleApp
+          isOpen={true}
+          isPageMode={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // =========================================================================
+  // DISTINCT UI: AURA MOTORS & RENTALS APP PAGE (/motors)
+  // =========================================================================
+  if (currentRoute.name === 'motors') {
+    return (
+      <ErrorBoundary>
+        <MotorsApp
+          isOpen={true}
+          isPageMode={true}
+          onClose={() => navigateTo({ name: 'apps' })}
+          currency={currency}
+          onToggleCurrency={handleToggleCurrency}
         />
       </ErrorBoundary>
     );
@@ -1735,6 +1792,18 @@ export default function App() {
         onOpenSupermarket={() => {
           setIsAppsHubOpen(false);
           navigateTo({ name: 'supermarket' });
+        }}
+        onOpenRealEstate={() => {
+          setIsAppsHubOpen(false);
+          navigateTo({ name: 'real-estate' });
+        }}
+        onOpenLifestyle={() => {
+          setIsAppsHubOpen(false);
+          navigateTo({ name: 'lifestyle' });
+        }}
+        onOpenMotors={() => {
+          setIsAppsHubOpen(false);
+          navigateTo({ name: 'motors' });
         }}
         onOpenFood={() => {
           setIsAppsHubOpen(false);

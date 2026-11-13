@@ -6,6 +6,9 @@ export type AppRoute =
   | { name: 'supermarket' }
   | { name: 'supermarket-onboarding' }
   | { name: 'supermarket-management'; supermarketId: string }
+  | { name: 'real-estate' }
+  | { name: 'lifestyle' }
+  | { name: 'motors' }
   | { name: 'admin' }
   | { name: 'restaurant'; restaurantId: string }
   | { name: 'driver'; driverId?: string };
@@ -32,6 +35,18 @@ export function parseRoute(pathname: any, hash: any): AppRoute {
 
   if (cleanPath.startsWith('/rides')) {
     return { name: 'rides' };
+  }
+
+  if (cleanPath.startsWith('/real-estate') || cleanPath.startsWith('/property') || cleanPath.startsWith('/rentals')) {
+    return { name: 'real-estate' };
+  }
+
+  if (cleanPath.startsWith('/lifestyle') || cleanPath.startsWith('/electronics') || cleanPath.startsWith('/fashion') || cleanPath.startsWith('/clothing')) {
+    return { name: 'lifestyle' };
+  }
+
+  if (cleanPath.startsWith('/motors') || cleanPath.startsWith('/cars') || cleanPath.startsWith('/auto')) {
+    return { name: 'motors' };
   }
 
   // Shopping / Supermarket Management portal: /shopping-management/:id or /supermarket-management/:id
@@ -75,6 +90,12 @@ export function navigateTo(route: AppRoute) {
     url = '/apps';
   } else if (route.name === 'rides') {
     url = '/rides';
+  } else if (route.name === 'real-estate') {
+    url = '/real-estate';
+  } else if (route.name === 'lifestyle') {
+    url = '/lifestyle';
+  } else if (route.name === 'motors') {
+    url = '/motors';
   } else if (route.name === 'supermarket') {
     url = '/supermarket';
   } else if (route.name === 'supermarket-onboarding') {

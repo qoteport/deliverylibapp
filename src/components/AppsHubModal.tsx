@@ -12,6 +12,10 @@ import {
   Car,
   Package,
   Pill,
+  Building2,
+  Key,
+  Wrench,
+  Shirt,
   ExternalLink
 } from 'lucide-react';
 
@@ -21,6 +25,9 @@ interface AppsHubModalProps {
   onOpenRides: () => void;
   onOpenSupermarket: () => void;
   onOpenFood: () => void;
+  onOpenRealEstate?: () => void;
+  onOpenLifestyle?: () => void;
+  onOpenMotors?: () => void;
 }
 
 export const AppsHubModal: React.FC<AppsHubModalProps> = ({
@@ -29,6 +36,9 @@ export const AppsHubModal: React.FC<AppsHubModalProps> = ({
   onOpenRides,
   onOpenSupermarket,
   onOpenFood,
+  onOpenRealEstate,
+  onOpenLifestyle,
+  onOpenMotors,
 }) => {
   if (!isOpen) return null;
 
@@ -187,6 +197,114 @@ export const AppsHubModal: React.FC<AppsHubModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* App 4: Real Estate */}
+          {onOpenRealEstate && (
+            <div 
+              onClick={() => {
+                onClose();
+                onOpenRealEstate();
+              }}
+              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 hover:border-sky-500 hover:shadow-md transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-sky-500/20 shrink-0 group-hover:scale-105 transition-transform">
+                    <Building2 className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-sky-600 transition-colors">
+                        Real Estate & Rentals
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200">
+                        Properties
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Find apartments to rent, houses to buy, and verified titled land across Monrovia.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-sky-600 group-hover:text-white text-gray-600 flex items-center justify-center transition-all shrink-0 mt-1">
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* App 5: Lifestyle & Tech */}
+          {onOpenLifestyle && (
+            <div 
+              onClick={() => {
+                onClose();
+                onOpenLifestyle();
+              }}
+              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 hover:border-purple-500 hover:shadow-md transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20 shrink-0 group-hover:scale-105 transition-transform">
+                    <Shirt className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+                        Lifestyle & Tech
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                        Electronics & Fashion
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Smartphones, laptops, solar kits, Liberian country cloth gowns & footwear.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-purple-600 group-hover:text-white text-gray-600 flex items-center justify-center transition-all shrink-0 mt-1">
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* App 6: Motors & Rentals */}
+          {onOpenMotors && (
+            <div 
+              onClick={() => {
+                onClose();
+                onOpenMotors();
+              }}
+              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 hover:border-amber-500 hover:shadow-md transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0 group-hover:scale-105 transition-transform">
+                    <Car className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-amber-600 transition-colors">
+                        Motors, Rentals & Spares
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                        Cars & Kekeh
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Buy clean cars, rent 4x4 SUVs, and order genuine auto & kekeh spare parts.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-amber-600 group-hover:text-white text-gray-600 flex items-center justify-center transition-all shrink-0 mt-1">
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Coming Soon Apps Section */}
           <div className="pt-2">
