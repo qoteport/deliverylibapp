@@ -639,42 +639,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
           )}
         </div>
 
-        {/* ================================================================= */}
-        {/* 6. MERCHANT & STORE MANAGER FOOTER BANNER                         */}
-        {/* ================================================================= */}
-        <div className="p-5 bg-gradient-to-br from-gray-900 to-slate-950 rounded-3xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md border border-gray-800">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 text-[#06C167] text-xs font-black uppercase tracking-wider">
-              <Store className="w-3.5 h-3.5" />
-              <span>Are you a Monrovia Supermarket or Mart Owner?</span>
-            </div>
-            <h4 className="font-black text-sm text-white">Join AURA Shopping Partner Network</h4>
-            <p className="text-xs text-gray-300">
-              List your store inventory, set daily dollar rates, manage delivery orders, and receive direct MoMo settlements.
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {onOpenSupermarketOnboarding && (
-              <button
-                type="button"
-                onClick={onOpenSupermarketOnboarding}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold cursor-pointer transition shadow-md whitespace-nowrap"
-              >
-                Register New Mart &rarr;
-              </button>
-            )}
-            {onOpenStorePortal && (
-              <button
-                type="button"
-                onClick={() => onOpenStorePortal('supermarket_stop_shop')}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold cursor-pointer transition whitespace-nowrap"
-              >
-                Manager Portal
-              </button>
-            )}
-          </div>
-        </div>
 
       </div>
     </div>
