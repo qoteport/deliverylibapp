@@ -1396,7 +1396,7 @@ export default function App() {
           isPageMode={true}
           onClose={() => navigateTo({ name: 'apps' })}
           currency={currency}
-          onToggleCurrency={toggleCurrency}
+          onToggleCurrency={handleToggleCurrency}
           onOrderPlaced={(order) => {
             setOrders((prev) => [order, ...prev]);
             setActiveTrackingOrder(order);
