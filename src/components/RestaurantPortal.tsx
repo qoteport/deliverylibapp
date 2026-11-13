@@ -12,6 +12,7 @@ import { CustomDropdown } from './CustomDropdown';
 import { CustomSelect } from './common/CustomSelect';
 import { saveRestaurantToApi, saveMenuItemToApi, deleteMenuItemFromApi } from '../utils/apiSync';
 import { sanitizeForFirestore } from '../utils/cleanData';
+import { navigateTo } from '../utils/navigation';
 
 interface RestaurantPortalProps {
   restaurant: Restaurant;
@@ -698,9 +699,12 @@ Status: ${orderToCopy.status.toUpperCase()}
             </button>
 
             <button
-              onClick={logout}
-              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer flex items-center gap-1"
-              title="Sign Out"
+              onClick={() => {
+                logout();
+                navigateTo({ name: 'portal' });
+              }}
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              title="Sign Out to Portal Hub"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">Sign Out</span>

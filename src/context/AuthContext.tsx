@@ -180,6 +180,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     signOut(auth).catch(() => {});
     setUser(null);
+    try {
+      localStorage.removeItem('aura_monrovia_auth_user');
+      localStorage.removeItem('aura_active_portal_role');
+      sessionStorage.clear();
+    } catch {}
   };
 
   return (

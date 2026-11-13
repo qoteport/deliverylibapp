@@ -47,6 +47,7 @@ import { doc, updateDoc, setDoc, onSnapshot, collection } from 'firebase/firesto
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { useAuth } from '../context/AuthContext';
 import { saveOrderToApi, saveDriverToApi, updateOrderStatusApi, updateDriverApi } from '../utils/apiSync';
+import { navigateTo } from '../utils/navigation';
 
 const getKitchenStatusInfo = (status: Order['status']) => {
   switch (status) {
@@ -781,13 +782,17 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               <span>{!isDriverVerified ? 'Unverified' : isOnline ? 'Online' : 'Offline'}</span>
             </button>
 
-            {/* Sign Out */}
+            {/* Sign Out to Portal */}
             <button
-              onClick={logout}
-              className="p-1.5 sm:p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors cursor-pointer"
-              title="Sign Out"
+              onClick={() => {
+                logout();
+                navigateTo({ name: 'portal' });
+              }}
+              className="p-1.5 sm:p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Sign Out to Portal Hub"
             >
               <LogOut className="w-4 h-4" />
+              <span className="text-xs font-bold hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>

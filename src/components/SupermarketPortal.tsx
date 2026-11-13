@@ -23,8 +23,11 @@ import {
   TrendingUp,
   Image as ImageIcon,
   Tag,
-  Package
+  Package,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { navigateTo } from '../utils/navigation';
 import { 
   SupermarketStore, 
   SupermarketItem, 
@@ -62,6 +65,7 @@ export const SupermarketPortal: React.FC<SupermarketPortalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'settings'>('inventory');
   const [isOpen, setIsOpen] = useState<boolean>(true);
+  const { logout } = useAuth();
 
   // Load store items from state/localStorage or fallback to preset catalog
   const [items, setItems] = useState<SupermarketItem[]>(() => {
@@ -321,6 +325,19 @@ export const SupermarketPortal: React.FC<SupermarketPortalProps> = ({
             className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             {currency}
+          </button>
+
+          {/* Sign Out to Portal Hub */}
+          <button
+            onClick={() => {
+              logout();
+              navigateTo({ name: 'portal' });
+            }}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            title="Sign Out to Portal Hub"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </header>

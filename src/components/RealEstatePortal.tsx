@@ -21,8 +21,11 @@ import {
   Tag,
   Video,
   Film,
-  Camera
+  Camera,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { navigateTo } from '../utils/navigation';
 import { MediaUploadField } from './MediaUploadField';
 import {
   RealEstateProperty,
@@ -57,6 +60,7 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'listings' | 'inquiries'>('listings');
   const [properties, setProperties] = useState<RealEstateProperty[]>(INITIAL_PROPERTIES);
+  const { logout } = useAuth();
   const [inquiries, setInquiries] = useState<PropertyInquiry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDeal, setFilterDeal] = useState<PropertyDealType | 'all'>('all');
@@ -324,6 +328,19 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
             >
               <Plus className="w-4 h-4" />
               <span>Add Property</span>
+            </button>
+
+            {/* Sign Out to Portal Hub */}
+            <button
+              onClick={() => {
+                logout();
+                navigateTo({ name: 'portal' });
+              }}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Sign Out to Portal Hub"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>

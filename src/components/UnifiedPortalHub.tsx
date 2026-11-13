@@ -20,7 +20,8 @@ import {
   X,
   Wrench,
   Key,
-  ChefHat
+  ChefHat,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Restaurant, DeliveryDriver, SupermarketStore, Currency, AppUser } from '../types';
@@ -351,9 +352,11 @@ export const UnifiedPortalHub: React.FC<UnifiedPortalHubProps> = ({
                 </span>
                 <button
                   onClick={logout}
-                  className="text-emerald-700 hover:text-emerald-900 font-semibold underline text-[11px] ml-1"
+                  className="text-emerald-700 hover:text-red-600 font-bold underline text-[11px] ml-1 flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Sign out of Management Hub"
                 >
-                  Sign Out
+                  <LogOut className="w-3 h-3" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             ) : (

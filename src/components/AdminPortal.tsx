@@ -57,6 +57,7 @@ import {
   FileCode,
   CheckSquare,
   XCircle,
+  LogOut,
   Coins,
   Calculator,
   Gauge,
@@ -98,6 +99,7 @@ import {
 } from '../utils/infobip';
 import { calculateDynamicDeliveryFee, calculateDistanceKm, PRICING_CONFIG, DeliveryFeeBreakdown } from '../utils/pricingEngine';
 import { getUsdToLrdRate, setUsdToLrdRate, subscribeToUsdToLrdRate } from '../utils/currencyRate';
+import { navigateTo } from '../utils/navigation';
 
 interface AdminPortalProps {
   restaurants: Restaurant[];
@@ -1244,11 +1246,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </button>
 
             <button
-              onClick={logout}
-              className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Sign out of Admin Portal"
+              onClick={() => {
+                logout();
+                navigateTo({ name: 'portal' });
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-xs font-bold text-gray-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Sign Out to Portal Hub"
             >
-              <Power className="w-3.5 h-3.5" />
+              <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>

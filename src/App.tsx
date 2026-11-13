@@ -1227,14 +1227,14 @@ export default function App() {
   if (currentRoute.name === 'admin') {
     return (
       <ErrorBoundary>
-        <AdminAuthGuard onReturnHome={() => navigateTo({ name: 'home' })}>
+        <AdminAuthGuard onReturnHome={() => navigateTo({ name: 'portal' })}>
           <AdminPortal
             restaurants={restaurants}
             orders={orders}
             drivers={drivers}
             menuItems={menuItems}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
-            onExitAdmin={() => navigateTo({ name: 'home' })}
+            onExitAdmin={() => navigateTo({ name: 'portal' })}
             onOpenRestaurantPortal={(restaurantId) => navigateTo({ name: 'restaurant', restaurantId })}
             onToggleRestaurantStatus={handleToggleRestaurantStatus}
             onUpdateRestaurant={handleUpdateRestaurant}
@@ -1295,7 +1295,7 @@ export default function App() {
           restaurant={currentRestaurant}
           menuItems={restaurantDishes}
           orders={orders}
-          onExitPortal={() => navigateTo({ name: 'home' })}
+          onExitPortal={() => navigateTo({ name: 'portal' })}
           onUpdateOrderStatus={handleUpdateOrderStatus}
           onAddMenuItem={handleAddMenuItem}
           onDeleteMenuItem={handleDeleteMenuItem}
@@ -1340,7 +1340,7 @@ export default function App() {
         <DriverPortal
           driver={currentDriver}
           orders={orders}
-          onExitPortal={() => navigateTo({ name: 'home' })}
+          onExitPortal={() => navigateTo({ name: 'portal' })}
           onUpdateOrderStatus={handleUpdateOrderStatus}
           onUpdateDriver={handleUpdateDriver}
           onDriverRejectOrder={handleDriverRejectOrder}
