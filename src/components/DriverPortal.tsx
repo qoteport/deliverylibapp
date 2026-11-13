@@ -36,7 +36,8 @@ import {
   Camera,
   User,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Order, DeliveryDriver, Currency, USD_TO_LRD_RATE, MONROVIA_NEIGHBORHOOD_COORDS, Restaurant, RideRequest, RideStatus } from '../types';
 import { MonroviaDeliveryMap } from './MonroviaDeliveryMap';
@@ -309,7 +310,38 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       (r.status === 'accepted' || r.status === 'arriving' || r.status === 'in_transit')
   );
 
+  // Dynamic Pricing Override State for Incoming Requests
+  const [overrideRidePrice, setOverrideRidePrice] = useState(false);
+  const [customRidePriceInput, setCustomRidePriceInput] = useState('');
+  const [overrideOrderPrice, setOverrideOrderPrice] = useState(false);
+  const [customOrderPriceInput, setCustomOrderPriceInput] = useState('');
+
+  // Sync ride price input when offeredRide appears/changes
+  useEffect(() => {
+    if (offeredRide) {
+      const baseFare = offeredRide.fareUsd || 2.50;
+      setCustomRidePriceInput(baseFare.toFixed(2));
+      setOverrideRidePrice(false);
+    }
+  }, [offeredRide?.id]);
+
+  // Sync order delivery fee input when offeredOrder appears/changes
+  useEffect(() => {
+    if (offeredOrder) {
+      const baseFee = offeredOrder.deliveryFee || 2.50;
+      setCustomOrderPriceInput(baseFee.toFixed(2));
+      setOverrideOrderPrice(false);
+    }
+  }, [offeredOrder?.id]);
+
   const handleAcceptRide = async (ride: RideRequest) => {
+    const customFare = overrideRidePrice && parseFloat(customRidePriceInput) > 0
+      ? parseFloat(customRidePriceInput)
+      : undefined;
+
+    const finalFareUsd = customFare !== undefined ? customFare : (ride.fareUsd || 2.50);
+    const finalFareLrd = Math.round(finalFareUsd * USD_TO_LRD_RATE);
+
     const updatedRide: RideRequest = {
       ...ride,
       status: 'accepted',
@@ -324,6 +356,14 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       acceptedAtTimestamp: Date.now(),
       driverEtaMinutes: 3,
       driverLocation: driver.currentLocation,
+      fareUsd: finalFareUsd,
+      fareLrd: finalFareLrd,
+      ...(customFare !== undefined ? {
+        priceOverridden: true,
+        customPriceSetByDriver: true,
+        originalFareUsd: ride.fareUsd,
+        originalFareLrd: ride.fareLrd,
+      } : {}),
     };
     try {
       await updateDoc(doc(db, 'rides', ride.id), sanitizeForFirestore(updatedRide) as any);
@@ -333,7 +373,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
     playOrderAlertSound();
     sendBrowserNotification({
       title: 'Ride Request Accepted! 🛵',
-      body: `You are assigned to passenger ${ride.customerName}. Head to ${ride.pickupAddress}!`,
+      body: `You are assigned to passenger ${ride.customerName}. Head to ${ride.pickupAddress}! Fare: $${finalFareUsd.toFixed(2)} USD`,
       tag: `driver-ride-${ride.id}`,
     });
   };
@@ -534,6 +574,15 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   };
 
   const handleAcceptOffer = async (order: Order) => {
+    const customFee = overrideOrderPrice && parseFloat(customOrderPriceInput) > 0
+      ? parseFloat(customOrderPriceInput)
+      : undefined;
+
+    const originalFee = order.deliveryFee || 2.50;
+    const finalFee = customFee !== undefined ? customFee : originalFee;
+    const diff = finalFee - originalFee;
+    const newTotal = Number(((order.total || 0) + diff).toFixed(2));
+
     const driverDetails: Partial<Order> = {
       assignedDriverId: driver.id,
       assignedDriverName: driver.name,
@@ -541,6 +590,12 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       driverVehicle: driver.vehicleType,
       driverLocation: driver.currentLocation,
       delegationStatus: 'heading_to_restaurant',
+      deliveryFee: finalFee,
+      total: newTotal,
+      ...(customFee !== undefined ? {
+        priceOverridden: true,
+        originalPrice: originalFee,
+      } : {}),
     };
 
     const updatedOrder: Order = {
@@ -573,6 +628,12 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         driverLocation: driver.currentLocation,
         delegationStatus: 'heading_to_restaurant',
         status: 'preparing',
+        deliveryFee: finalFee,
+        total: newTotal,
+        ...(customFee !== undefined ? {
+          priceOverridden: true,
+          originalPrice: originalFee,
+        } : {}),
       });
       await updateDoc(doc(db, 'drivers', driver.id), {
         status: 'busy',
@@ -584,7 +645,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
     sendBrowserNotification({
       title: `✅ Accepted Delivery #${order.id}`,
-      body: `Head to ${order.restaurantName || 'the kitchen'} for pickup.`,
+      body: `Head to ${order.restaurantName || 'the kitchen'} for pickup. Fee: $${finalFee.toFixed(2)} USD`,
       tag: `driver-accept-${order.id}`,
     });
   };
@@ -944,11 +1005,88 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
             </div>
 
+            {/* Rider Dynamic Pricing Override Toggle & Inputs */}
+            <div className="bg-black/20 border border-white/20 rounded-2xl p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-emerald-200" />
+                  <span className="text-xs font-bold text-white">Set My Own Price (Override Dynamic Fare)</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={overrideRidePrice}
+                    onChange={(e) => setOverrideRidePrice(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-white/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white peer-checked:after:bg-[#048747]"></div>
+                </label>
+              </div>
+
+              {overrideRidePrice ? (
+                <div className="space-y-2.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="flex items-center justify-between text-[11px] text-white/80">
+                    <span>Enter your custom trip rate:</span>
+                    <span className="font-mono text-emerald-200 font-bold">Dynamic rate: ${offeredRide.fareUsd?.toFixed(2) || '2.50'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-black text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0.5"
+                        value={customRidePriceInput}
+                        onChange={(e) => setCustomRidePriceInput(e.target.value)}
+                        placeholder={(offeredRide.fareUsd || 2.50).toFixed(2)}
+                        className="w-full pl-7 pr-3 py-2 bg-white text-gray-900 rounded-xl font-mono font-extrabold text-sm focus:outline-none focus:ring-2 focus:ring-white shadow-inner"
+                      />
+                    </div>
+                    <div className="text-right text-[11px] font-bold text-white shrink-0 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                      ≈ L${Math.round((parseFloat(customRidePriceInput) || (offeredRide.fareUsd || 2.5)) * USD_TO_LRD_RATE).toLocaleString()} LRD
+                    </div>
+                  </div>
+
+                  {/* Quick increment buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-white/70 font-semibold uppercase">Quick Adjust:</span>
+                    {[0.5, 1.0, 2.0].map((delta) => (
+                      <button
+                        key={delta}
+                        type="button"
+                        onClick={() => {
+                          const current = parseFloat(customRidePriceInput) || (offeredRide.fareUsd || 2.5);
+                          setCustomRidePriceInput((current + delta).toFixed(2));
+                        }}
+                        className="px-2.5 py-1 bg-white/20 hover:bg-white/30 active:scale-95 text-white font-mono text-[11px] font-bold rounded-lg transition cursor-pointer"
+                      >
+                        +${delta.toFixed(2)}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCustomRidePriceInput((offeredRide.fareUsd || 2.50).toFixed(2))}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 text-[11px] font-medium rounded-lg transition cursor-pointer ml-auto"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-white/70">
+                  Dynamic pricing calculates fare based on trip distance & vehicle. Toggle on to set your own price for this ride.
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center justify-between pt-1">
               <div>
-                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">Trip Fare:</div>
+                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">
+                  {overrideRidePrice ? 'Custom Overridden Fare:' : 'Trip Fare (Dynamic):'}
+                </div>
                 <div className="font-mono text-2xl font-black text-white">
-                  +${offeredRide.fareUsd?.toFixed(2) || '2.50'} <span className="text-xs font-normal opacity-80">(L${offeredRide.fareLrd || Math.round((offeredRide.fareUsd || 2.5) * USD_TO_LRD_RATE)})</span>
+                  +${overrideRidePrice && parseFloat(customRidePriceInput) > 0 ? parseFloat(customRidePriceInput).toFixed(2) : (offeredRide.fareUsd?.toFixed(2) || '2.50')} <span className="text-xs font-normal opacity-80">(L${Math.round((overrideRidePrice && parseFloat(customRidePriceInput) > 0 ? parseFloat(customRidePriceInput) : (offeredRide.fareUsd || 2.5)) * USD_TO_LRD_RATE).toLocaleString()})</span>
                 </div>
               </div>
 
@@ -1091,11 +1229,88 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
             </div>
 
+            {/* Courier Dynamic Delivery Fee Override Toggle & Inputs */}
+            <div className="bg-black/20 border border-white/20 rounded-2xl p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-emerald-200" />
+                  <span className="text-xs font-bold text-white">Set My Own Price (Override Dynamic Fee)</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={overrideOrderPrice}
+                    onChange={(e) => setOverrideOrderPrice(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-white/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white peer-checked:after:bg-[#048747]"></div>
+                </label>
+              </div>
+
+              {overrideOrderPrice ? (
+                <div className="space-y-2.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="flex items-center justify-between text-[11px] text-white/80">
+                    <span>Enter your delivery dispatch fee:</span>
+                    <span className="font-mono text-emerald-200 font-bold">Dynamic fee: ${Number(offeredOrder.deliveryFee || 2.50).toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-black text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0.5"
+                        value={customOrderPriceInput}
+                        onChange={(e) => setCustomOrderPriceInput(e.target.value)}
+                        placeholder={Number(offeredOrder.deliveryFee || 2.50).toFixed(2)}
+                        className="w-full pl-7 pr-3 py-2 bg-white text-gray-900 rounded-xl font-mono font-extrabold text-sm focus:outline-none focus:ring-2 focus:ring-white shadow-inner"
+                      />
+                    </div>
+                    <div className="text-right text-[11px] font-bold text-white shrink-0 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                      ≈ L${Math.round((parseFloat(customOrderPriceInput) || Number(offeredOrder.deliveryFee || 2.5)) * USD_TO_LRD_RATE).toLocaleString()} LRD
+                    </div>
+                  </div>
+
+                  {/* Quick increment buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-white/70 font-semibold uppercase">Quick Adjust:</span>
+                    {[0.5, 1.0, 2.0].map((delta) => (
+                      <button
+                        key={delta}
+                        type="button"
+                        onClick={() => {
+                          const current = parseFloat(customOrderPriceInput) || Number(offeredOrder.deliveryFee || 2.5);
+                          setCustomOrderPriceInput((current + delta).toFixed(2));
+                        }}
+                        className="px-2.5 py-1 bg-white/20 hover:bg-white/30 active:scale-95 text-white font-mono text-[11px] font-bold rounded-lg transition cursor-pointer"
+                      >
+                        +${delta.toFixed(2)}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCustomOrderPriceInput(Number(offeredOrder.deliveryFee || 2.50).toFixed(2))}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 text-[11px] font-medium rounded-lg transition cursor-pointer ml-auto"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-white/70">
+                  Dynamic pricing assigns courier fee by zone. Toggle on to set your own rate for this delivery.
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center justify-between pt-1">
               <div>
-                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">Earnings:</div>
+                <div className="text-[11px] text-white/90 font-bold uppercase tracking-wider">
+                  {overrideOrderPrice ? 'Custom Overridden Fee:' : 'Earnings (Delivery Fee):'}
+                </div>
                 <div className="font-mono text-2xl font-black text-white">
-                  +{formatMoney(offeredOrder.deliveryFee || 2.5)}
+                  +${overrideOrderPrice && parseFloat(customOrderPriceInput) > 0 ? parseFloat(customOrderPriceInput).toFixed(2) : Number(offeredOrder.deliveryFee || 2.50).toFixed(2)} <span className="text-xs font-normal opacity-80">(L${Math.round((overrideOrderPrice && parseFloat(customOrderPriceInput) > 0 ? parseFloat(customOrderPriceInput) : Number(offeredOrder.deliveryFee || 2.50)) * USD_TO_LRD_RATE).toLocaleString()})</span>
                 </div>
               </div>
 

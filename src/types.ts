@@ -331,6 +331,8 @@ export interface Order {
   driverLocation?: LocationCoords;
   delegationStatus?: 'unassigned' | 'offered' | 'accepted' | 'rejected' | 'heading_to_restaurant' | 'at_restaurant' | 'out_for_delivery' | 'delivered';
   rejectedDriverIds?: string[];
+  priceOverridden?: boolean;
+  originalPrice?: number;
   // Cancellation Fields
   cancelledBy?: 'customer' | 'restaurant' | 'admin';
   cancellationReason?: string;
@@ -373,6 +375,10 @@ export interface RideRequest {
   vehiclePreference: RideVehicleType;
   fareUsd?: number;
   fareLrd?: number;
+  priceOverridden?: boolean;
+  originalFareUsd?: number;
+  originalFareLrd?: number;
+  customPriceSetByDriver?: boolean;
   nearbyDriversFound?: number;
   assignedDriverId?: string;
   assignedDriverName?: string;

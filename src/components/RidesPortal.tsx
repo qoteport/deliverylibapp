@@ -889,7 +889,14 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
               <span className="truncate">To: {activeRide.destinationAddress}</span>
             </div>
             <div className="pt-1 border-t border-gray-200 flex items-center justify-between text-[11px] font-bold text-gray-500">
-              <span>Fare: ${activeRide.fareUsd?.toFixed(2)} USD</span>
+              <span className="flex items-center gap-1.5">
+                <span>Fare: ${activeRide.fareUsd?.toFixed(2)} USD</span>
+                {activeRide.priceOverridden && (
+                  <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                    Rider Agreed
+                  </span>
+                )}
+              </span>
               <span>Vehicle: {activeRide.vehiclePreference}</span>
             </div>
           </div>
@@ -962,9 +969,16 @@ export const RidesPortal: React.FC<RidesPortalProps> = ({
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
                 Matched Courier Details
               </span>
-              <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span>{(activeRide.driverRating || 4.9).toFixed(1)} Rating</span>
+              <div className="flex items-center gap-2">
+                {activeRide.priceOverridden && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                    Agreed Fare: ${activeRide.fareUsd?.toFixed(2)}
+                  </span>
+                )}
+                <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span>{(activeRide.driverRating || 4.9).toFixed(1)} Rating</span>
+                </div>
               </div>
             </div>
 
