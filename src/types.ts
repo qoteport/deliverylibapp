@@ -497,9 +497,12 @@ export interface LifestyleItem {
   category: LifestyleCategory;
   vendorName: string;
   vendorPhone: string;
-  vendorNeighborhood: string;
+  vendorNeighborhood?: string;
+  vendorLocation?: string;
+  brand?: string;
   priceUsd: number;
   originalPriceUsd?: number;
+  priceLrd?: number;
   condition: 'Brand New' | 'Certified Used' | 'Handcrafted';
   rating: number;
   reviewsCount: number;
@@ -507,12 +510,16 @@ export interface LifestyleItem {
   specifications: Record<string, string>;
   sizes?: string[];
   colors?: string[];
+  availableSizes?: string[];
+  availableColors?: string[];
+  warranty?: string;
   image?: string;
   imageUrl?: string;
   images?: string[];
   videoUrl?: string;
   inStock: boolean;
   featured?: boolean;
+  tags?: string[];
 }
 
 export interface LifestyleCartItem {
@@ -520,6 +527,37 @@ export interface LifestyleCartItem {
   quantity: number;
   selectedSize?: string;
   selectedColor?: string;
+}
+
+export interface LifestyleOrder {
+  id: string;
+  orderNumber?: string;
+  items: LifestyleCartItem[];
+  totalUsd: number;
+  totalLrd: number;
+  currency: 'USD' | 'LRD';
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryNotes?: string;
+  paymentMethod?: string;
+  status: 'pending' | 'confirmed' | 'fulfilled' | 'cancelled';
+  vendorName?: string;
+  vendorPhone?: string;
+  vendorLocation?: string;
+  createdAt: string;
+  fulfilledAt?: string;
+}
+
+export interface LifestyleMessage {
+  id: string;
+  orderId: string;
+  senderRole: 'customer' | 'vendor';
+  senderName: string;
+  vendorName: string;
+  text: string;
+  createdAt: string;
+  timestamp?: any;
 }
 
 // ============================================================================
