@@ -20,9 +20,6 @@ import {
   Star,
   SlidersHorizontal,
   DollarSign,
-  Truck,
-  CreditCard,
-  PlusCircle,
   TrendingUp,
   Tag
 } from 'lucide-react';
@@ -242,55 +239,11 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </div>
       )}
 
-      {/* Scrollable Content */}
-      <div className="overflow-y-auto flex-1 p-3.5 sm:p-6 space-y-6">
-        
-        {/* ================================================================= */}
-        {/* 1. HERO BANNER: MONROVIA SUPERMARKET & EXPRESS MARTS              */}
-        {/* ================================================================= */}
-        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-950 via-[#063826] to-slate-950 text-white p-5 sm:p-8 shadow-xl border border-emerald-900/60">
-          {/* Subtle background glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-60 h-60 bg-[#06C167]/10 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] sm:text-xs font-black tracking-wider uppercase">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>Monrovia Express Mart • 25–40 Min Dispatch</span>
-            </div>
-
-            <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-              Monrovia Supermarkets &amp; Fresh Daily Groceries
-            </h2>
-
-            <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-medium">
-              Order pantry staples, 25kg rice sacks, dairy, chilled drinks, and household essentials from Stop &amp; Shop, Era, Boulevard, and Monoprix. Delivered to your gate or door in Monrovia.
-            </p>
-
-            {/* Trust Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[10px] sm:text-[11px] font-bold text-emerald-200">
-              <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-xs px-2.5 py-1.5 rounded-xl border border-white/10">
-                <Truck className="w-3.5 h-3.5 text-[#06C167] shrink-0" />
-                <span>Express Courier</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-xs px-2.5 py-1.5 rounded-xl border border-white/10">
-                <CreditCard className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>MTN MoMo &amp; Orange</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-xs px-2.5 py-1.5 rounded-xl border border-white/10">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span>Sealed Products</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white/5 backdrop-blur-xs px-2.5 py-1.5 rounded-xl border border-white/10">
-                <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                <span>All Monrovia Zones</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Content Section */}
+      <div className={`${isPageMode ? '' : 'overflow-y-auto p-3.5 sm:p-6'} flex-1 space-y-6`}>
 
         {/* ================================================================= */}
-        {/* 2. SEARCH BAR & QUICK FILTERS                                     */}
+        {/* 1. SEARCH BAR & QUICK FILTERS                                     */}
         {/* ================================================================= */}
         <div className="space-y-2.5">
           <div className="flex flex-col sm:flex-row gap-2.5">
@@ -356,7 +309,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </div>
 
         {/* ================================================================= */}
-        {/* 3. STORE SELECTOR CAROUSEL                                        */}
+        {/* 2. STORE SELECTOR CAROUSEL                                        */}
         {/* ================================================================= */}
         <div ref={storesRef} className="space-y-2.5">
           <div className="flex items-center justify-between">
@@ -364,24 +317,14 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
               <Store className="w-3.5 h-3.5 text-[#059669]" />
               <span>Verified Monrovia Supermarkets ({stores.length})</span>
             </div>
-            {onOpenSupermarketOnboarding && (
-              <button
-                type="button"
-                onClick={onOpenSupermarketOnboarding}
-                className="text-xs font-bold text-[#059669] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Register Store</span>
-              </button>
-            )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="flex flex-nowrap overflow-x-auto no-scrollbar gap-2.5 sm:grid sm:grid-cols-5 py-0.5">
             {/* All Supermarkets Multi-store Card */}
             <button
               type="button"
               onClick={() => setSelectedStoreId('all')}
-              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between shrink-0 w-[155px] sm:w-auto ${
                 selectedStoreId === 'all'
                   ? 'border-[#06C167] bg-[#E8F8EE] shadow-sm ring-2 ring-[#06C167]/30'
                   : 'border-gray-200 bg-white hover:bg-gray-50'
@@ -406,7 +349,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                   key={sm.id}
                   type="button"
                   onClick={() => setSelectedStoreId(sm.id)}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between shrink-0 w-[155px] sm:w-auto ${
                     isSelected
                       ? 'border-[#06C167] bg-[#E8F8EE] shadow-sm ring-2 ring-[#06C167]/30'
                       : 'border-gray-200 bg-white hover:bg-gray-50'
@@ -932,8 +875,8 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6 pb-28 sm:pb-12 flex flex-col">
-          <div className="bg-[#FAFAFA] rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
+        <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 pb-28 sm:pb-12 flex flex-col">
+          <div className="w-full flex-1 flex flex-col">
             {catalogBody}
           </div>
         </main>
