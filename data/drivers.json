@@ -1,0 +1,26 @@
+[
+  {
+    "plateNumber": "RL-MB-3703",
+    "isVerified": true,
+    "verificationStatus": "verified",
+    "activeOrderId": null,
+    "vehicleType": "Motorbike",
+    "totalDeliveries": 1,
+    "baseZone": "Sinkor (Tubman Blvd)",
+    "rating": 5,
+    "driverPin": "1914",
+    "currentLocation": {
+      "lat": 6.2907,
+      "lng": -10.7818
+    },
+    "momoNumber": "0770400339",
+    "createdAt": "2026-10-07T01:56:02.785Z",
+    "earningsTodayUsd": 2,
+    "status": "available",
+    "phone": "0770400339",
+    "name": "John Flomo",
+    "isOnline": true,
+    "momoProvider": "orange",
+    "id": "driver-162785"
+  }
+]

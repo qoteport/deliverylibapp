@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Phone, 
@@ -15,13 +15,21 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Restaurant, DeliveryDriver, AppUser, SupermarketStore } from '../types';
 import { SUPERMARKETS } from '../data/supermarketData';
 import { getCustomerMemory, saveCustomerMemory } from '../utils/customerMemory';
 import { sendTwilioSms } from '../utils/twilio';
+import { 
+  normalizeLiberianPhoneNumber, 
+  detectLiberianCarrier, 
+  formatAsUserTypes,
+  LiberianCarrierInfo 
+} from '../utils/phoneUtils';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -74,15 +82,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [loginShowPassword, setLoginShowPassword] = useState(false);
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState<string>('');
-  const [enteredOtp, setEnteredOtp] = useState<string>('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '']);
+
+  // Segmented OTP input refs
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Staff Portal Specific State
   const [kitchenPhoneInput, setKitchenPhoneInput] = useState('');
   const [kitchenPinInput, setKitchenPinInput] = useState('');
   const [driverPhoneInput, setDriverPhoneInput] = useState('');
   const [driverPinInput, setDriverPinInput] = useState('');
-  const [staffPasswordInput, setStaffPasswordInput] = useState('');
-  const [useStaffPasswordMode, setUseStaffPasswordMode] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -99,6 +108,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setShowStaffLogin(false);
       setKitchenPinInput('');
       setDriverPinInput('');
+      setOtpDigits(['', '', '', '']);
     }
   }, [isOpen, initialMode]);
 
@@ -165,7 +175,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const liveSupermarketMatch = supermarketPhoneInput ? findMatchingSupermarket(supermarketPhoneInput) : undefined;
+  const liveKitchenMatch = kitchenPhoneInput.length >= 6 ? findMatchingRestaurant(kitchenPhoneInput) : null;
+  const liveDriverMatch = driverPhoneInput.length >= 6 ? findMatchingDriver(driverPhoneInput) : null;
 
+  // Phone input formatting wrappers
+  const handlePhoneChange = (val: string) => {
+    setPhoneNumber(formatAsUserTypes(val));
+  };
+  const handleKitchenPhoneChange = (val: string) => {
+    setKitchenPhoneInput(formatAsUserTypes(val));
+  };
+  const handleSupermarketPhoneChange = (val: string) => {
+    setSupermarketPhoneInput(formatAsUserTypes(val));
+  };
+  const handleDriverPhoneChange = (val: string) => {
+    setDriverPhoneInput(formatAsUserTypes(val));
+  };
+
+  // Render carrier badge helper
+  const renderCarrierBadge = (phoneStr: string) => {
+    const carrier = detectLiberianCarrier(phoneStr);
+    if (!carrier) return null;
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${carrier.badgeBg} ${carrier.badgeText} ${carrier.badgeBorder} animate-fade-in`}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: carrier.accentColor }} />
+        <span>{carrier.shortName}</span>
+      </span>
+    );
+  };
+
+  // Supermarket staff login
   const handleSupermarketStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -206,8 +245,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // 1. REGISTRATION SUBMIT:
-  // User enters phone and password. Tries sending OTP. If OTP fails, continue silently!
+  // 1. REGISTRATION SUBMIT
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -228,7 +266,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setIsLoading(true);
 
-    // Try sending OTP
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(randomOtp);
 
@@ -242,14 +279,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       otpSent = false;
     }
 
-    // If OTP succeeded, show OTP step with option to complete
     if (otpSent) {
       setIsLoading(false);
       setIsOtpStep(true);
       return;
     }
 
-    // If OTP failed or no SMS gateway, continue silently!
+    // If OTP failed or no SMS gateway configured, save memory and sign in directly
     saveCustomerMemory({
       phone: rawPhone,
       name: rawName,
@@ -265,8 +301,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // 2. LOGIN SUBMIT:
-  // User enters phone. Tries sending OTP. If OTP sending fails, say OTP failed and show password/PIN input.
+  // 2. LOGIN WITH PHONE SUBMIT (Attempts OTP, falls back to password)
   const handleLoginPhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -280,11 +315,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setIsLoading(true);
 
-    // Check if phone matches restaurant or driver for custom notice
     const matchedRest = findMatchingRestaurant(rawPhone);
     const matchedDriver = findMatchingDriver(rawPhone);
 
-    // Try sending OTP
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(randomOtp);
 
@@ -303,19 +336,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (otpSent) {
       setIsOtpStep(true);
     } else {
-      // If OTP sending fails, prompt for PIN / password
       if (matchedDriver) {
-        setInfoMsg(`OTP SMS failed. Enter your Security PIN for rider ${matchedDriver.name} to sign in.`);
+        setInfoMsg(`OTP SMS unavailable. Enter Security PIN for rider ${matchedDriver.name} to sign in.`);
       } else if (matchedRest) {
-        setInfoMsg(`OTP SMS failed. Enter your Kitchen Security PIN for ${matchedRest.name} to sign in.`);
+        setInfoMsg(`OTP SMS unavailable. Enter Kitchen Security PIN for ${matchedRest.name} to sign in.`);
       } else {
-        setInfoMsg('OTP SMS could not be sent to your phone. Please enter your password to sign in.');
+        setInfoMsg('Enter your password to sign in to your AURA account.');
       }
       setLoginShowPassword(true);
     }
   };
 
-  // 3. LOGIN WITH PASSWORD / PIN SUBMIT:
+  // 3. LOGIN WITH PASSWORD / PIN SUBMIT
   const handleLoginPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -438,19 +470,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // 4. VERIFY OTP SUBMIT (if OTP did arrive):
+  // 4. VERIFY OTP SUBMIT
   const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (enteredOtp.trim() !== generatedOtp.trim()) {
+    const fullEnteredOtp = otpDigits.join('');
+    if (fullEnteredOtp.length !== 4 || fullEnteredOtp !== generatedOtp.trim()) {
       setErrorMsg('Invalid verification code. Please check your SMS or enter your password / PIN.');
       return;
     }
 
     setIsLoading(true);
 
-    // If phone matches restaurant
     const matchedRest = findMatchingRestaurant(phoneNumber);
     if (matchedRest) {
       const restOwnerUser: AppUser = {
@@ -469,7 +501,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // If phone matches driver
     const matchedDriver = findMatchingDriver(phoneNumber);
     if (matchedDriver) {
       const driverUser: AppUser = {
@@ -489,7 +520,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Regular customer login
     saveCustomerMemory({
       phone: phoneNumber,
       name: customerName || 'Monrovia Foodie',
@@ -511,7 +541,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // 5. KITCHEN STAFF LOGIN HANDLER:
+  // OTP segmented input handler
+  const handleOtpDigitChange = (index: number, val: string) => {
+    const clean = val.replace(/[^0-9]/g, '');
+    if (clean.length > 1) {
+      // User pasted multiple digits
+      const digits = clean.slice(0, 4).split('');
+      const updated = [...otpDigits];
+      digits.forEach((d, i) => {
+        if (i < 4) updated[i] = d;
+      });
+      setOtpDigits(updated);
+      const nextIdx = Math.min(3, digits.length);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    const updated = [...otpDigits];
+    updated[index] = clean;
+    setOtpDigits(updated);
+
+    if (clean && index < 3) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // 5. KITCHEN STAFF LOGIN HANDLER
   const handleKitchenStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -552,10 +613,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    setErrorMsg(`No restaurant found attached to "${rawPhone}". Please ensure this number is authorized.`);
+    setErrorMsg(`No restaurant found attached to "${rawPhone}". Please ensure this number is registered.`);
   };
 
-  // 6. COURIER DRIVER LOGIN HANDLER:
+  // 6. COURIER DRIVER LOGIN HANDLER
   const handleDriverStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -600,9 +661,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg(`No courier account found for "${rawPhone}". Register as a rider below.`);
   };
 
-  const liveKitchenMatch = kitchenPhoneInput.length >= 6 ? findMatchingRestaurant(kitchenPhoneInput) : null;
-  const liveDriverMatch = driverPhoneInput.length >= 6 ? findMatchingDriver(driverPhoneInput) : null;
-
   return (
     <div 
       className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-stretch sm:justify-end p-0 animate-overlay-fade"
@@ -615,10 +673,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div 
           onClick={onClose}
           className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 sm:hidden shrink-0 cursor-pointer hover:bg-gray-300 transition-colors" 
-          title="Swipe down or tap to minimize"
+          title="Swipe down or tap to close"
         />
 
-        {/* Modal Header */}
+        {/* Header */}
         <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-black text-[#111827]">
@@ -632,11 +690,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </h2>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
               {showStaffLogin 
-                ? 'Kitchen Managers & Delivery Couriers' 
+                ? 'Kitchen Managers, Supermarkets & Delivery Couriers' 
                 : isOtpStep 
-                  ? `Enter the code sent to ${phoneNumber}`
+                  ? `Enter the 4-digit code sent to ${phoneNumber}`
                   : authMode === 'register' 
-                    ? 'Enter your phone number and password to register' 
+                    ? 'Enter your Liberian phone number and password' 
                     : loginShowPassword 
                       ? 'Enter your password to sign in' 
                       : 'Enter your phone number to sign in'}
@@ -663,7 +721,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
-          {/* Info / OTP Notice */}
+          {/* Info Notice */}
           {infoMsg && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-semibold flex items-start gap-1.5 animate-in fade-in">
               <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
@@ -702,7 +760,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }`}
                 >
                   <Store className="w-3.5 h-3.5" />
-                  <span>Shopping</span>
+                  <span>Market</span>
                 </button>
 
                 <button
@@ -720,6 +778,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               </div>
 
+              {/* KITCHEN FORM */}
               {staffSubTab === 'kitchen' && (
                 <form onSubmit={handleKitchenStaffLogin} className="space-y-4">
                   <div className="space-y-1.5">
@@ -728,14 +787,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Phone className="w-3.5 h-3.5 text-[#FF4B26]" />
                         <span>Staff Phone Number *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                      {renderCarrierBadge(kitchenPhoneInput)}
                     </label>
                     <input
                       type="tel"
                       required
                       value={kitchenPhoneInput}
-                      onChange={(e) => setKitchenPhoneInput(e.target.value)}
-                      placeholder="e.g. 0886 554 321"
+                      onChange={(e) => handleKitchenPhoneChange(e.target.value)}
+                      placeholder="e.g. 0770 554 321 or 0886 554 321"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                       autoFocus
                     />
@@ -747,7 +806,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Lock className="w-3.5 h-3.5 text-[#FF4B26]" />
                         <span>6-Digit Kitchen Security PIN *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Set during registration</span>
+                      <span className="text-[10px] text-gray-400">Default: 123456</span>
                     </label>
                     <input
                       type="password"
@@ -761,7 +820,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   {liveKitchenMatch && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <div>
@@ -773,15 +832,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   )}
 
+                  {/* Kitchen Demo Fill Button */}
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = restaurants[0];
+                        setKitchenPhoneInput(target?.phone || '0770 554 321');
+                        setKitchenPinInput(target?.kitchenPin || '123456');
+                      }}
+                      className="text-[11px] text-[#FF4B26] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Quick Demo: Auto-fill Kitchen Credentials</span>
+                    </button>
+                  </div>
+
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer"
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF8400] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer active:scale-98 transition-all"
                   >
                     <span>Launch Kitchen Portal &rarr;</span>
                   </button>
                 </form>
               )}
 
+              {/* SUPERMARKET FORM */}
               {staffSubTab === 'supermarket' && (
                 <form onSubmit={handleSupermarketStaffLogin} className="space-y-4">
                   <div className="space-y-1.5">
@@ -790,14 +866,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Phone className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Store Phone Number *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                      {renderCarrierBadge(supermarketPhoneInput)}
                     </label>
                     <input
                       type="tel"
                       required
                       value={supermarketPhoneInput}
-                      onChange={(e) => setSupermarketPhoneInput(e.target.value)}
-                      placeholder="e.g. 0886 112 233"
+                      onChange={(e) => handleSupermarketPhoneChange(e.target.value)}
+                      placeholder="e.g. 0770 123 456 or 0886 112 233"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-emerald-600"
                       autoFocus
                     />
@@ -809,7 +885,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Lock className="w-3.5 h-3.5 text-emerald-600" />
                         <span>6-Digit Manager Security PIN *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Set during registration</span>
+                      <span className="text-[10px] text-gray-400">Default: 123456</span>
                     </label>
                     <input
                       type="password"
@@ -823,7 +899,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   {liveSupermarketMatch && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <div>
@@ -835,69 +911,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   )}
 
-                  {/* Quick Demo Store Selector */}
-                  <div className="pt-1">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">
-                      Quick Demo Store Managers:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSupermarketPhoneInput('+231 77 012 3456');
-                          setSupermarketPinInput('123456');
-                        }}
-                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
-                      >
-                        Stop &amp; Shop (Sinkor)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSupermarketPhoneInput('+231 77 023 4567');
-                          setSupermarketPinInput('123456');
-                        }}
-                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
-                      >
-                        Boulevard Supermarket
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSupermarketPhoneInput('+231 77 034 5678');
-                          setSupermarketPinInput('123456');
-                        }}
-                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-lg border border-emerald-200 transition"
-                      >
-                        Abi Jaoudi
-                      </button>
-                    </div>
+                  {/* Supermarket Demo Fill Button */}
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = supermarkets[0] || SUPERMARKETS[0];
+                        setSupermarketPhoneInput(target?.phone || '+231 77 012 3456');
+                        setSupermarketPinInput(target?.managerPin || '123456');
+                      }}
+                      className="text-[11px] text-emerald-700 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Quick Demo: Stop &amp; Shop Manager</span>
+                    </button>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer hover:brightness-105 active:scale-98 transition-all"
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer active:scale-98 transition-all"
                   >
-                    <span>Launch Shopping Store Portal &rarr;</span>
+                    <span>Launch Supermarket Portal &rarr;</span>
                   </button>
                 </form>
               )}
 
+              {/* DRIVER FORM */}
               {staffSubTab === 'driver' && (
                 <form onSubmit={handleDriverStaffLogin} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="font-bold text-gray-700 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Rider Phone Number *</span>
+                        <Bike className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Registered Courier Phone *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                      {renderCarrierBadge(driverPhoneInput)}
                     </label>
                     <input
                       type="tel"
                       required
                       value={driverPhoneInput}
-                      onChange={(e) => setDriverPhoneInput(e.target.value)}
+                      onChange={(e) => handleDriverPhoneChange(e.target.value)}
                       placeholder="e.g. 0886 991 223"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-blue-600"
                       autoFocus
@@ -910,7 +964,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Lock className="w-3.5 h-3.5 text-blue-600" />
                         <span>Rider Security PIN *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">4 to 6 digits</span>
+                      <span className="text-[10px] text-gray-400">Default: 1234</span>
                     </label>
                     <input
                       type="password"
@@ -924,7 +978,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   {liveDriverMatch && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                         <div>
@@ -935,6 +989,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <span className="text-[10px] font-extrabold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">Verified</span>
                     </div>
                   )}
+
+                  {/* Rider Demo Fill Button */}
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = drivers[0];
+                        setDriverPhoneInput(target?.phone || '+231 88 699 1223');
+                        setDriverPinInput(target?.driverPin || '1234');
+                      }}
+                      className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Quick Demo: Courier Emmanuel Kollie</span>
+                    </button>
+                  </div>
 
                   <button
                     type="submit"
@@ -990,29 +1060,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           ) : isOtpStep ? (
             /* ============================================================ */
-            /* 2. OTP VERIFICATION STEP (ONLY IF SMS WAS DELIVERED)         */
+            /* 2. OTP SEGMENTED DIGIT BOXES                                 */
             /* ============================================================ */
             <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-center text-gray-600">
                 <span>Enter the 4-digit code sent to <strong>{phoneNumber}</strong></span>
+                <div className="mt-1 flex justify-center">{renderCarrierBadge(phoneNumber)}</div>
               </div>
 
-              <div className="space-y-1.5 text-center">
-                <input
-                  type="text"
-                  maxLength={4}
-                  value={enteredOtp}
-                  onChange={(e) => setEnteredOtp(e.target.value)}
-                  placeholder="••••"
-                  className="w-40 mx-auto px-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-[#FF4B26] rounded-2xl text-center text-2xl font-mono font-black tracking-widest text-[#FF4B26] focus:outline-none"
-                  autoFocus
-                />
+              <div className="flex justify-center gap-3 py-2">
+                {[0, 1, 2, 3].map((idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => { otpInputRefs.current[idx] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={otpDigits[idx]}
+                    onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className="w-12 h-14 bg-gray-50 border-2 border-gray-200 focus:border-[#FF4B26] focus:bg-white rounded-2xl text-center text-2xl font-mono font-black text-[#FF4B26] focus:outline-none transition-all shadow-xs"
+                    autoFocus={idx === 0}
+                  />
+                ))}
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF4722] to-[#FF7A00] text-white text-xs uppercase tracking-wider font-extrabold rounded-2xl shadow-md cursor-pointer active:scale-98 transition-all"
               >
                 {isLoading ? 'Verifying...' : 'Verify Code & Sign In'}
               </button>
@@ -1026,7 +1102,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }}
                   className="text-xs text-gray-500 hover:text-[#FF4B26] font-bold cursor-pointer"
                 >
-                  Didn't get code? Sign in with Password &rarr;
+                  Didn't receive SMS? Sign in with Password &rarr;
                 </button>
               </div>
             </form>
@@ -1069,6 +1145,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </button>
               </div>
 
+              {/* Quick Demo Customer Pill */}
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Test Credentials:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoneNumber('0886 554 123');
+                    setPassword('aura2026');
+                    setCustomerName('Koffa Davies');
+                  }}
+                  className="text-[10px] text-[#FF4B26] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Fill Demo Customer</span>
+                </button>
+              </div>
+
               {/* 3A. SIGN IN FORM */}
               {authMode === 'login' && (
                 <form 
@@ -1081,20 +1176,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Phone className="w-3.5 h-3.5 text-[#FF4B26]" />
                         <span>Phone Number *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                      {renderCarrierBadge(phoneNumber)}
                     </label>
                     <input
                       type="tel"
                       required
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="e.g. 0886 554 123"
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      placeholder="e.g. 0886 554 123 or 0770 123 456"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#FF4B26]"
                       autoFocus={!loginShowPassword}
                     />
                   </div>
 
-                  {/* Password Input (Visible if OTP failed or user switched) */}
+                  {/* Password Input */}
                   {loginShowPassword && (
                     <div className="space-y-1.5 animate-in fade-in">
                       <label className="font-bold text-gray-700 flex items-center justify-between">
@@ -1168,7 +1263,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       onClick={() => setShowStaffLogin(true)}
                       className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-bold cursor-pointer"
                     >
-                      Kitchen Manager or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
+                      Kitchen Manager, Supermarket or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
                     </button>
                   </div>
                 </form>
@@ -1183,14 +1278,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <Phone className="w-3.5 h-3.5 text-[#06C167]" />
                         <span>Phone Number *</span>
                       </span>
-                      <span className="text-[10px] text-gray-400">Lonestar MTN / Orange</span>
+                      {renderCarrierBadge(phoneNumber)}
                     </label>
                     <input
                       type="tel"
                       required
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="e.g. 0886 554 123"
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      placeholder="e.g. 0886 554 123 or 0770 123 456"
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
                       autoFocus
                     />
@@ -1251,7 +1346,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       onClick={() => setShowStaffLogin(true)}
                       className="text-[11px] text-gray-500 hover:text-[#FF4B26] font-bold cursor-pointer"
                     >
-                      Kitchen Manager or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
+                      Kitchen Manager, Supermarket or Rider? <span className="underline text-[#FF4B26]">Staff Portal Hub</span>
                     </button>
                   </div>
                 </form>

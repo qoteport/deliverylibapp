@@ -57,7 +57,7 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({
   const restaurantNeighborhood = targetRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
   const restaurantCoords = targetRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restaurantNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
 
-  const customerCoords = MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea || 'Congotown & Old Road'] || { lat: 6.2690, lng: -10.7480 };
+  const customerCoords = order.deliveryCoords || (order.deliveryArea ? MONROVIA_NEIGHBORHOOD_COORDS[order.deliveryArea] : undefined) || { lat: 6.2690, lng: -10.7480 };
 
   // Calculate Transit ETA in minutes based on distance between restaurant and customer (defaults to 15 mins if data not provided)
   const calculateTransitMinutes = () => {

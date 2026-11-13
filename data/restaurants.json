@@ -1,0 +1,42 @@
+[
+  {
+    "cuisine": "Liberian Local Food & Grill",
+    "neighborhood": "Sinkor (Tubman Blvd)",
+    "phone": "+231 700400338",
+    "name": "Aura Kitchens",
+    "momoProvider": "mtn",
+    "minOrderUsd": 5,
+    "allowedPhoneNumbers": [
+      "+231 700400338"
+    ],
+    "openingTime": "08:00",
+    "operatingDays": [
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun",
+      "Tue",
+      "Mon"
+    ],
+    "createdAt": "2026-10-08T11:51:33.583Z",
+    "closingTime": "22:00",
+    "location": {
+      "lng": -10.8003328,
+      "lat": 6.3012864
+    },
+    "deliveryFeeUsd": 2,
+    "momoNumber": "+231 700400338",
+    "is24Hours": false,
+    "reviewCount": 1,
+    "address": "14th Street Sinkor Liberia",
+    "rating": 5,
+    "deliveryTimeMinutes": 25,
+    "tagline": "Authentic Liberian Local Food & Grill in Sinkor (Tubman Blvd)",
+    "kitchenPin": "191432",
+    "isOpen": true,
+    "verificationStatus": "verified",
+    "isVerified": true,
+    "id": "rest-aura-kitchens-3583"
+  }
+]
