@@ -312,14 +312,14 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         {/* 2. STORE SELECTOR CAROUSEL                                        */}
         {/* ================================================================= */}
         <div ref={storesRef} className="space-y-2.5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-0.5">
             <div className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
               <Store className="w-3.5 h-3.5 text-[#059669]" />
               <span>Verified Monrovia Supermarkets ({stores.length})</span>
             </div>
           </div>
 
-          <div className="flex flex-nowrap overflow-x-auto no-scrollbar gap-2.5 sm:grid sm:grid-cols-5 py-0.5">
+          <div className="flex flex-nowrap overflow-x-auto no-scrollbar gap-2.5 sm:grid sm:grid-cols-5 px-1.5 py-1 -mx-1.5">
             {/* All Supermarkets Multi-store Card */}
             <button
               type="button"
@@ -875,7 +875,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 pb-28 sm:pb-12 flex flex-col">
+        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-5 pb-28 sm:pb-12 flex flex-col">
           <div className="w-full flex-1 flex flex-col">
             {catalogBody}
           </div>
