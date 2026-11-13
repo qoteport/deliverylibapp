@@ -11,7 +11,6 @@ import {
   MapPin, 
   Sparkles, 
   ArrowLeft, 
-  ChevronRight, 
   Filter, 
   CheckCircle2, 
   Trash2, 
@@ -406,16 +405,6 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
               >
                 View All Stores
               </button>
-              {onOpenStorePortal && (
-                <button
-                  type="button"
-                  onClick={() => onOpenStorePortal(currentStore.id)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[#06C167] hover:bg-[#05A357] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
-                >
-                  <span>Store Portal</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
           </div>
         )}
