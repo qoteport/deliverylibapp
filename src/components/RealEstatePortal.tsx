@@ -162,7 +162,7 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
   const handleToggleStatus = async (prop: RealEstateProperty) => {
     const nextStatus =
       prop.status === 'available'
-        ? prop.dealType === 'sale'
+        ? prop.dealType === 'buy' || (prop.dealType as string) === 'sale'
           ? 'sold'
           : 'rented'
         : 'available';
@@ -228,7 +228,7 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
       propertyType: newPropType,
       priceUsd: usd,
       priceLrd: lrd,
-      pricePeriod: newDealType === 'rent' ? '/month' : newDealType === 'short-stay' ? '/night' : undefined,
+      pricePeriod: newDealType === 'rent' ? '/month' : (newDealType as string) === 'short_stay' || (newDealType as string) === 'short-stay' ? '/night' : undefined,
       neighborhood: newNeighborhood,
       address: newAddress || `${newNeighborhood}, Monrovia, Liberia`,
       bedrooms: Number(newBedrooms) || undefined,

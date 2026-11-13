@@ -53,7 +53,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
     const collected: CustomSelectOption[] = [];
     React.Children.forEach(children, (child) => {
-      if (React.isValidElement(child)) {
+      if (React.isValidElement<{ value?: any; children?: any; disabled?: boolean }>(child)) {
         const val = child.props.value !== undefined ? child.props.value : '';
         const label = child.props.children !== undefined ? child.props.children : String(val);
         collected.push({

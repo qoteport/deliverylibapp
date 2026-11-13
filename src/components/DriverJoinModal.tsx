@@ -15,6 +15,7 @@ import {
   EyeOff, 
   KeyRound,
   Package,
+  Car,
   CarTaxiFront,
   Zap,
   Calendar,

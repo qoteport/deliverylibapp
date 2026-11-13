@@ -411,13 +411,17 @@ export interface SupermarketStore {
   rating: number;
   reviewCount: number;
   deliveryTimeMinutes: number;
+  deliveryFeeUsd?: number;
   tagline: string;
-  image: string;
-  accentColor: string;
-  categories: string[];
+  image?: string;
+  accentColor?: string;
+  categories?: string[];
   momoNumber?: string;
+  momoProvider?: string;
+  minOrderUsd?: number;
   managerPin?: string;
   allowedPhoneNumbers?: string[];
+  isOpen?: boolean;
 }
 
 export interface SupermarketItem {
@@ -432,6 +436,7 @@ export interface SupermarketItem {
   image: string;
   inStock: boolean;
   featured?: boolean;
+  barcode?: string;
 }
 
 // ============================================================================
@@ -446,12 +451,14 @@ export interface RealEstateProperty {
   dealType: PropertyDealType;
   propertyType: PropertyType;
   priceUsd: number;
-  pricePeriod?: 'month' | 'year' | 'day' | 'total';
+  priceLrd?: number;
+  pricePeriod?: 'month' | 'year' | 'day' | 'total' | '/month' | '/night' | '/day' | string;
   neighborhood: string;
   address: string;
-  bedrooms: number;
-  bathrooms: number;
+  bedrooms?: number;
+  bathrooms?: number;
   sizeSqm?: number;
+  areaSqFt?: number;
   features: string[];
   description: string;
   imageUrl?: string;
@@ -460,8 +467,13 @@ export interface RealEstateProperty {
   agentName: string;
   agentPhone: string;
   agentWhatsapp?: string;
-  isVerified: boolean;
+  agentWhatsApp?: string;
+  isVerified?: boolean;
+  verified?: boolean;
   featured?: boolean;
+  status?: 'available' | 'rented' | 'sold';
+  deedStatus?: string;
+  coords?: { lat: number; lng: number };
   createdAt?: string;
 }
 
@@ -469,12 +481,15 @@ export interface PropertyInquiry {
   id: string;
   propertyId: string;
   propertyTitle: string;
-  clientName: string;
-  clientPhone: string;
-  inquiryType: 'viewing' | 'question' | 'offer';
+  clientName?: string;
+  customerName?: string;
+  clientPhone?: string;
+  customerPhone?: string;
+  inquiryType?: 'viewing' | 'question' | 'offer' | string;
   preferredDate?: string;
   notes?: string;
-  status: 'pending' | 'contacted' | 'completed';
+  message?: string;
+  status: 'pending' | 'contacted' | 'completed' | 'confirmed' | 'cancelled';
   createdAt: string;
 }
 
@@ -489,21 +504,30 @@ export type LifestyleCategory =
   | 'Men\'s Clothing'
   | 'Women\'s Fashion'
   | 'Footwear & Shoes'
-  | 'Audio & Accessories';
+  | 'Audio & Accessories'
+  | 'smartphones'
+  | 'laptops'
+  | 'solar'
+  | 'clothing-men'
+  | 'clothing-women'
+  | 'shoes'
+  | 'audio-accessories'
+  | string;
 
 export interface LifestyleItem {
   id: string;
   name: string;
   category: LifestyleCategory;
+  subcategory?: string;
   vendorName: string;
-  vendorPhone: string;
+  vendorPhone?: string;
   vendorNeighborhood?: string;
   vendorLocation?: string;
   brand?: string;
   priceUsd: number;
   originalPriceUsd?: number;
   priceLrd?: number;
-  condition: 'Brand New' | 'Certified Used' | 'Handcrafted';
+  condition: 'Brand New' | 'Certified Used' | 'Handcrafted' | string;
   rating: number;
   reviewsCount: number;
   description: string;
@@ -563,7 +587,7 @@ export interface LifestyleMessage {
 // ============================================================================
 // MOTORS, CAR RENTALS & AUTO PARTS
 // ============================================================================
-export type MotorListingType = 'sale' | 'rental' | 'part';
+export type MotorListingType = 'sale' | 'rental' | 'part' | 'parts';
 
 export interface MotorListing {
   id: string;
@@ -577,11 +601,11 @@ export interface MotorListing {
   priceLrd?: number;
   priceUnit?: string;
   rentalPeriod?: 'day' | 'week' | 'month';
-  condition: 'Brand New' | 'Clean Monrovia Used' | 'Foreign Used' | 'OEM Genuine Part';
+  condition: 'Brand New' | 'Clean Monrovia Used' | 'Foreign Used' | 'Locally Used' | 'OEM Genuine Part' | string;
   mileageKm?: number;
   mileage?: string;
   transmission?: 'Automatic' | 'Manual';
-  fuelType?: 'Gasoline' | 'Diesel' | 'Hybrid';
+  fuelType?: 'Gasoline' | 'Diesel' | 'Hybrid' | string;
   location: string;
   dealerName: string;
   dealerPhone: string;
@@ -602,13 +626,18 @@ export interface MotorInquiry {
   id: string;
   listingId: string;
   listingTitle: string;
-  listingType: MotorListingType;
-  clientName: string;
-  clientPhone: string;
-  inquiryType: 'buy' | 'rental_booking' | 'test_drive' | 'parts_order';
+  listingType?: MotorListingType;
+  clientName?: string;
+  customerName?: string;
+  clientPhone?: string;
+  customerPhone?: string;
+  inquiryType: 'buy' | 'rental_booking' | 'rental' | 'test_drive' | 'test-drive' | 'parts_order' | 'parts-order' | string;
   rentalDays?: number;
+  preferredDate?: string;
   notes?: string;
-  status: 'pending' | 'contacted' | 'completed';
+  message?: string;
+  status: 'pending' | 'contacted' | 'completed' | 'confirmed' | 'cancelled';
   createdAt: string;
+  timestamp?: any;
 }
 

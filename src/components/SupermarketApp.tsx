@@ -400,7 +400,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-gray-300 mt-0.5">
-                  📍 {currentStore.address} &bull; 🛵 Min order: ${currentStore.minOrderUsd.toFixed(2)}
+                  📍 {currentStore.address} &bull; 🛵 Min order: ${(currentStore.minOrderUsd ?? 5).toFixed(2)}
                 </p>
               </div>
             </div>

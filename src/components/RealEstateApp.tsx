@@ -558,7 +558,7 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
                       {/* Image Preview with Badges */}
                       <div className="relative aspect-16/10 bg-gray-100 overflow-hidden">
                         <img
-                          src={prop.images[0]}
+                          src={prop.images?.[0] || prop.imageUrl || ''}
                           alt={prop.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
@@ -607,13 +607,13 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
 
                         {/* Specs Pill Bar */}
                         <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold pt-1 border-t border-gray-100">
-                          {prop.bedrooms > 0 && (
+                          {(prop.bedrooms ?? 0) > 0 && (
                             <div className="flex items-center gap-1">
                               <Bed className="w-3.5 h-3.5 text-gray-400" />
                               <span>{prop.bedrooms} Beds</span>
                             </div>
                           )}
-                          {prop.bathrooms > 0 && (
+                          {(prop.bathrooms ?? 0) > 0 && (
                             <div className="flex items-center gap-1">
                               <Bath className="w-3.5 h-3.5 text-gray-400" />
                               <span>{prop.bathrooms} Baths</span>

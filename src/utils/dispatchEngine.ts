@@ -179,7 +179,7 @@ export async function delegateOrderToDriver(
   // Sync to Firestore
   try {
     await updateDoc(doc(db, 'orders', order.id), {
-      deliveryFee: dynamicFee,
+      deliveryFee: resolvedFee,
       assignedDriverId: bestDriver.id,
       assignedDriverName: bestDriver.name,
       assignedDriverPhone: bestDriver.phone,
