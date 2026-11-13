@@ -140,6 +140,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
 
   const [isBasketOpen, setIsBasketOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [activeNavTab, setActiveNavTab] = useState<'stores' | 'aisles' | 'search' | 'basket'>('stores');
 
   useEffect(() => {
     try {
@@ -252,6 +253,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
+                onFocus={() => setActiveNavTab('search')}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search American rice, Dutch Lady milk, spaghetti, cooking oil, beer..."
                 className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200/90 rounded-2xl text-xs font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#06C167] focus:ring-2 focus:ring-[#06C167]/20 shadow-xs transition-all"
@@ -322,7 +324,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
             {/* All Supermarkets Multi-store Card */}
             <button
               type="button"
-              onClick={() => setSelectedStoreId('all')}
+              onClick={() => {
+                setSelectedStoreId('all');
+                setActiveNavTab('stores');
+              }}
               className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between shrink-0 w-[155px] sm:w-auto ${
                 selectedStoreId === 'all'
                   ? 'border-[#06C167] bg-[#E8F8EE] shadow-sm ring-2 ring-[#06C167]/30'
@@ -347,7 +352,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                 <button
                   key={sm.id}
                   type="button"
-                  onClick={() => setSelectedStoreId(sm.id)}
+                  onClick={() => {
+                    setSelectedStoreId(sm.id);
+                    setActiveNavTab('stores');
+                  }}
                   className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between shrink-0 w-[155px] sm:w-auto ${
                     isSelected
                       ? 'border-[#06C167] bg-[#E8F8EE] shadow-sm ring-2 ring-[#06C167]/30'
@@ -421,7 +429,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setActiveNavTab('aisles');
+                  }}
                   className={`px-3.5 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
                     isSelected
                       ? 'bg-gray-900 text-white shadow-md ring-2 ring-gray-900/20'
@@ -581,7 +592,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
   const basketDrawer = isBasketOpen && (
     <div 
       className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in"
-      onClick={() => setIsBasketOpen(false)}
+      onClick={() => {
+        setIsBasketOpen(false);
+        setActiveNavTab((prev) => prev === 'basket' ? 'stores' : prev);
+      }}
     >
       <div 
         className="relative bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200"
@@ -599,7 +613,10 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
             </div>
           </div>
           <button
-            onClick={() => setIsBasketOpen(false)}
+            onClick={() => {
+        setIsBasketOpen(false);
+        setActiveNavTab((prev) => prev === 'basket' ? 'stores' : prev);
+      }}
             className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -727,55 +744,101 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-4 py-1.5 px-2 text-center text-gray-500">
+      <div className="grid grid-cols-4 py-1.5 px-2 text-center">
+        {/* 1. Stores */}
         <button
           type="button"
           onClick={() => {
+            setActiveNavTab('stores');
             storesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }}
-          className="py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer text-gray-600 hover:text-[#059669]"
+          className={`py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer relative ${
+            activeNavTab === 'stores' && !isBasketOpen
+              ? 'text-[#059669]'
+              : 'text-gray-400 hover:text-gray-700'
+          }`}
         >
-          <Store className="w-4 h-4" />
-          <span className="text-[10px] font-bold">Stores</span>
+          {activeNavTab === 'stores' && !isBasketOpen && (
+            <span className="absolute -top-1.5 w-8 h-1 bg-[#059669] rounded-full" />
+          )}
+          <Store className={`w-4 h-4 ${activeNavTab === 'stores' && !isBasketOpen ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+          <span className={`text-[10px] ${activeNavTab === 'stores' && !isBasketOpen ? 'font-black' : 'font-semibold'}`}>
+            Stores
+          </span>
         </button>
 
+        {/* 2. Aisles */}
         <button
           type="button"
           onClick={() => {
+            setActiveNavTab('aisles');
             categoriesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }}
-          className="py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer text-gray-600 hover:text-[#059669]"
+          className={`py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer relative ${
+            activeNavTab === 'aisles' && !isBasketOpen
+              ? 'text-[#059669]'
+              : 'text-gray-400 hover:text-gray-700'
+          }`}
         >
-          <Filter className="w-4 h-4" />
-          <span className="text-[10px] font-bold">Aisles</span>
+          {activeNavTab === 'aisles' && !isBasketOpen && (
+            <span className="absolute -top-1.5 w-8 h-1 bg-[#059669] rounded-full" />
+          )}
+          <Filter className={`w-4 h-4 ${activeNavTab === 'aisles' && !isBasketOpen ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+          <span className={`text-[10px] ${activeNavTab === 'aisles' && !isBasketOpen ? 'font-black' : 'font-semibold'}`}>
+            Aisles
+          </span>
         </button>
 
+        {/* 3. Search */}
         <button
           type="button"
           onClick={() => {
+            setActiveNavTab('search');
             searchInputRef.current?.focus();
             searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }}
-          className="py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer text-gray-600 hover:text-[#059669]"
+          className={`py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer relative ${
+            activeNavTab === 'search' && !isBasketOpen
+              ? 'text-[#059669]'
+              : 'text-gray-400 hover:text-gray-700'
+          }`}
         >
-          <Search className="w-4 h-4" />
-          <span className="text-[10px] font-bold">Search</span>
+          {activeNavTab === 'search' && !isBasketOpen && (
+            <span className="absolute -top-1.5 w-8 h-1 bg-[#059669] rounded-full" />
+          )}
+          <Search className={`w-4 h-4 ${activeNavTab === 'search' && !isBasketOpen ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+          <span className={`text-[10px] ${activeNavTab === 'search' && !isBasketOpen ? 'font-black' : 'font-semibold'}`}>
+            Search
+          </span>
         </button>
 
+        {/* 4. Basket */}
         <button
           type="button"
-          onClick={() => setIsBasketOpen(true)}
-          className="py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer text-gray-600 hover:text-[#059669] relative"
+          onClick={() => {
+            setActiveNavTab('basket');
+            setIsBasketOpen(true);
+          }}
+          className={`py-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition cursor-pointer relative ${
+            isBasketOpen || activeNavTab === 'basket'
+              ? 'text-[#059669]'
+              : 'text-gray-400 hover:text-gray-700'
+          }`}
         >
+          {(isBasketOpen || activeNavTab === 'basket') && (
+            <span className="absolute -top-1.5 w-8 h-1 bg-[#059669] rounded-full" />
+          )}
           <div className="relative">
-            <ShoppingBag className="w-4 h-4" />
+            <ShoppingBag className={`w-4 h-4 ${isBasketOpen || activeNavTab === 'basket' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
             {cartTotalItems > 0 && (
-              <span className="absolute -top-1.5 -right-2 px-1 min-w-[14px] h-3.5 bg-[#06C167] text-white rounded-full text-[9px] font-black flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-2 px-1 min-w-[14px] h-3.5 bg-[#06C167] text-white rounded-full text-[9px] font-black flex items-center justify-center ring-1 ring-white">
                 {cartTotalItems}
               </span>
             )}
           </div>
-          <span className="text-[10px] font-bold">Basket</span>
+          <span className={`text-[10px] ${isBasketOpen || activeNavTab === 'basket' ? 'font-black' : 'font-semibold'}`}>
+            Basket
+          </span>
         </button>
       </div>
     </div>
