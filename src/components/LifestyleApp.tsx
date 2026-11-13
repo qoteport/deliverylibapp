@@ -530,87 +530,8 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
           )}
         </div>
 
-        {/* Mobile Horizontal Track / Desktop Grid */}
-        <div className="sm:hidden -mx-4 px-4 overflow-x-auto no-scrollbar pb-3 mb-6">
-          <div className="flex gap-3">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => openItemDetails(item)}
-                className="w-[240px] shrink-0 bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:border-purple-400 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="relative h-40 bg-gray-100 overflow-hidden">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      {item.condition}
-                    </div>
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
-                      {Array.isArray(item.images) && item.images.length > 1 && (
-                        <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <Camera className="w-3 h-3" />
-                          {item.images.length}
-                        </span>
-                      )}
-                      {item.videoUrl && (
-                        <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                          <Film className="w-3 h-3" />
-                          Video
-                        </span>
-                      )}
-                    </div>
-                    {item.warranty && (
-                      <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
-                        {item.warranty}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <div className="text-[11px] font-medium text-purple-600 uppercase tracking-wider">
-                      {item.brand}
-                    </div>
-                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2 mt-0.5">{item.name}</h3>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-gray-800">{item.rating}</span>
-                      <span>({item.reviewsCount})</span>
-                      <span className="mx-1">•</span>
-                      <span className="truncate">{item.vendorLocation}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 pt-0 flex items-center justify-between">
-                  <div>
-                    <div className="text-base font-extrabold text-gray-900">
-                      {formatPrice(item.priceUsd, item.priceLrd)}
-                    </div>
-                    {currency === 'LRD' && (
-                      <div className="text-[11px] text-gray-500">${item.priceUsd} USD</div>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addToCart(item, 1, item.availableSizes?.[0], item.availableColors?.[0]);
-                    }}
-                    className="p-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 active:scale-95 transition-transform"
-                    aria-label="Add to cart"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop Grid */}
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
+        {/* Products Grid: 2 columns on mobile, 2 on sm, 3 on lg, 4 on xl */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 mb-8">
           {filteredItems.map((item) => (
             <div
               key={item.id}
@@ -618,62 +539,62 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
               className="bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:border-purple-300 hover:shadow-xs transition-all flex flex-col justify-between group"
             >
               <div>
-                <div className="relative h-48 bg-gray-100 overflow-hidden">
+                <div className="relative aspect-square sm:aspect-auto sm:h-48 bg-gray-100 overflow-hidden">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
-                  <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[9px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full">
                     {item.condition}
                   </div>
-                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 sm:gap-1.5 z-10">
                     {Array.isArray(item.images) && item.images.length > 1 && (
-                      <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Camera className="w-3 h-3" />
+                      <span className="bg-black/70 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1">
+                        <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         {item.images.length}
                       </span>
                     )}
                     {item.videoUrl && (
-                      <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                        <Film className="w-3 h-3" />
+                      <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-0.5 sm:gap-1 shadow-xs">
+                        <Film className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         Video
                       </span>
                     )}
                   </div>
                   {item.warranty && (
-                    <div className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                    <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md">
                       {item.warranty}
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <div className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
+                <div className="p-2.5 sm:p-4">
+                  <div className="text-[10px] sm:text-xs font-semibold text-purple-600 uppercase tracking-wider truncate">
                     {item.brand}
                   </div>
-                  <h3 className="text-sm font-bold text-gray-900 mt-1 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 line-clamp-2 leading-snug group-hover:text-purple-600 transition-colors">
                     {item.name}
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <div className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-500">
+                    <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-amber-400 text-amber-400 shrink-0" />
                     <span className="font-semibold text-gray-800">{item.rating}</span>
-                    <span>({item.reviewsCount} reviews)</span>
+                    <span className="truncate">({item.reviewsCount})</span>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                    <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                  <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
+                    <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 shrink-0" />
                     <span className="truncate">{item.vendorLocation}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 pt-0 flex items-center justify-between border-t border-gray-100 mt-2">
-                <div>
-                  <div className="text-lg font-black text-gray-900">
+              <div className="p-2.5 sm:p-4 pt-0 flex items-center justify-between border-t border-gray-100 mt-1 sm:mt-2">
+                <div className="min-w-0 pr-1">
+                  <div className="text-sm sm:text-lg font-black text-gray-900 truncate">
                     {formatPrice(item.priceUsd, item.priceLrd)}
                   </div>
                   {currency === 'LRD' && (
-                    <div className="text-xs text-gray-500">${item.priceUsd} USD</div>
+                    <div className="text-[10px] sm:text-xs text-gray-500 truncate">${item.priceUsd} USD</div>
                   )}
                 </div>
                 <button
@@ -681,10 +602,11 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
                     e.stopPropagation();
                     addToCart(item, 1, item.availableSizes?.[0], item.availableColors?.[0]);
                   }}
-                  className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors active:scale-95"
+                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition-colors active:scale-95 shrink-0"
+                  aria-label="Add to cart"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add</span>
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Add</span>
                 </button>
               </div>
             </div>
