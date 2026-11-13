@@ -107,13 +107,13 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     e.preventDefault();
     if (!name.trim()) return;
 
-    if (kitchenPin && kitchenPin.replace(/[^0-9]/g, '').length !== 6) {
+    if (kitchenPin && String(kitchenPin || '').replace(/[^0-9]/g, '').length !== 6) {
       alert('Please enter a 6-digit PIN for kitchen login security.');
       return;
     }
 
     setIsSubmitting(true);
-    const restaurantId = `rest-${name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20)}-${Date.now().toString().slice(-4)}`;
+    const restaurantId = `rest-${String(name || 'kitchen').toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20)}-${Date.now().toString().slice(-4)}`;
 
     // Parse allowed phone numbers
     const cleanPhone = phone.trim();
@@ -133,7 +133,7 @@ export const RestaurantOnboardingModal: React.FC<RestaurantOnboardingModalProps>
     const verificationStatus: 'verified' | 'pending' = isSuperAdminMode ? 'verified' : 'pending';
     const finalLocationCoords = locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood] || { lat: 6.2907, lng: -10.7818 };
 
-    const cleanPin = kitchenPin.replace(/[^0-9]/g, '').slice(0, 6) || '123456';
+    const cleanPin = String(kitchenPin || '').replace(/[^0-9]/g, '').slice(0, 6) || '123456';
 
     const newRestaurant: Restaurant = {
       id: restaurantId,

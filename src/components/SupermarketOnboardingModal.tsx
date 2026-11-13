@@ -128,13 +128,13 @@ export const SupermarketOnboardingModal: React.FC<SupermarketOnboardingModalProp
     e.preventDefault();
     if (!name.trim()) return;
 
-    if (managerPin && managerPin.replace(/[^0-9]/g, '').length < 4) {
+    if (managerPin && String(managerPin || '').replace(/[^0-9]/g, '').length < 4) {
       alert('Please enter at least a 4-digit PIN for store management login.');
       return;
     }
 
     setIsSubmitting(true);
-    const supermarketId = `sm-${name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20)}-${Date.now().toString().slice(-4)}`;
+    const supermarketId = `sm-${String(name || 'store').toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20)}-${Date.now().toString().slice(-4)}`;
     const finalCoords = locationCoords || MONROVIA_NEIGHBORHOOD_COORDS[neighborhood] || { lat: 6.2907, lng: -10.7818 };
 
     const newStore: SupermarketStore = {

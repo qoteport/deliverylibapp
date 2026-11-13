@@ -282,9 +282,9 @@ export const MediaUploadField: React.FC<MediaUploadFieldProps> = ({
 
               {/* Preview Player */}
               <div className="h-44 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-                {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
+                {videoUrl && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) ? (
                   <iframe
-                    src={videoUrl.replace('watch?v=', 'embed/')}
+                    src={String(videoUrl || '').replace('watch?v=', 'embed/')}
                     title="Video Preview"
                     className="w-full h-full border-0"
                     allowFullScreen

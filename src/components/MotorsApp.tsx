@@ -128,25 +128,29 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
   }, []);
 
   // Format price helper
-  const formatPrice = (usd: number, lrd?: number, unit?: string) => {
+  const formatPrice = (usd: any, lrd?: any, unit?: string) => {
+    const usdNum = Number(usd) || 0;
     const unitSuffix = unit ? ` ${unit}` : '';
     if (currency === 'LRD') {
-      const value = lrd || Math.round(usd * 198);
+      const value = Number(lrd) || Math.round(usdNum * 198);
       return `L$${value.toLocaleString()}${unitSuffix}`;
     }
-    return `$${usd.toLocaleString()}${unitSuffix}`;
+    return `$${usdNum.toLocaleString()}${unitSuffix}`;
   };
 
   // Filter listings
   const filteredListings = useMemo(() => {
     return listings.filter((item) => {
+      const rawType = (item as any)?.type || (item as any)?.listingType || 'sale';
+      const itemType = rawType === 'part' ? 'parts' : rawType;
+
       // Bottom tab override if active
-      if (activeBottomTab !== 'all' && item.type !== activeBottomTab) {
+      if (activeBottomTab !== 'all' && itemType !== activeBottomTab) {
         return false;
       }
 
       // Type filter
-      if (selectedType !== 'all' && item.type !== selectedType) {
+      if (selectedType !== 'all' && itemType !== selectedType) {
         return false;
       }
 
@@ -365,13 +369,17 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                 <div>
                   <div className="relative h-44 bg-gray-100 overflow-hidden">
                     <img
-                      src={item.imageUrl}
-                      alt={item.title}
+                      src={item.imageUrl || (item as any).image || ''}
+                      alt={item.title || 'Motor vehicle'}
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                       loading="lazy"
                     />
                     <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {item.type === 'sale' ? 'For Sale' : item.type === 'rental' ? 'Rental' : 'Auto Part'}
+                      {((item as any).type || (item as any).listingType) === 'sale'
+                        ? 'For Sale'
+                        : ((item as any).type || (item as any).listingType) === 'rental'
+                        ? 'Rental'
+                        : 'Auto Part'}
                     </div>
                     <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
                       {Array.isArray(item.images) && item.images.length > 1 && (
@@ -459,13 +467,17 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
               <div>
                 <div className="relative h-48 bg-gray-100 overflow-hidden">
                   <img
-                    src={item.imageUrl}
-                    alt={item.title}
+                    src={item.imageUrl || (item as any).image || ''}
+                    alt={item.title || 'Motor vehicle'}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
                   <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {item.type === 'sale' ? 'For Sale' : item.type === 'rental' ? 'Rental' : 'Auto Part'}
+                    {((item as any).type || (item as any).listingType) === 'sale'
+                      ? 'For Sale'
+                      : ((item as any).type || (item as any).listingType) === 'rental'
+                      ? 'Rental'
+                      : 'Auto Part'}
                   </div>
                   <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
                     {Array.isArray(item.images) && item.images.length > 1 && (
@@ -588,6 +600,8 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                     ? selectedListing.images
                     : selectedListing.imageUrl
                     ? [selectedListing.imageUrl]
+                    : (selectedListing as any).image
+                    ? [(selectedListing as any).image]
                     : []
                 }
                 videoUrl={selectedListing.videoUrl}
@@ -596,7 +610,11 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                 badge={
                   <div className="flex items-center gap-1.5">
                     <span className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {selectedListing.type === 'sale' ? 'For Sale' : selectedListing.type === 'rental' ? 'Rental' : 'Auto Part'}
+                      {((selectedListing as any).type || (selectedListing as any).listingType) === 'sale'
+                        ? 'For Sale'
+                        : ((selectedListing as any).type || (selectedListing as any).listingType) === 'rental'
+                        ? 'Rental'
+                        : 'Auto Part'}
                     </span>
                     <span className="bg-white/90 backdrop-blur-xs text-gray-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
                       {selectedListing.condition}
@@ -679,7 +697,7 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
                     <span>Call Dealer</span>
                   </a>
                   <a
-                    href={`https://wa.me/${String(selectedListing.dealerWhatsApp || selectedListing.dealerPhone || '').replace(/[^0-9]/g, '')}`}
+                    href={`https://wa.me/${String(selectedListing.dealerWhatsApp || (selectedListing as any).dealerWhatsapp || selectedListing.dealerPhone || '').replace(/[^0-9]/g, '')}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-1.5 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100"

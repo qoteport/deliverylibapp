@@ -80,10 +80,11 @@ export function detectLiberianCarrier(raw: any): LiberianCarrierInfo | null {
 /**
  * Formats a phone input as user types: "0886 123 456" or "+231 886 123 456"
  */
-export function formatAsUserTypes(raw: string): string {
+export function formatAsUserTypes(raw: any): string {
   if (!raw) return '';
-  const isPlus = raw.trim().startsWith('+');
-  const digits = raw.replace(/[^0-9]/g, '');
+  const str = typeof raw === 'string' ? raw : String(raw);
+  const isPlus = str.trim().startsWith('+');
+  const digits = str.replace(/[^0-9]/g, '');
 
   if (isPlus) {
     if (digits.startsWith('231')) {

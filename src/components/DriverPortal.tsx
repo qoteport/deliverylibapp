@@ -1002,14 +1002,14 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
               </div>
               <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
                 <a
-                  href={`tel:${activeDriverRide.customerPhone?.replace(/[^0-9]/g, '')}`}
+                  href={`tel:${String(activeDriverRide.customerPhone || '').replace(/[^0-9]/g, '')}`}
                   className="px-3 py-1.5 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>Call Passenger ({activeDriverRide.customerPhone})</span>
                 </a>
                 <span className="font-mono text-[11px] text-gray-500">
-                  Status: <strong>{activeDriverRide.status.toUpperCase()}</strong>
+                  Status: <strong>{String(activeDriverRide.status || '').toUpperCase()}</strong>
                 </span>
               </div>
             </div>

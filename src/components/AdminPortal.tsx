@@ -2390,7 +2390,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         : 'bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200'
                     }`}
                   >
-                    {st.replace('-', ' ')}
+                    {String(st || '').replace('-', ' ')}
                     {st === 'all' ? ` (${orders.length})` : ` (${orders.filter((o) => o.status === st).length})`}
                   </button>
                 ))}
@@ -4357,7 +4357,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             restaurantName: randomKitchen.name,
                             customerName: sampleCustomerName,
                             customerPhone: testSmsPhone.trim() || '0886 554 321',
-                            customerEmail: `${sampleCustomerName.toLowerCase().replace(/\s+/g, '')}@monrovia.aura`,
+                            customerEmail: `${String(sampleCustomerName || 'customer').toLowerCase().replace(/\s+/g, '')}@monrovia.aura`,
                             deliveryArea: sampleArea,
                             deliveryAddress: `${sampleArea}, Monrovia`,
                             deliveryCoords: MONROVIA_NEIGHBORHOOD_COORDS[sampleArea] || { lat: 6.2907, lng: -10.7818 },

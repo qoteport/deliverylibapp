@@ -200,7 +200,7 @@ Status: ${orderToCopy.status.toUpperCase()}
   const handleAddStaffPhone = () => {
     const raw = newStaffPhoneInput.trim();
     if (!raw) return;
-    const digits = raw.replace(/[^0-9]/g, '');
+    const digits = String(raw || '').replace(/[^0-9]/g, '');
     if (digits.length < 6) {
       setStaffPhoneError('Please enter a valid phone number (e.g. 0886 554 321)');
       return;

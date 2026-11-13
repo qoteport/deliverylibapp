@@ -524,28 +524,34 @@ export type MotorListingType = 'sale' | 'rental' | 'part';
 export interface MotorListing {
   id: string;
   title: string;
-  listingType: MotorListingType;
+  listingType?: MotorListingType;
+  type?: MotorListingType;
   make: string;
   model: string;
   year: number;
   priceUsd: number;
+  priceLrd?: number;
+  priceUnit?: string;
   rentalPeriod?: 'day' | 'week' | 'month';
   condition: 'Brand New' | 'Clean Monrovia Used' | 'Foreign Used' | 'OEM Genuine Part';
   mileageKm?: number;
+  mileage?: string;
   transmission?: 'Automatic' | 'Manual';
   fuelType?: 'Gasoline' | 'Diesel' | 'Hybrid';
   location: string;
   dealerName: string;
   dealerPhone: string;
   dealerWhatsapp?: string;
+  dealerWhatsApp?: string;
   description: string;
   features: string[];
   image?: string;
   imageUrl?: string;
   images?: string[];
   videoUrl?: string;
-  isAvailable: boolean;
+  isAvailable?: boolean;
   featured?: boolean;
+  verified?: boolean;
 }
 
 export interface MotorInquiry {
