@@ -38,6 +38,7 @@ import {
 } from '../types';
 import { SUPERMARKET_ITEMS } from '../data/supermarketData';
 import { CustomDropdown } from './CustomDropdown';
+import { CustomSelect } from './common/CustomSelect';
 import { LocationPickerModal } from './LocationPickerModal';
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { db } from '../firebase/config';
@@ -695,15 +696,14 @@ export const SupermarketPortal: React.FC<SupermarketPortalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-gray-700 block mb-1">Department / Category</label>
-                  <select
+                  <CustomSelect
                     value={itemCategory}
                     onChange={(e) => setItemCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
                   >
                     {categories.filter((c) => c !== 'All').map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>

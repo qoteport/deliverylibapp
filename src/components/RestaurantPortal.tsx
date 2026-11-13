@@ -9,6 +9,7 @@ import { sendBrowserNotification } from '../utils/browserNotifications';
 import { getWhatsAppDispatchUrl } from '../utils/twilio';
 import { LocationPickerModal } from './LocationPickerModal';
 import { CustomDropdown } from './CustomDropdown';
+import { CustomSelect } from './common/CustomSelect';
 import { saveRestaurantToApi, saveMenuItemToApi, deleteMenuItemFromApi } from '../utils/apiSync';
 import { sanitizeForFirestore } from '../utils/cleanData';
 
@@ -1298,16 +1299,16 @@ Status: ${orderToCopy.status.toUpperCase()}
                                       Cancel
                                     </button>
                                   </div>
-                                  <select
+                                  <CustomSelect
                                     value={declineReason}
                                     onChange={(e) => setDeclineReason(e.target.value)}
-                                    className="w-full px-3 py-1.5 bg-white border border-red-300 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-red-500"
+                                    className="border-red-300"
                                   >
                                     <option value="Items out of stock">Items out of stock</option>
                                     <option value="Kitchen at full capacity">Kitchen at full capacity</option>
                                     <option value="Kitchen closing soon">Kitchen closing soon</option>
                                     <option value="Delivery address outside operational zone">Delivery address outside operational zone</option>
-                                  </select>
+                                  </CustomSelect>
                                   <div className="flex items-center gap-2">
                                     <button
                                       type="button"

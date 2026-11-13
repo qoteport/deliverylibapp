@@ -5,6 +5,7 @@ import { MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, LocationCoords } 
 import { db } from '../firebase/config';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { LocationPickerModal } from './LocationPickerModal';
+import { CustomSelect } from './common/CustomSelect';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -213,17 +214,18 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             <div className="space-y-3 p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
               <div className="space-y-1">
                 <label className="text-gray-600 font-bold block">Monrovia Neighborhood *</label>
-                <select
+                <CustomSelect
                   value={selectedNeighborhood}
                   onChange={(e) => setSelectedNeighborhood(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#06C167]"
+                  className="font-bold"
+                  searchable={true}
                 >
                   {MONROVIA_NEIGHBORHOODS.map((nh) => (
                     <option key={nh} value={nh}>
                       {nh}
                     </option>
                   ))}
-                </select>
+                </CustomSelect>
               </div>
 
               <div className="space-y-1">

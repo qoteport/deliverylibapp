@@ -30,6 +30,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { sanitizeForFirestore } from '../utils/cleanData';
 import { playOrderAlertSound } from '../utils/audioAlert';
 import { sendBrowserNotification } from '../utils/browserNotifications';
+import { CustomSelect } from './common/CustomSelect';
 
 export interface ShoppingCartItem {
   item: SupermarketItem;
@@ -464,15 +465,15 @@ export const ShoppingCheckoutModal: React.FC<ShoppingCheckoutModalProps> = ({
               <div className="space-y-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-700 mb-1">Monrovia Neighborhood</label>
-                  <select
+                  <CustomSelect
                     value={deliveryArea}
                     onChange={(e) => setDeliveryArea(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                    searchable={true}
                   >
                     {MONROVIA_NEIGHBORHOODS.map((nh) => (
                       <option key={nh} value={nh}>{nh}</option>
                     ))}
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>

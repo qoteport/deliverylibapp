@@ -66,6 +66,7 @@ import {
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, Currency, USD_TO_LRD_RATE, DeliveryDriver, MONROVIA_NEIGHBORHOODS, MONROVIA_NEIGHBORHOOD_COORDS, AppUser, LocationCoords, CartItem } from '../types';
 import { CustomDropdown } from './CustomDropdown';
+import { CustomSelect } from './common/CustomSelect';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config';
 import { doc, updateDoc, deleteDoc, setDoc, collection, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
@@ -4483,7 +4484,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <span>1. Kitchen Pickup Location</span>
                         <span className="text-[10px] text-gray-400 font-normal">Origin</span>
                       </label>
-                      <select
+                      <CustomSelect
                         value={pricingKitchenId}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -4493,7 +4494,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             if (rest?.neighborhood) setPricingKitchenArea(rest.neighborhood);
                           }
                         }}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        searchable={true}
                       >
                         <option value="all">Custom Area: {pricingKitchenArea}</option>
                         {restaurants.map((r) => (
@@ -4501,17 +4502,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             {r.name} ({r.neighborhood})
                           </option>
                         ))}
-                      </select>
+                      </CustomSelect>
                       {pricingKitchenId === 'all' && (
-                        <select
-                          value={pricingKitchenArea}
-                          onChange={(e) => setPricingKitchenArea(e.target.value)}
-                          className="w-full mt-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs text-gray-700"
-                        >
-                          {MONROVIA_NEIGHBORHOODS.map((nh) => (
-                            <option key={nh} value={nh}>{nh}</option>
-                          ))}
-                        </select>
+                        <div className="mt-1.5">
+                          <CustomSelect
+                            value={pricingKitchenArea}
+                            onChange={(e) => setPricingKitchenArea(e.target.value)}
+                            searchable={true}
+                          >
+                            {MONROVIA_NEIGHBORHOODS.map((nh) => (
+                              <option key={nh} value={nh}>{nh}</option>
+                            ))}
+                          </CustomSelect>
+                        </div>
                       )}
                     </div>
 
@@ -4521,15 +4524,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <span>2. Customer Dropoff Destination</span>
                         <span className="text-[10px] text-gray-400 font-normal">Destination</span>
                       </label>
-                      <select
+                      <CustomSelect
                         value={pricingCustomerArea}
                         onChange={(e) => setPricingCustomerArea(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
+                        searchable={true}
                       >
                         {MONROVIA_NEIGHBORHOODS.map((nh) => (
                           <option key={nh} value={nh}>{nh}</option>
                         ))}
-                      </select>
+                      </CustomSelect>
                     </div>
 
                     {/* Courier Proximity */}
@@ -4538,30 +4541,31 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <span>3. Courier / Rider Proximity</span>
                         <span className="text-[10px] text-gray-400 font-normal">Pickup Approach</span>
                       </label>
-                      <select
+                      <CustomSelect
                         value={pricingDriverMode}
                         onChange={(e) => setPricingDriverMode(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
                       >
                         <option value="at-kitchen">At Kitchen (0.0 km approach)</option>
                         <option value="nearby">Nearby Rider (~1.0 km approach)</option>
                         <option value="moderate">Moderate Distance (~2.5 km approach)</option>
                         <option value="far">Far Distance (~4.5 km approach)</option>
                         {drivers.length > 0 && <option value="custom-driver">Live Rider from Fleet</option>}
-                      </select>
+                      </CustomSelect>
                       {pricingDriverMode === 'custom-driver' && (
-                        <select
-                          value={pricingDriverId}
-                          onChange={(e) => setPricingDriverId(e.target.value)}
-                          className="w-full mt-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-xl text-xs text-gray-700"
-                        >
-                          <option value="">Select a courier...</option>
-                          {drivers.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name} ({d.baseZone}) - {d.isOnline ? '🟢 Online' : '⚪ Offline'}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="mt-1.5">
+                          <CustomSelect
+                            value={pricingDriverId}
+                            onChange={(e) => setPricingDriverId(e.target.value)}
+                            searchable={true}
+                          >
+                            <option value="">Select a courier...</option>
+                            {drivers.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name} ({d.baseZone}) - {d.isOnline ? '🟢 Online' : '⚪ Offline'}
+                              </option>
+                            ))}
+                          </CustomSelect>
+                        </div>
                       )}
                     </div>
 
@@ -4574,26 +4578,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <select
+                        <CustomSelect
                           value={pricingPrepMins}
                           onChange={(e) => setPricingPrepMins(parseInt(e.target.value))}
-                          className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
                         >
                           <option value="5">5 mins (Fast Starter)</option>
                           <option value="15">15 mins (Standard Dish)</option>
                           <option value="25">25 mins (Fresh Cooked)</option>
                           <option value="40">40 mins (Complex Platter)</option>
-                        </select>
+                        </CustomSelect>
 
-                        <select
+                        <CustomSelect
                           value={pricingTrafficSpeed}
                           onChange={(e) => setPricingTrafficSpeed(parseInt(e.target.value))}
-                          className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-[#06C167]"
                         >
                           <option value="22">22 km/h (Normal)</option>
                           <option value="14">14 km/h (Heavy Traffic)</option>
                           <option value="30">30 km/h (Fast Night)</option>
-                        </select>
+                        </CustomSelect>
                       </div>
                     </div>
                   </div>
@@ -5080,16 +5082,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Vehicle Type</label>
-                  <select
+                  <CustomSelect
                     value={driverVehicleType}
                     onChange={(e) => setDriverVehicleType(e.target.value as DeliveryDriver['vehicleType'])}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
                   >
                     <option value="Motorbike">Motorbike (Fastest)</option>
                     <option value="Kekeh (Tricycle)">Kekeh (Tricycle)</option>
                     <option value="Bicycle">Bicycle</option>
                     <option value="Car">Car / Van</option>
-                  </select>
+                  </CustomSelect>
                 </div>
               </div>
 
@@ -5107,15 +5108,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Base Operational Zone</label>
-                  <select
+                  <CustomSelect
                     value={driverBaseZone}
                     onChange={(e) => setDriverBaseZone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:border-[#06C167]"
+                    searchable={true}
                   >
                     {MONROVIA_NEIGHBORHOODS.map((nh) => (
                       <option key={nh} value={nh}>{nh}</option>
                     ))}
-                  </select>
+                  </CustomSelect>
                 </div>
               </div>
 
@@ -5127,15 +5128,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="font-bold text-emerald-800 text-[11px]">Provider</label>
-                    <select
+                    <CustomSelect
                       value={driverMomoProvider}
                       onChange={(e) => setDriverMomoProvider(e.target.value as DeliveryDriver['momoProvider'])}
-                      className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs text-gray-900"
                     >
                       <option value="mtn">Lonestar MTN MoMo</option>
                       <option value="orange">Orange Money</option>
                       <option value="both">Both (MTN & Orange)</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div className="space-y-1">
                     <label className="font-bold text-emerald-800 text-[11px]">MoMo Account Number</label>
@@ -5246,16 +5246,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Vehicle Type</label>
-                  <select
+                  <CustomSelect
                     value={editDriverVehicleType}
                     onChange={(e) => setEditDriverVehicleType(e.target.value as DeliveryDriver['vehicleType'])}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900"
                   >
                     <option value="Motorbike">Motorbike</option>
                     <option value="Kekeh (Tricycle)">Kekeh (Tricycle)</option>
                     <option value="Bicycle">Bicycle</option>
                     <option value="Car">Car</option>
-                  </select>
+                  </CustomSelect>
                 </div>
               </div>
 
@@ -5272,15 +5271,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 <div className="space-y-1">
                   <label className="font-bold text-gray-700">Base Zone</label>
-                  <select
+                  <CustomSelect
                     value={editDriverBaseZone}
                     onChange={(e) => setEditDriverBaseZone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900"
+                    searchable={true}
                   >
                     {MONROVIA_NEIGHBORHOODS.map((nh) => (
                       <option key={nh} value={nh}>{nh}</option>
                     ))}
-                  </select>
+                  </CustomSelect>
                 </div>
               </div>
 
@@ -5289,15 +5288,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-gray-600">Provider</label>
-                    <select
+                    <CustomSelect
                       value={editDriverMomoProvider}
                       onChange={(e) => setEditDriverMomoProvider(e.target.value as DeliveryDriver['momoProvider'])}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs"
                     >
                       <option value="mtn">Lonestar MTN MoMo</option>
                       <option value="orange">Orange Money</option>
                       <option value="both">Both (MTN & Orange)</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-gray-600">MoMo Number</label>

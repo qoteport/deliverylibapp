@@ -35,6 +35,7 @@ import {
 } from '../types';
 import { SUPERMARKETS, SUPERMARKET_CATEGORIES, SUPERMARKET_ITEMS } from '../data/supermarketData';
 import { ShoppingCheckoutModal, ShoppingCartItem } from './ShoppingCheckoutModal';
+import { CustomSelect } from './common/CustomSelect';
 import { db } from '../firebase/config';
 import { collection, onSnapshot } from 'firebase/firestore';
 
@@ -315,19 +316,18 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-auto">
-                <select
+              <div className="w-full sm:w-48">
+                <CustomSelect
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full sm:w-auto appearance-none pl-8 pr-8 py-3 bg-white border border-gray-200/90 rounded-2xl text-xs font-bold text-gray-700 focus:outline-none focus:border-[#06C167] shadow-xs cursor-pointer"
+                  className="rounded-2xl py-3 font-bold"
+                  icon={<SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />}
                 >
                   <option value="featured">Featured First</option>
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
                   <option value="name">Product Name (A-Z)</option>
-                </select>
-                <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+                </CustomSelect>
               </div>
             </div>
           </div>
