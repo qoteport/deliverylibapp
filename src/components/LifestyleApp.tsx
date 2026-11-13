@@ -26,8 +26,12 @@ import {
   MessageCircle,
   MapPin,
   Tag,
-  Star
+  Star,
+  Camera,
+  Film
 } from 'lucide-react';
+import { MediaGalleryViewer } from './MediaGalleryViewer';
+import { MediaUploadField } from './MediaUploadField';
 import {
   LifestyleItem,
   LifestyleCategory,
@@ -104,6 +108,19 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'momo' | 'orange'>('momo');
   const [orderNotes, setOrderNotes] = useState('');
 
+  // Add Product State (Multiple Images + 1 Video)
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductBrand, setNewProductBrand] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState<LifestyleCategory>('smartphones');
+  const [newProductPriceUsd, setNewProductPriceUsd] = useState('');
+  const [newProductCondition, setNewProductCondition] = useState<'Brand New' | 'Certified Used' | 'Handcrafted'>('Brand New');
+  const [newProductWarranty, setNewProductWarranty] = useState('1 Year Warranty');
+  const [newProductDescription, setNewProductDescription] = useState('');
+  const [newProductImages, setNewProductImages] = useState<string[]>([]);
+  const [newProductVideoUrl, setNewProductVideoUrl] = useState('');
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+
   // Persist cart
   useEffect(() => {
     try {
@@ -132,8 +149,9 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
                 priceUsd: Number(data.priceUsd) || 0,
                 priceLrd: Number(data.priceLrd) || Math.round((Number(data.priceUsd) || 0) * 198),
                 condition: data.condition || 'Brand New',
-                imageUrl: data.imageUrl || '',
-                images: data.images || [],
+                imageUrl: data.imageUrl || (Array.isArray(data.images) && data.images[0]) || '',
+                images: Array.isArray(data.images) && data.images.length > 0 ? data.images : data.imageUrl ? [data.imageUrl] : [],
+                videoUrl: data.videoUrl || undefined,
                 description: data.description || '',
                 specifications: data.specifications || {},
                 inStock: data.inStock !== false,
@@ -254,6 +272,57 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
   const deliveryFeeUsd = 2.5;
   const deliveryFeeLrd = 500;
 
+  // Handle Add Product Submit (Multiple Photos + 1 Video)
+  const handleAddProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductName.trim() || !newProductPriceUsd) return;
+
+    setIsSavingProduct(true);
+    const usd = Number(newProductPriceUsd) || 0;
+    const lrd = Math.round(usd * 198);
+    const fallback = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80';
+    const finalImages = newProductImages.length > 0 ? newProductImages : [fallback];
+
+    const newItemData: Omit<LifestyleItem, 'id'> = {
+      name: newProductName.trim(),
+      brand: newProductBrand.trim() || 'Monrovia Merchant',
+      category: newProductCategory,
+      priceUsd: usd,
+      priceLrd: lrd,
+      condition: newProductCondition,
+      imageUrl: finalImages[0],
+      images: finalImages,
+      videoUrl: newProductVideoUrl.trim() || undefined,
+      description: newProductDescription.trim() || `${newProductName} available for fast Monrovia delivery.`,
+      specifications: { 'Condition': newProductCondition, 'Warranty': newProductWarranty },
+      inStock: true,
+      rating: 5.0,
+      reviewsCount: 1,
+      vendorName: 'Aura Verified Merchant',
+      vendorLocation: 'Tubman Blvd, Sinkor',
+      warranty: newProductWarranty
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, 'lifestyle_items'), {
+        ...newItemData,
+        createdAt: serverTimestamp()
+      });
+      setItems((prev) => [{ ...newItemData, id: docRef.id }, ...prev]);
+    } catch {
+      setItems((prev) => [{ ...newItemData, id: 'item-local-' + Date.now() }, ...prev]);
+    } finally {
+      setIsSavingProduct(false);
+      setIsAddProductOpen(false);
+      setNewProductName('');
+      setNewProductBrand('');
+      setNewProductPriceUsd('');
+      setNewProductDescription('');
+      setNewProductImages([]);
+      setNewProductVideoUrl('');
+    }
+  };
+
   // Handle open item details modal
   const openItemDetails = (item: LifestyleItem) => {
     setSelectedItem(item);
@@ -342,6 +411,15 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
               <span className="text-[10px] text-gray-500 hidden sm:inline">
                 {currency === 'USD' ? '(Tap for LRD)' : '(Tap for USD)'}
               </span>
+            </button>
+
+            {/* List Product Button */}
+            <button
+              onClick={() => setIsAddProductOpen(true)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">List Product</span>
             </button>
 
             {/* Cart Button */}
@@ -472,6 +550,20 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
                     <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
                       {item.condition}
                     </div>
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
+                      {Array.isArray(item.images) && item.images.length > 1 && (
+                        <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Camera className="w-3 h-3" />
+                          {item.images.length}
+                        </span>
+                      )}
+                      {item.videoUrl && (
+                        <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                          <Film className="w-3 h-3" />
+                          Video
+                        </span>
+                      )}
+                    </div>
                     {item.warranty && (
                       <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                         {item.warranty}
@@ -535,6 +627,20 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
                   />
                   <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
                     {item.condition}
+                  </div>
+                  <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                    {Array.isArray(item.images) && item.images.length > 1 && (
+                      <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Camera className="w-3 h-3" />
+                        {item.images.length}
+                      </span>
+                    )}
+                    {item.videoUrl && (
+                      <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                        <Film className="w-3 h-3" />
+                        Video
+                      </span>
+                    )}
                   </div>
                   {item.warranty && (
                     <div className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
@@ -625,13 +731,30 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
 
             {/* Modal Body */}
             <div className="overflow-y-auto p-5 space-y-4">
-              <div className="relative h-56 bg-gray-100 rounded-xl overflow-hidden">
-                <img
-                  src={selectedItem.imageUrl}
-                  alt={selectedItem.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <MediaGalleryViewer
+                images={
+                  Array.isArray(selectedItem.images) && selectedItem.images.length > 0
+                    ? selectedItem.images
+                    : selectedItem.imageUrl
+                    ? [selectedItem.imageUrl]
+                    : []
+                }
+                videoUrl={selectedItem.videoUrl}
+                title={selectedItem.name}
+                heightClass="h-56 sm:h-64"
+                badge={
+                  <div className="flex items-center gap-1.5">
+                    <span className="bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      {selectedItem.condition}
+                    </span>
+                    {selectedItem.warranty && (
+                      <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        {selectedItem.warranty}
+                      </span>
+                    )}
+                  </div>
+                }
+              />
 
               <div>
                 <h3 className="text-lg font-bold text-gray-900">{selectedItem.name}</h3>
@@ -988,6 +1111,129 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
             >
               Continue Shopping
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Product Modal (Multiple Photos + 1 Video) */}
+      {isAddProductOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">List Tech or Fashion Product</h3>
+                <p className="text-xs text-gray-500">Upload multiple photos and 1 product demo video</p>
+              </div>
+              <button onClick={() => setIsAddProductOpen(false)} className="p-1 text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddProductSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Product Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder="e.g. Apple iPhone 15 Pro Max or Handwoven Country Cloth Gown"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Brand / Maker</label>
+                  <input
+                    type="text"
+                    value={newProductBrand}
+                    onChange={(e) => setNewProductBrand(e.target.value)}
+                    placeholder="e.g. Apple, Samsung, Liberian Heritage"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Category</label>
+                  <select
+                    value={newProductCategory}
+                    onChange={(e) => setNewProductCategory(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-purple-600"
+                  >
+                    <option value="smartphones">Smartphones & Tablets</option>
+                    <option value="laptops">Laptops & Computers</option>
+                    <option value="solar">Solar & Power Backup</option>
+                    <option value="clothing-men">Men's Clothing</option>
+                    <option value="clothing-women">Women's Fashion</option>
+                    <option value="shoes">Footwear & Shoes</option>
+                    <option value="audio-accessories">Audio & Tech Accessories</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Price in USD ($) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newProductPriceUsd}
+                    onChange={(e) => setNewProductPriceUsd(e.target.value)}
+                    placeholder="e.g. 1100"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Condition</label>
+                  <select
+                    value={newProductCondition}
+                    onChange={(e) => setNewProductCondition(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  >
+                    <option value="Brand New">Brand New</option>
+                    <option value="Certified Used">Certified Used</option>
+                    <option value="Handcrafted">Handcrafted</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Warranty</label>
+                  <input
+                    type="text"
+                    value={newProductWarranty}
+                    onChange={(e) => setNewProductWarranty(e.target.value)}
+                    placeholder="e.g. 1 Year"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Multiple Images + 1 Video Upload Field */}
+              <MediaUploadField
+                images={newProductImages}
+                onChangeImages={setNewProductImages}
+                videoUrl={newProductVideoUrl}
+                onChangeVideoUrl={setNewProductVideoUrl}
+                label="Product Media (Upload Multiple Photos & 1 Video)"
+              />
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newProductDescription}
+                  onChange={(e) => setNewProductDescription(e.target.value)}
+                  placeholder="Specs, materials, what's in the box, sizing..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg h-16 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingProduct}
+                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
+              >
+                {isSavingProduct ? 'Publishing...' : 'Publish Product to Store'}
+              </button>
+            </form>
           </div>
         </div>
       )}

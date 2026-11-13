@@ -448,7 +448,9 @@ export interface RealEstateProperty {
   sizeSqm?: number;
   features: string[];
   description: string;
-  images: string[];
+  imageUrl?: string;
+  images?: string[];
+  videoUrl?: string;
   agentName: string;
   agentPhone: string;
   agentWhatsapp?: string;
@@ -499,7 +501,10 @@ export interface LifestyleItem {
   specifications: Record<string, string>;
   sizes?: string[];
   colors?: string[];
-  image: string;
+  image?: string;
+  imageUrl?: string;
+  images?: string[];
+  videoUrl?: string;
   inStock: boolean;
   featured?: boolean;
 }
@@ -535,7 +540,10 @@ export interface MotorListing {
   dealerWhatsapp?: string;
   description: string;
   features: string[];
-  image: string;
+  image?: string;
+  imageUrl?: string;
+  images?: string[];
+  videoUrl?: string;
   isAvailable: boolean;
   featured?: boolean;
 }

@@ -23,8 +23,11 @@ import {
   ExternalLink,
   Zap,
   Droplets,
-  Layers
+  Layers,
+  Film,
+  Camera
 } from 'lucide-react';
+import { MediaGalleryViewer } from './MediaGalleryViewer';
 import { 
   RealEstateProperty, 
   PropertyDealType, 
@@ -496,6 +499,21 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
                           <Heart className={`w-4 h-4 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
                         </button>
 
+                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-10">
+                          {Array.isArray(prop.images) && prop.images.length > 1 && (
+                            <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Camera className="w-3 h-3" />
+                              {prop.images.length}
+                            </span>
+                          )}
+                          {prop.videoUrl && (
+                            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                              <Film className="w-3 h-3" />
+                              Video
+                            </span>
+                          )}
+                        </div>
+
                         <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-xl text-white font-mono font-black text-xs">
                           {formatPrice(prop.priceUsd, prop.pricePeriod)}
                         </div>
@@ -584,23 +602,31 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
             </div>
 
             <div className="overflow-y-auto flex-1">
-              {/* Image Preview */}
-              <div className="relative aspect-16/10 bg-gray-100 overflow-hidden">
-                <img
-                  src={selectedPropertyDetails.images[0]}
-                  alt={selectedPropertyDetails.title}
-                  className="w-full h-full object-cover"
+              {/* Interactive Multi-Image & Video Gallery */}
+              <div className="p-4 sm:p-5 pb-0">
+                <MediaGalleryViewer
+                  images={
+                    Array.isArray(selectedPropertyDetails.images) && selectedPropertyDetails.images.length > 0
+                      ? selectedPropertyDetails.images
+                      : selectedPropertyDetails.imageUrl
+                      ? [selectedPropertyDetails.imageUrl]
+                      : []
+                  }
+                  videoUrl={selectedPropertyDetails.videoUrl}
+                  title={selectedPropertyDetails.title}
+                  badge={
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-xs ${
+                        selectedPropertyDetails.dealType === 'buy' ? 'bg-amber-600' : selectedPropertyDetails.dealType === 'short_stay' ? 'bg-purple-600' : 'bg-sky-600'
+                      }`}>
+                        {selectedPropertyDetails.dealType === 'buy' ? 'For Sale' : selectedPropertyDetails.dealType === 'short_stay' ? 'Short Stay' : 'For Rent'}
+                      </span>
+                      <span className="px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-xl text-white text-xs font-bold">
+                        {String(selectedPropertyDetails.propertyType || '').toUpperCase()}
+                      </span>
+                    </div>
+                  }
                 />
-                <div className="absolute top-3 left-3 flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider text-white ${
-                    selectedPropertyDetails.dealType === 'buy' ? 'bg-amber-600' : selectedPropertyDetails.dealType === 'short_stay' ? 'bg-purple-600' : 'bg-sky-600'
-                  }`}>
-                    {selectedPropertyDetails.dealType === 'buy' ? 'For Sale' : selectedPropertyDetails.dealType === 'short_stay' ? 'Short Stay' : 'For Rent'}
-                  </span>
-                  <span className="px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-xl text-white text-xs font-bold">
-                    {selectedPropertyDetails.propertyType.toUpperCase()}
-                  </span>
-                </div>
               </div>
 
               {/* Details Body */}

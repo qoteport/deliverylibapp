@@ -18,8 +18,12 @@ import {
   X,
   ShieldCheck,
   Home,
-  Tag
+  Tag,
+  Video,
+  Film,
+  Camera
 } from 'lucide-react';
+import { MediaUploadField } from './MediaUploadField';
 import {
   RealEstateProperty,
   PropertyDealType,
@@ -68,7 +72,8 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
   const [newBedrooms, setNewBedrooms] = useState('2');
   const [newBathrooms, setNewBathrooms] = useState('2');
   const [newDeedStatus, setNewDeedStatus] = useState('Verified Mother Deed');
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImages, setNewImages] = useState<string[]>([]);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newAgentPhone, setNewAgentPhone] = useState('+231 77 123 4567');
   const [isSaving, setIsSaving] = useState(false);
@@ -210,6 +215,9 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
     const usd = Number(newPriceUsd) || 0;
     const lrd = Math.round(usd * 198);
 
+    const fallbackImage = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80';
+    const finalImages = newImages.length > 0 ? newImages : [fallbackImage];
+
     const propData: Omit<RealEstateProperty, 'id'> = {
       title: newTitle,
       dealType: newDealType,
@@ -222,9 +230,9 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
       bedrooms: Number(newBedrooms) || undefined,
       bathrooms: Number(newBathrooms) || undefined,
       deedStatus: newDeedStatus,
-      imageUrl:
-        newImageUrl ||
-        'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+      imageUrl: finalImages[0],
+      images: finalImages,
+      videoUrl: newVideoUrl.trim() || undefined,
       description: newDescription || `${newTitle} located in ${newNeighborhood}, Monrovia.`,
       features: ['24/7 Security', 'Running Water', 'Backup Generator Available'],
       agentName: 'Aura Premier Properties',
@@ -252,6 +260,8 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
       setNewPriceUsd('');
       setNewAddress('');
       setNewDescription('');
+      setNewImages([]);
+      setNewVideoUrl('');
     }
   };
 
@@ -407,6 +417,20 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
                       />
                       <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                         {prop.dealType}
+                      </div>
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
+                        {Array.isArray(prop.images) && prop.images.length > 1 && (
+                          <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Camera className="w-3 h-3" />
+                            {prop.images.length}
+                          </span>
+                        )}
+                        {prop.videoUrl && (
+                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <Film className="w-3 h-3" />
+                            Video Tour
+                          </span>
+                        )}
                       </div>
                       <div
                         className={`absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
@@ -673,16 +697,13 @@ export const RealEstatePortal: React.FC<RealEstatePortalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Image URL (Optional)</label>
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </div>
+              <MediaUploadField
+                images={newImages}
+                onChangeImages={setNewImages}
+                videoUrl={newVideoUrl}
+                onChangeVideoUrl={setNewVideoUrl}
+                label="Property Media (Multiple Photos + 1 Video)"
+              />
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Description</label>

@@ -19,8 +19,11 @@ import {
   X,
   ShieldCheck,
   Sparkles,
-  Tag
+  Tag,
+  Camera,
+  Film
 } from 'lucide-react';
+import { MediaUploadField } from './MediaUploadField';
 import {
   MotorListing,
   MotorListingType,
@@ -71,7 +74,8 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
   const [newTransmission, setNewTransmission] = useState<'Automatic' | 'Manual'>('Automatic');
   const [newFuelType, setNewFuelType] = useState('Petrol');
   const [newLocation, setNewLocation] = useState('Sinkor, Tubman Blvd');
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImages, setNewImages] = useState<string[]>([]);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDealerPhone, setNewDealerPhone] = useState('+231 77 123 4567');
   const [isSaving, setIsSaving] = useState(false);
@@ -193,6 +197,9 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
     const usd = Number(newPriceUsd) || 0;
     const lrd = Math.round(usd * 198);
 
+    const fallbackImg = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80';
+    const finalImages = newImages.length > 0 ? newImages : [fallbackImg];
+
     const listingData: Omit<MotorListing, 'id'> = {
       title: newTitle,
       type: newType,
@@ -207,9 +214,9 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
       transmission: newTransmission,
       fuelType: newFuelType,
       location: newLocation,
-      imageUrl:
-        newImageUrl ||
-        'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
+      imageUrl: finalImages[0],
+      images: finalImages,
+      videoUrl: newVideoUrl.trim() || undefined,
       description: newDescription || `${newTitle} available at Monrovia Motors.`,
       features: ['Air Conditioning', 'Clean Title', 'Monrovia Inspected'],
       dealerName: 'Monrovia Premier Motors & Spares',
@@ -237,6 +244,8 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
       setNewModel('');
       setNewMileage('');
       setNewDescription('');
+      setNewImages([]);
+      setNewVideoUrl('');
     }
   };
 
@@ -392,6 +401,20 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
                       />
                       <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                         {item.type}
+                      </div>
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
+                        {Array.isArray(item.images) && item.images.length > 1 && (
+                          <span className="bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Camera className="w-3 h-3" />
+                            {item.images.length}
+                          </span>
+                        )}
+                        {item.videoUrl && (
+                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <Film className="w-3 h-3" />
+                            Video
+                          </span>
+                        )}
                       </div>
                       <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs text-gray-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
                         {item.condition}
@@ -656,16 +679,13 @@ export const MotorsPortal: React.FC<MotorsPortalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Photo URL (Optional)</label>
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                />
-              </div>
+              <MediaUploadField
+                images={newImages}
+                onChangeImages={setNewImages}
+                videoUrl={newVideoUrl}
+                onChangeVideoUrl={setNewVideoUrl}
+                label="Vehicle / Parts Media (Multiple Photos + 1 Video)"
+              />
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Description & Specs</label>

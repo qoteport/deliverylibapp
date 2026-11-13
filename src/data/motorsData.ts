@@ -21,6 +21,13 @@ export const INITIAL_MOTOR_LISTINGS: MotorListing[] = [
     description: 'Fresh direct import from USA, fully duty-paid with valid Monrovia plates. Features All-Wheel Drive, lane departure alert, adaptive cruise control, backup camera, blind-spot monitoring, and alloy rims. Tested on Monrovia roads.',
     features: ['All-Wheel Drive (AWD)', 'Chilling AC', 'Touchscreen with Apple CarPlay', 'Reverse Camera', 'Duty Paid & Registered'],
     image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80'
+    ],
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     isAvailable: true,
     featured: true,
   },

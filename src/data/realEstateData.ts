@@ -19,6 +19,7 @@ export const INITIAL_PROPERTIES: RealEstateProperty[] = [
       'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80',
     ],
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     agentName: 'Patrick Flomo',
     agentPhone: '0886 512 890',
     agentWhatsapp: '+231886512890',
