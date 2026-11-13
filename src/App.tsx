@@ -1396,6 +1396,7 @@ export default function App() {
           isPageMode={true}
           onClose={() => navigateTo({ name: 'apps' })}
           currency={currency}
+          onToggleCurrency={toggleCurrency}
           onOrderPlaced={(order) => {
             setOrders((prev) => [order, ...prev]);
             setActiveTrackingOrder(order);
@@ -1403,6 +1404,9 @@ export default function App() {
           }}
           onOpenStorePortal={(storeId) => {
             navigateTo({ name: 'supermarket-management', supermarketId: storeId });
+          }}
+          onOpenSupermarketOnboarding={() => {
+            navigateTo({ name: 'supermarket-onboarding' });
           }}
         />
       </ErrorBoundary>

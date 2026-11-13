@@ -22,8 +22,8 @@
     "createdAt": "2026-10-08T11:51:33.583Z",
     "closingTime": "22:00",
     "location": {
-      "lng": -10.8003328,
-      "lat": 6.3012864
+      "lat": 6.3012864,
+      "lng": -10.8003328
     },
     "deliveryFeeUsd": 2,
     "momoNumber": "+231 700400338",
