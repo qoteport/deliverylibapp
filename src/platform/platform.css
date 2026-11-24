@@ -65,7 +65,13 @@
   display: flex;
   gap: 4px;
   flex: 1;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.a-main-nav::-webkit-scrollbar {
+  display: none;
 }
 .a-main-nav a {
   padding: 9px 12px;
@@ -386,8 +392,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   margin: 24px 0;
+}
+.a-tabs::-webkit-scrollbar {
+  display: none;
 }
 .a-tabs > button:not(.a-button) {
   padding: 12px 17px;
@@ -985,14 +997,16 @@
   font-size: 10px;
 }
 .a-bottom-tabs {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   background: white;
   border-top: 1px solid #e4eae5;
   display: flex;
   justify-content: space-around;
   padding: 10px 12px max(12px, env(safe-area-inset-bottom));
-  z-index: 20;
+  z-index: 30;
 }
 .a-bottom-tabs button {
   display: flex;
@@ -1497,7 +1511,7 @@
   margin-top: 5px;
 }
 .a-site-footer {
-  padding: 28px 24px;
+  padding: 28px 24px 88px;
   display: flex;
   justify-content: center;
   gap: 24px;
