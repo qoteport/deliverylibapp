@@ -31,14 +31,12 @@ import {
 } from '../types';
 import { INITIAL_MOTOR_LISTINGS } from '../data/motorsData';
 import { db } from '../firebase/config';
-import {
-  collection,
+import {collection,
   onSnapshot,
   query,
   orderBy,
   addDoc,
-  serverTimestamp
-} from 'firebase/firestore';
+  serverTimestamp, where, limit} from 'firebase/firestore';
 
 interface MotorsAppProps {
   isOpen?: boolean;
@@ -103,7 +101,7 @@ export const MotorsApp: React.FC<MotorsAppProps> = ({
   // Firestore sync for motor_listings
   useEffect(() => {
     try {
-      const q = query(collection(db, 'motor_listings'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'public_catalog', 'motor_listings', 'items'), where('published', '==', true), limit(100));
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {

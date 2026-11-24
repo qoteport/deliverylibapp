@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.aura.liberia.deliverylib_mobile",
+      "sha256_cert_fingerprints": [
+        "8A:2B:A0:1A:62:21:51:3D:CC:3B:88:E1:EF:B7:F7:3B:29:C9:3C:E5:D8:25:46:A7:25:E4:8D:ED:F6:FE:9F:FD"
+      ]
+    }
+  }
+]

@@ -1,3 +1,4 @@
+import { command } from './utils/commandApi';
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -42,7 +43,7 @@ import { INITIAL_RESTAURANTS } from './data/demoRestaurants';
 import { INITIAL_DRIVERS } from './data/demoDrivers';
 import { SUPERMARKETS } from './data/supermarketData';
 import { db } from './firebase/config';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, limit, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
 import { parseRoute, navigateTo, AppRoute } from './utils/navigation';
 import { sendBrowserNotification, requestNotificationPermission } from './utils/browserNotifications';
@@ -156,14 +157,7 @@ export default function App() {
     }
   });
 
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const saved = localStorage.getItem('aura_orders');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
 
   const [checkoutTotals, setCheckoutTotals] = useState({
     subtotal: 0,
@@ -228,16 +222,14 @@ export default function App() {
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(
-      collection(db, 'restaurants'),
+      query(collection(db, 'public_catalog', 'restaurants', 'items'), where('published', '==', true), limit(100)),
       (snapshot) => {
         const remoteList: Restaurant[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as Restaurant;
           const rest = { ...data, id: data.id || docSnap.id };
           if (isDummyRestaurant(rest)) {
-            // Actively purge dummy restaurants from Firestore
-            deleteDoc(doc(db, 'restaurants', docSnap.id)).catch(() => {});
-            deleteRestaurantFromApi(rest.id).catch(() => {});
+            // Guest discovery never mutates source records.
             return;
           }
           if (rest && rest.name) {
@@ -249,7 +241,7 @@ export default function App() {
         try {
           localStorage.setItem('aura_monrovia_restaurants', JSON.stringify(cleanList));
         } catch {}
-        cleanList.forEach((r) => saveRestaurantToApi(r).catch(() => {}));
+
       },
       (error) => {
         console.warn('Firestore restaurants snapshot notice:', error);
@@ -258,119 +250,12 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // 2. Realtime Firestore Sync & Auto-Population: Menu Items
+  // Menu is authoritative; an empty catalog never triggers browser writes.
   useEffect(() => {
-    if (!db) return;
-    let hasAttemptedAutoSync = false;
-
-    const unsub = onSnapshot(
-      collection(db, 'menu'),
-      async (snapshot) => {
-        const remoteItems: MenuItem[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data() as MenuItem;
-          const item = { ...data, id: data.id || docSnap.id };
-          if (!isDummyMenuItem(item) && data && data.name) {
-            remoteItems.push(item);
-          }
-        });
-
-        let cleanItems = cleanMenuList(remoteItems);
-
-        // If 'menu' collection in Firebase is empty, query 'menu_items' collection as fallback
-        if (cleanItems.length === 0) {
-          try {
-            const menuItemsSnap = await getDocs(collection(db, 'menu_items'));
-            const fallbackRemote: MenuItem[] = [];
-            menuItemsSnap.forEach((docSnap) => {
-              const data = docSnap.data() as MenuItem;
-              const item = { ...data, id: data.id || docSnap.id };
-              if (!isDummyMenuItem(item) && data && data.name) {
-                fallbackRemote.push(item);
-              }
-            });
-
-            const cleanFallback = cleanMenuList(fallbackRemote);
-            if (cleanFallback.length > 0) {
-              cleanItems = cleanFallback;
-              // Mirror to 'menu' collection for cross-collection consistency
-              cleanFallback.forEach((item) => {
-                setDoc(doc(db, 'menu', item.id), sanitizeForFirestore(item)).catch(() => {});
-              });
-            }
-          } catch (e) {
-            console.warn('Fallback menu_items query notice:', e);
-          }
-        }
-
-        // If Firestore has items, it is the authoritative remote source
-        if (cleanItems.length > 0) {
-          setMenuItems(cleanItems);
-          try {
-            localStorage.setItem('aura_monrovia_menu', JSON.stringify(cleanItems));
-          } catch (e) {
-            console.warn('LocalStorage menu cache error:', e);
-          }
-          cleanItems.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
-          return;
-        }
-
-        // If Firestore is empty, check if we have local menu items in localStorage or API cache
-        let localItems: MenuItem[] = [];
-        try {
-          const saved = localStorage.getItem('aura_monrovia_menu');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            localItems = cleanMenuList(parsed);
-          }
-        } catch {}
-
-        if (localItems.length === 0) {
-          try {
-            const apiItems = await fetchMenuFromApi();
-            if (apiItems && apiItems.length > 0) {
-              localItems = cleanMenuList(apiItems);
-            }
-          } catch {}
-        }
-
-        // If local items exist, preserve them and push to Firestore so they don't disappear!
-        if (localItems.length > 0) {
-          console.log(`[Auto-Sync] Syncing ${localItems.length} menu items from client cache to Firestore...`);
-          setMenuItems(localItems);
-          try {
-            const batch = writeBatch(db);
-            localItems.forEach((item) => {
-              const cleanItem = sanitizeForFirestore(item);
-              batch.set(doc(db, 'menu', item.id), cleanItem);
-              batch.set(doc(db, 'menu_items', item.id), cleanItem);
-              saveMenuItemToApi(item).catch(() => {});
-            });
-            await batch.commit();
-            console.log('[Auto-Sync] Successfully populated Firebase with client menu items.');
-          } catch (err) {
-            console.warn('[Auto-Sync] Batch write to Firebase notice:', err);
-          }
-          return;
-        }
-
-        // If both Firestore and local caches are empty, do not blindly wipe existing items if they exist in state!
-        setMenuItems((prev) => {
-          if (prev && prev.length > 0) {
-            // Re-sync existing dishes so they do not disappear
-            try {
-              localStorage.setItem('aura_monrovia_menu', JSON.stringify(prev));
-              prev.forEach((m) => saveMenuItemToApi(m).catch(() => {}));
-            } catch {}
-            return prev;
-          }
-          return [];
-        });
-      },
-      (error) => {
-        console.warn('Firestore menu snapshot notice:', error);
-      }
-    );
+    const unsub = onSnapshot(query(collection(db, 'public_catalog', 'menu', 'items'), where('published', '==', true), limit(100)), snapshot => {
+      const records = snapshot.docs.map(record => ({ ...record.data(), id: record.id } as MenuItem));
+      setMenuItems(cleanMenuList(records));
+    }, () => setMenuItems([]));
     return () => unsub();
   }, []);
 
@@ -408,47 +293,29 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // 4. Realtime Firestore Sync: Orders Feed
+  // The command API returns only the verified actor's scoped orders.
   useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(
-      collection(db, 'orders'),
-      (snapshot) => {
-        const remoteOrders: Order[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data() as Order;
-          if (data) {
-            remoteOrders.push({
-              ...data,
-              id: data.id || docSnap.id,
-            });
-          }
-        });
-
-        if (remoteOrders.length > 0) {
-          const sorted = remoteOrders.sort(
-            (a, b) => (b.createdAtTimestamp || new Date(b.createdAt).getTime() || 0) - (a.createdAtTimestamp || new Date(a.createdAt).getTime() || 0)
-          );
-          setOrders(sorted);
-          try {
-            localStorage.setItem('aura_orders', JSON.stringify(sorted));
-          } catch (e) {
-            console.warn('LocalStorage orders cache error:', e);
-          }
-        }
-      },
-      (error) => {
-        console.warn('Firestore orders snapshot notice:', error);
-      }
-    );
-    return () => unsub();
-  }, []);
+    let cancelled = false;
+    setOrders([]); setActiveTrackingOrder(null);
+    if (!user) return;
+    const scope = user.role === 'driver' ? 'driver'
+      : ['restaurant_owner', 'supermarket_owner'].includes(user.role) ? 'merchant' : 'customer';
+    const load = async () => {
+      try {
+        const result = await command(`/v1/orders?scope=${scope}`);
+        if (!cancelled) setOrders(result.orders);
+      } catch { if (!cancelled) setOrders([]); }
+    };
+    void load();
+    const timer = setInterval(load, 10000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [user?.uid, user?.role]);
 
   // 4b. Realtime Firestore Sync: Supermarkets Feed
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(
-      collection(db, 'supermarkets'),
+      query(collection(db, 'public_catalog', 'supermarkets', 'items'), where('published', '==', true), limit(100)),
       (snapshot) => {
         const remoteSm: SupermarketStore[] = [];
         snapshot.forEach((docSnap) => {
@@ -676,59 +543,11 @@ export default function App() {
   };
 
   const handleOrderPlaced = async (newOrder: Order) => {
-    setOrders((prev) => {
-      const exists = prev.some((o) => o.id === newOrder.id);
-      return exists ? prev : [newOrder, ...prev];
-    });
-    setCartItems([]);
-    setIsCheckoutOpen(false);
-    setActiveTrackingOrder(newOrder);
-    setIsOrderTrackerOpen(true);
-    showToast(`Order ${newOrder.id} placed! Transmitted to kitchen & delegation engine.`);
-
-    // 1. Sync directly to Backend API store
-    saveOrderToApi(newOrder).catch((e) => console.warn('API order sync error:', e));
-
-    // 2. Guarantee order document in Firebase Firestore
-    try {
-      await setDoc(doc(db, 'orders', newOrder.id), sanitizeForFirestore(newOrder), { merge: true });
-      console.log('Order confirmed written to Firestore:', newOrder.id);
-    } catch (err) {
-      console.warn('Firestore order sync notice:', err);
-    }
-
-    // Format clean dish summary for customer notification
-    const dishSummary = newOrder.items
-      .map((i) => `${i.quantity}x ${i.menuItem.name}`)
-      .join(', ');
-    const displaySummary = dishSummary.length > 55 ? `${dishSummary.slice(0, 52)}...` : dishSummary;
-    const isDelivery = newOrder.diningMode === 'delivery';
-    const deliveryFeeStr = isDelivery && newOrder.deliveryFee 
-      ? ` (incl. $${newOrder.deliveryFee.toFixed(2)} delivery)` 
-      : '';
-    const restaurantDisplayName = newOrder.restaurantName || 'the kitchen';
-
-    // Dispatch Browser Push / Mobile Notification (Awaiting kitchen confirmation)
-    sendBrowserNotification({
-      title: `Order Placed · #${newOrder.id}`,
-      body: `Your order for ${displaySummary} from ${restaurantDisplayName} is placed! Total: $${(newOrder.total || 0).toFixed(2)}${deliveryFeeStr}. Awaiting kitchen confirmation.`,
-      tag: `order-${newOrder.id}`,
-    });
-
-    // Run Delegation Engine to find and assign closest driver
-    if (newOrder.diningMode === 'delivery') {
-      const orderRestaurant = restaurants.find(
-        (r) => r.id === newOrder.restaurantId || r.name.toLowerCase() === newOrder.restaurantName?.toLowerCase()
-      );
-      const restNeighborhood = orderRestaurant?.neighborhood || 'Sinkor (Tubman Blvd)';
-      const restCoords = orderRestaurant?.location || MONROVIA_NEIGHBORHOOD_COORDS[restNeighborhood] || MONROVIA_NEIGHBORHOOD_COORDS['Sinkor (Tubman Blvd)'];
-      const delegationRes = await delegateOrderToDriver(newOrder, drivers, restCoords);
-      if (delegationRes.success && delegationRes.updatedOrder) {
-        setOrders((prev) =>
-          prev.map((o) => (o.id === newOrder.id ? delegationRes.updatedOrder! : o))
-        );
-      }
-    }
+    // Already committed and priced by the command API: never dual-write it.
+    setOrders(previous => [newOrder, ...previous.filter(order => order.id !== newOrder.id)]);
+    setCartItems([]); setIsCheckoutOpen(false);
+    setActiveTrackingOrder(newOrder); setIsOrderTrackerOpen(true);
+    showToast(`Order ${newOrder.id} received. Awaiting merchant confirmation.`);
   };
 
   const handleDriverRejectOrder = async (orderId: string, driverId: string) => {
@@ -765,180 +584,17 @@ export default function App() {
     }
   };
 
-  const handleUpdateOrderStatus = async (
-    orderId: string, 
-    status: Order['status'],
-    cancelledBy?: 'customer' | 'restaurant' | 'admin',
-    cancellationReason?: string,
-    extra?: Partial<Order>
-  ) => {
-    const now = Date.now();
-    let updatedConfirmedAt: number | undefined;
-    let updatedTargetEta: number | undefined;
-
-    const existingOrder = orders.find((o) => o.id === orderId) || (activeTrackingOrder?.id === orderId ? activeTrackingOrder : null);
-    const spotName = existingOrder?.restaurantName || 'The restaurant';
-
-    const confTimestamp = extra?.confirmedAtTimestamp || existingOrder?.confirmedAtTimestamp || (status === 'preparing' || (status !== 'received' && !existingOrder?.confirmedAtTimestamp) ? now : undefined);
-    const readyTimestamp = extra?.readyAtTimestamp || existingOrder?.readyAtTimestamp || (status === 'plating' ? now : undefined);
-    const enRouteTimestamp = extra?.enRouteAtTimestamp || existingOrder?.enRouteAtTimestamp || (status === 'en-route' ? now : undefined);
-    const deliveredTimestamp = extra?.deliveredAtTimestamp || existingOrder?.deliveredAtTimestamp || (status === 'completed' ? now : undefined);
-
-    let calculatedActualPrepMinutes = extra?.actualPrepMinutes || existingOrder?.actualPrepMinutes;
-    if (!calculatedActualPrepMinutes && readyTimestamp && (confTimestamp || existingOrder?.createdAtTimestamp)) {
-      calculatedActualPrepMinutes = Math.max(1, Math.round((readyTimestamp - (confTimestamp || existingOrder!.createdAtTimestamp!)) / 60000));
-    }
-
-    let calculatedActualDeliveryMinutes = extra?.actualDeliveryMinutes || existingOrder?.actualDeliveryMinutes;
-    if (!calculatedActualDeliveryMinutes && deliveredTimestamp && (enRouteTimestamp || readyTimestamp)) {
-      calculatedActualDeliveryMinutes = Math.max(1, Math.round((deliveredTimestamp - (enRouteTimestamp || readyTimestamp!)) / 60000));
-    }
-
-    let calculatedTotalFulfillmentMinutes = extra?.totalFulfillmentMinutes || existingOrder?.totalFulfillmentMinutes;
-    if (!calculatedTotalFulfillmentMinutes && deliveredTimestamp && existingOrder?.createdAtTimestamp) {
-      calculatedTotalFulfillmentMinutes = Math.max(1, Math.round((deliveredTimestamp - existingOrder.createdAtTimestamp) / 60000));
-    }
-
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== orderId) return o;
-        const prepMins = o.prepDurationMinutes || (o.diningMode === 'pickup' ? 15 : o.diningMode === 'dine-in' ? 12 : 25);
-        updatedConfirmedAt = confTimestamp || o.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
-        updatedTargetEta = extra?.targetEtaTimestamp || o.targetEtaTimestamp || (status !== 'received' ? (updatedConfirmedAt || now) + prepMins * 60000 : undefined);
-        return {
-          ...o,
-          ...extra,
-          status,
-          confirmedAtTimestamp: updatedConfirmedAt,
-          targetEtaTimestamp: updatedTargetEta,
-          readyAtTimestamp: readyTimestamp || o.readyAtTimestamp,
-          enRouteAtTimestamp: enRouteTimestamp || o.enRouteAtTimestamp,
-          deliveredAtTimestamp: deliveredTimestamp || o.deliveredAtTimestamp,
-          actualPrepMinutes: calculatedActualPrepMinutes || o.actualPrepMinutes,
-          actualDeliveryMinutes: calculatedActualDeliveryMinutes || o.actualDeliveryMinutes,
-          totalFulfillmentMinutes: calculatedTotalFulfillmentMinutes || o.totalFulfillmentMinutes,
-          ...(status === 'cancelled' ? { 
-            cancelledBy: cancelledBy || o.cancelledBy || 'customer', 
-            cancellationReason: cancellationReason || o.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
-          } : {}),
-        };
-      })
-    );
-
-    if (activeTrackingOrder && activeTrackingOrder.id === orderId) {
-      setActiveTrackingOrder((prev) => {
-        if (!prev) return null;
-        const prepMins = prev.prepDurationMinutes || (prev.diningMode === 'pickup' ? 15 : prev.diningMode === 'dine-in' ? 12 : 25);
-        const confAt = confTimestamp || prev.confirmedAtTimestamp || (status !== 'received' ? now : undefined);
-        const etaAt = extra?.targetEtaTimestamp || prev.targetEtaTimestamp || (status !== 'received' ? (confAt || now) + prepMins * 60000 : undefined);
-        return {
-          ...prev,
-          ...extra,
-          status,
-          confirmedAtTimestamp: confAt,
-          targetEtaTimestamp: etaAt,
-          readyAtTimestamp: readyTimestamp || prev.readyAtTimestamp,
-          enRouteAtTimestamp: enRouteTimestamp || prev.enRouteAtTimestamp,
-          deliveredAtTimestamp: deliveredTimestamp || prev.deliveredAtTimestamp,
-          actualPrepMinutes: calculatedActualPrepMinutes || prev.actualPrepMinutes,
-          actualDeliveryMinutes: calculatedActualDeliveryMinutes || prev.actualDeliveryMinutes,
-          totalFulfillmentMinutes: calculatedTotalFulfillmentMinutes || prev.totalFulfillmentMinutes,
-          ...(status === 'cancelled' ? { 
-            cancelledBy: cancelledBy || prev.cancelledBy || 'customer', 
-            cancellationReason: cancellationReason || prev.cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Cancelled by customer') 
-          } : {}),
-        };
-      });
-    }
-
-    // Trigger Customized Browser Notification for Status Update (Uber Eats / Bolt Food standard)
-    let statusTitle = `Order Update #${orderId}`;
-    let statusText = '';
-    let toastText = `Order status: ${status}`;
-
-    const orderTotal = existingOrder?.total || 0;
-    const isDelivery = existingOrder?.diningMode === 'delivery';
-    const deliveryFee = existingOrder?.deliveryFee || 2.5;
-    const formattedTotal = `$${orderTotal.toFixed(2)}`;
-    const feeText = isDelivery ? ` (incl. $${deliveryFee.toFixed(2)} delivery fee)` : '';
-
-    const dishItems = existingOrder?.items
-      ? existingOrder.items.map((i) => `${i.quantity}x ${i.menuItem.name}`).join(', ')
-      : '';
-    const itemsPreview = dishItems.length > 40 ? `${dishItems.slice(0, 37)}...` : dishItems;
-    const dishSnippet = itemsPreview ? ` (${itemsPreview})` : '';
-
-    if (status === 'preparing') {
-      statusTitle = `👨‍🍳 Your meal is being prepared!`;
-      statusText = `${spotName} has confirmed your order${dishSnippet}. Total: ${formattedTotal}${feeText}. Kitchen is cooking now!`;
-      toastText = `${spotName} confirmed your order! Cooking in progress.`;
-    } else if (status === 'plating') {
-      statusTitle = `📦 Your food is ready & packed!`;
-      statusText = `${spotName} has packed your meal fresh${isDelivery ? ' in an insulated carrier — ready for courier pickup.' : ' — ready for pickup.'}`;
-      toastText = 'Order packed for pickup.';
-    } else if (status === 'en-route') {
-      const courierName = extra?.assignedDriverName || existingOrder?.assignedDriverName;
-      statusTitle = `🛵 Your courier is on the way!`;
-      statusText = `${courierName ? `${courierName} is` : 'Your courier is'} heading to ${existingOrder?.deliveryArea || existingOrder?.deliveryAddress || 'your location'} with your order. Total: ${formattedTotal}.`;
-      toastText = 'Order is en-route with courier.';
-    } else if (status === 'completed') {
-      statusTitle = `🎉 Order Delivered! Enjoy your meal.`;
-      statusText = `Your order from ${spotName} was delivered successfully. Total: ${formattedTotal}${feeText}. Thank you for ordering!`;
-      toastText = 'Order delivered & completed!';
-    } else if (status === 'cancelled') {
-      if (cancelledBy === 'customer') {
-        statusTitle = `Order #${orderId} Cancelled`;
-        statusText = 'You cancelled this order before kitchen confirmation. No charges were made.';
-        toastText = 'Order cancelled by you.';
-      } else if (cancelledBy === 'restaurant') {
-        statusTitle = `Order Declined by ${spotName}`;
-        const reasonStr = cancellationReason ? ` Reason: "${cancellationReason}".` : '';
-        statusText = `⚠️ ${spotName} was unable to fulfill your order.${reasonStr} We apologize for the inconvenience.`;
-        toastText = `Order declined by ${spotName}.`;
-      } else {
-        statusTitle = `Order #${orderId} Cancelled`;
-        statusText = `Order was cancelled by dispatch (${cancellationReason || 'Admin'}).`;
-        toastText = 'Order cancelled by dispatch.';
-      }
-    }
-
-    // Only dispatch customer-facing milestone browser notifications to customer devices
-    const isCustomerView = currentRoute.name !== 'restaurant' && currentRoute.name !== 'driver' && currentRoute.name !== 'admin' && user?.role !== 'restaurant_owner';
-
-    if (statusText && isCustomerView) {
-      sendBrowserNotification({
-        title: statusTitle,
-        body: statusText,
-        tag: `status-${orderId}`,
-      });
-    }
-
-    // 1. Sync directly to Backend API store
-    updateOrderStatusApi(orderId, status, cancelledBy, cancellationReason, {
-      confirmedAtTimestamp: updatedConfirmedAt,
-      targetEtaTimestamp: updatedTargetEta,
-      ...extra,
-    }).catch((e) => console.warn('API status update notice:', e));
-
-    // 2. Sync in realtime to Firestore
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status'],
+      cancelledBy?: 'customer' | 'restaurant' | 'admin', cancellationReason?: string, extra?: Partial<Order>) => {
+    const current = orders.find(order => order.id === orderId) || activeTrackingOrder;
+    if (!current || current.id !== orderId) return;
     try {
-      const updatePayload: Record<string, any> = { 
-        status,
-        ...(extra ? sanitizeForFirestore(extra) : {}),
-        ...(status === 'cancelled' ? { 
-          cancelledBy: cancelledBy || 'customer', 
-          cancellationReason: cancellationReason || (cancelledBy === 'restaurant' ? 'Kitchen unavailable / out of stock' : 'Customer cancellation request') 
-        } : {})
-      };
-      if (status !== 'received') {
-        if (updatedConfirmedAt) updatePayload.confirmedAtTimestamp = updatedConfirmedAt;
-        if (updatedTargetEta) updatePayload.targetEtaTimestamp = updatedTargetEta;
-      }
-      await updateDoc(doc(db, 'orders', orderId), updatePayload);
-      showToast(toastText);
-    } catch (e) {
-      console.warn('Firestore order status sync notice:', e);
-    }
+      const result = await command(`/v1/orders/${orderId}/transition`, {
+        status, expectedVersion: (current as any).version,
+      });
+      setOrders(previous => previous.map(order => order.id === orderId ? result.order : order));
+      if (activeTrackingOrder?.id === orderId) setActiveTrackingOrder(result.order);
+    } catch (error) { showToast(error instanceof Error ? error.message : 'Status update failed.'); }
   };
 
   const handleReorder = (order: Order) => {
@@ -1075,7 +731,6 @@ export default function App() {
     try {
       const sanitized = sanitizeForFirestore(item);
       await setDoc(doc(db, 'menu', item.id), sanitized);
-      await setDoc(doc(db, 'menu_items', item.id), sanitized);
     } catch (e) {
       console.warn('Firestore setDoc menu notice:', e);
     }
@@ -1095,7 +750,6 @@ export default function App() {
     deleteMenuItemFromApi(itemId).catch((e) => console.warn('API delete menu notice:', e));
     try {
       await deleteDoc(doc(db, 'menu', itemId));
-      await deleteDoc(doc(db, 'menu_items', itemId));
     } catch (e) {
       console.warn('Firestore deleteDoc menu notice:', e);
     }
@@ -1117,7 +771,6 @@ export default function App() {
       const batch = writeBatch(db);
       ids.forEach((id) => {
         batch.delete(doc(db, 'menu', id));
-        batch.delete(doc(db, 'menu_items', id));
       });
       await batch.commit();
     } catch (e) {
@@ -1149,7 +802,6 @@ export default function App() {
       try {
         const sanitized = sanitizeForFirestore(updatedItem);
         await setDoc(doc(db, 'menu', itemId), sanitized, { merge: true });
-        await setDoc(doc(db, 'menu_items', itemId), sanitized, { merge: true });
       } catch (e) {
         console.warn('Firestore toggle availability notice:', e);
       }

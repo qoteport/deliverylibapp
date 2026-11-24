@@ -47,16 +47,14 @@ import {
 } from '../types';
 import { INITIAL_LIFESTYLE_ITEMS } from '../data/lifestyleData';
 import { db } from '../firebase/config';
-import {
-  collection,
+import {collection,
   onSnapshot,
   query,
   orderBy,
   addDoc,
   updateDoc,
   doc,
-  serverTimestamp
-} from 'firebase/firestore';
+  serverTimestamp, where, limit} from 'firebase/firestore';
 
 interface LifestyleAppProps {
   isOpen?: boolean;
@@ -167,7 +165,7 @@ export const LifestyleApp: React.FC<LifestyleAppProps> = ({
   // Firestore sync for lifestyle_items
   useEffect(() => {
     try {
-      const q = query(collection(db, 'lifestyle_items'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'public_catalog', 'lifestyle_items', 'items'), where('published', '==', true), limit(100));
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {

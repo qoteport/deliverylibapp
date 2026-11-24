@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
+import App from './platform/WebPlatform';
 import { AuthProvider } from './context/AuthContext';
 import { registerServiceWorker } from './utils/serviceWorkerRegistration';
 import './index.css';

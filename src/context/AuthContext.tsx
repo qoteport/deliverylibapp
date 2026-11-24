@@ -1,195 +1,54 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../firebase/config';
 import { AppUser } from '../types';
-import { auth, db } from '../firebase/config';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { requestNotificationPermission } from '../utils/browserNotifications';
+import { command } from '../utils/commandApi';
 
 interface AuthContextType {
   user: AppUser | null;
-  login: (email: string, pass: string, restaurantId?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, restaurantId?: string) => Promise<{ success: boolean; error?: string }>;
   loginWithPhone: (phone: string, name?: string, location?: string, address?: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  setUserDirectly: (u: AppUser | null) => void;
+  setUserDirectly: (user: AppUser | null) => void;
 }
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  login: async () => ({ success: false }),
-  loginWithPhone: async () => ({ success: false }),
-  logout: () => {},
-  setUserDirectly: () => {},
-});
-
+const AuthContext = createContext<AuthContextType>({ user: null,
+  login: async () => ({ success: false }), loginWithPhone: async () => ({ success: false }),
+  logout: () => {}, setUserDirectly: () => {} });
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AppUser | null>(() => {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const load = async (verified: User | null) => {
+    if (!verified) { setUser(null); return; }
+    // A verified provider session may be a customer while the order service is offline.
+    // Privileged roles are populated only from protected backend membership.
+    setUser({ uid: verified.uid, email: verified.email || '', name: verified.displayName || '',
+      phone: verified.phoneNumber || '', address: '', role: 'customer' });
     try {
-      const saved = localStorage.getItem('aura_monrovia_auth_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
+      const profile = await command('/v1/me');
+      if (auth.currentUser?.uid !== verified.uid) return;
+      const membership = profile.membership;
+      const role: AppUser['role'] = membership?.active === true ?
+        ({ merchant: 'restaurant_owner', manager: 'restaurant_owner', supermarket_owner: 'supermarket_owner',
+          driver: 'driver', admin: 'admin', super_admin: 'super_admin' } as Record<string, AppUser['role']>)[membership.role] || 'customer' : 'customer';
+      setUser({ uid: verified.uid, email: verified.email || '', name: profile.name || verified.displayName || '',
+        phone: profile.phone || '', address: profile.address || '', role,
+        ...(role === 'restaurant_owner' ? { restaurantId: membership.merchantId } : {}),
+        ...(role === 'supermarket_owner' ? { supermarketId: membership.merchantId } : {}),
+        ...(role === 'driver' ? { driverId: verified.uid } : {}) });
+    } catch { /* Retain verified customer identity; grant no privileged role. */ }
+  };
   useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem('aura_monrovia_auth_user', JSON.stringify(user));
-      } else {
-        localStorage.removeItem('aura_monrovia_auth_user');
-      }
-    } catch {
-      // ignore
-    }
-  }, [user]);
-
-  const loginWithPhone = async (
-    phoneInput: string,
-    nameInput?: string,
-    location?: string,
-    address?: string,
-    password?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const cleanPhone = phoneInput.trim();
-    const cleanName = (nameInput && nameInput.trim()) || 'Monrovia Foodie';
-
-    if (!cleanPhone) {
-      return { success: false, error: 'Phone number is required' };
-    }
-
-    const customerUser: AppUser = {
-      uid: `cust-${String(cleanPhone || '').replace(/[^0-9]/g, '') || Date.now().toString().slice(-6)}`,
-      email: `${String(cleanPhone || '').replace(/[^0-9]/g, '')}@monrovia.aura`,
-      phone: cleanPhone,
-      name: cleanName,
-      role: 'customer',
-      location: location || 'Sinkor (Tubman Blvd)',
-      address: address || '',
-    };
-
-    setUser(customerUser);
-    requestNotificationPermission().catch(() => {});
-
-    // Sync user profile to Firestore
-    try {
-      await setDoc(
-        doc(db, 'users', customerUser.uid),
-        {
-          uid: customerUser.uid,
-          phone: customerUser.phone,
-          name: customerUser.name,
-          role: 'customer',
-          location: customerUser.location,
-          address: customerUser.address,
-          ...(password ? { hasPassword: true, lastPasswordSet: new Date().toISOString() } : {}),
-          lastActiveAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
-    } catch (e) {
-      console.warn('Firestore customer sync notice:', e);
-    }
-
-    return { success: true };
-  };
-
-  const login = async (
-    emailInput: string,
-    passInput: string,
-    restaurantId?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const email = emailInput.trim().toLowerCase();
-    const pass = passInput.trim();
-
-    // 1. Try server-side secure admin verification if email is admin
-    if (email.includes('admin') || email === 'qoteport@gmail.com') {
-      try {
-        const verifyRes = await fetch('/api/auth/verify-admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password: pass }),
-        });
-
-        if (verifyRes.ok) {
-          const resData = await verifyRes.json();
-          if (resData.success && resData.user) {
-            setUser(resData.user);
-            try {
-              await setDoc(
-                doc(db, 'users', resData.user.uid),
-                {
-                  uid: resData.user.uid,
-                  email: resData.user.email,
-                  name: resData.user.name,
-                  role: resData.user.role,
-                  lastLogin: new Date().toISOString(),
-                },
-                { merge: true }
-              );
-            } catch {}
-            return { success: true };
-          }
-        }
-      } catch (err) {
-        console.warn('Backend admin auth attempt failed:', err);
-      }
-    }
-
-    // 2. Restaurant owner login with restaurant selection
-    if (restaurantId) {
-      const restOwnerUser: AppUser = {
-        uid: `owner-${restaurantId}`,
-        email: email || `${restaurantId}@monrovia.lr`,
-        name: 'Restaurant Manager',
-        role: 'restaurant_owner',
-        restaurantId,
-      };
-      setUser(restOwnerUser);
-      return { success: true };
-    }
-
-    // 3. Try Firebase Auth
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      const customUser: AppUser = {
-        uid: cred.user.uid,
-        email: cred.user.email || email,
-        name: cred.user.displayName || email.split('@')[0],
-        role: 'customer',
-      };
-      setUser(customUser);
-      return { success: true };
-    } catch {
-      // 4. Graceful customer credentials fallback
-      if (pass.length >= 4) {
-        const fallbackUser: AppUser = {
-          uid: `user-${Date.now().toString().slice(-6)}`,
-          email,
-          name: email.split('@')[0],
-          role: 'customer',
-        };
-        setUser(fallbackUser);
-        return { success: true };
-      }
-      return { success: false, error: 'Invalid login credentials' };
-    }
-  };
-
-  const logout = () => {
-    signOut(auth).catch(() => {});
-    setUser(null);
-    try {
-      localStorage.removeItem('aura_monrovia_auth_user');
-      localStorage.removeItem('aura_active_portal_role');
-      sessionStorage.clear();
-    } catch {}
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, loginWithPhone, logout, setUserDirectly: setUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
+    localStorage.removeItem('aura_monrovia_auth_user');
+    localStorage.removeItem('aura_orders');
+    sessionStorage.removeItem('aura_admin_unlocked');
+    return onAuthStateChanged(auth, verified => { void load(verified); });
+  }, []);
+  const login: AuthContextType['login'] = async () => ({ success: false, error: 'Continue with Google or Firebase phone verification.' });
+  const logout = () => { setUser(null); localStorage.removeItem('aura_orders'); void signOut(auth); };
+  return <AuthContext.Provider value={{ user, login,
+    loginWithPhone: async () => ({ success: false, error: 'Use Firebase phone verification.' }), logout,
+    // Legacy portal callers can request refresh, but cannot choose identity or role.
+    setUserDirectly: value => { if (value === null) logout(); else void load(auth.currentUser); },
+  }}>{children}</AuthContext.Provider>;
 };
