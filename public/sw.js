@@ -1,5 +1,5 @@
 // AURA Monrovia Food Delivery Service Worker
-const CACHE_NAME = "aura-monrovia-v6-aura-icon";
+const CACHE_NAME = "aura-monrovia-v7-light-icon";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
