@@ -776,6 +776,17 @@
   gap: 10px;
   border-radius: 22px;
   background: #e7eee9;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.a-gallery::-webkit-scrollbar {
+  display: none;
+}
+.a-dialog-body .a-gallery {
+  width: calc(100% + 48px);
+  margin-left: -24px;
+  margin-right: -24px;
+  border-radius: 0;
 }
 .a-gallery > button,
 .a-gallery > video {
@@ -785,6 +796,7 @@
   height: min(52dvh, 460px);
   object-fit: cover;
   border: 0;
+  padding: 0;
 }
 .a-gallery img,
 .a-gallery .a-photo-fallback {
@@ -1438,6 +1450,11 @@
   }
   .a-dialog-body {
     padding: 20px 18px;
+  }
+  .a-dialog-body .a-gallery {
+    width: calc(100% + 36px);
+    margin-left: -18px;
+    margin-right: -18px;
   }
   .a-dialog > footer {
     border-radius: 0;
