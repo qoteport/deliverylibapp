@@ -13,16 +13,24 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // Infobip server credentials from environment
 const INFOBIP_BASE_URL = process.env.INFOBIP_BASE_URL || 'm9kvm2.api.infobip.com';
-const INFOBIP_API_KEY = process.env.INFOBIP_API_KEY || 'd7b9b8285c86b0aaa6b9b9d74a913eef-7c93ff7b-c719-4f6d-9704-b756ec3375b5';
+const INFOBIP_API_KEY = process.env.INFOBIP_API_KEY || '';
 const INFOBIP_SENDER_ID = process.env.INFOBIP_SENDER_ID || 'AURA';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'qoteport@gmail.com').toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin#32)))';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const USD_TO_LRD_RATE = Number(process.env.USD_TO_LRD_RATE) || 195;
 
 // Parse standard URL-encoded form data (from Twilio webhooks) and JSON
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '10mb' }));
+
+// Legacy JSON mutations are not an alternative authorization boundary.
+// Customer/workflow operations now use the separately configured command API.
+app.use('/api', (req: Request, res: Response, next) => {
+  if (req.method === 'GET' && ['/config/public', '/health'].includes(req.path)) return next();
+  return res.status(410).json({ code: 'LEGACY_API_DISABLED', message: 'Use the authenticated command API.' });
+});
+
 
 // Persistent JSON Storage Directory
 const DATA_DIR = path.resolve(__dirname, 'data');

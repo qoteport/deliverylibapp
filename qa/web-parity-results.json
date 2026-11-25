@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-23",
+  "web": {
+    "typescript": "passed",
+    "workflowTests": 11,
+    "productionBuild": "passed",
+    "apiBase": "https://aura-mobile-iota.vercel.app",
+    "browserReview": "isolated read-only fixtures: storefront, property filters, details, protected admin entry"
+  },
+  "backend": {
+    "tests": 156,
+    "failures": 0
+  },
+  "npmAuditAfterCompatibleFixes": 0,
+  "notVerified": [
+    "production OAuth",
+    "real Google Maps rendering",
+    "FCM delivery",
+    "two-party LiveKit broadcast and recording",
+    "production admin review"
+  ],
+  "deployment": "not performed",
+  "setupGuide": "WEB_PLATFORM.md",
+  "legal": {
+    "routes": [
+      "/terms",
+      "/privacy"
+    ],
+    "guestAccess": "tested",
+    "mobileTestsPassed": 2,
+    "operatorContact": "awaiting confirmation"
+  }
+}

@@ -1,32 +1,39 @@
 {
   "id": "/",
-  "name": "AURA Monrovia — Food Delivery & Restaurants",
-  "short_name": "AURA Food",
-  "description": "Order Monrovia dishes, Jollof, Pepper Soup, Suya, and grills with Lonestar MTN MoMo, Orange Money, or Cash on Delivery.",
+  "name": "Aura Liberia",
+  "short_name": "Aura",
+  "description": "Local kitchens, shopping, homes, rides, live markets and community in one place.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#FFFFFF",
-  "background_color": "#FFFFFF",
+  "theme_color": "#F8F9FA",
+  "background_color": "#F8F9FA",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.svg",
+      "src": "/icons/Icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/favicon.svg",
+      "src": "/icons/Icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/Icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/Icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

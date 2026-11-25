@@ -39,7 +39,7 @@ import {
 import { INITIAL_PROPERTIES } from '../data/realEstateData';
 import { CustomSelect } from './common/CustomSelect';
 import { db } from '../firebase/config';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
+import {collection, onSnapshot, addDoc, query, where, limit} from 'firebase/firestore';
 
 interface RealEstateAppProps {
   isOpen?: boolean;
@@ -123,7 +123,7 @@ export const RealEstateApp: React.FC<RealEstateAppProps> = ({
   useEffect(() => {
     if (!db) return;
     try {
-      const unsub = onSnapshot(collection(db, 'properties'), (snapshot) => {
+      const unsub = onSnapshot(query(collection(db, 'public_catalog', 'properties', 'items'), where('published', '==', true), limit(100)), (snapshot) => {
         if (!snapshot.empty) {
           const list: RealEstateProperty[] = [];
           snapshot.forEach((doc) => {

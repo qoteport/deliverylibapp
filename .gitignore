@@ -7,3 +7,10 @@ coverage/
 .env*
 !.env.example
 .firebase/
+
+# Never track service-account credentials
+*-firebase-adminsdk-*.json
+*-credentials.json
+
+# Public production API URL only (never credentials)
+!.env.production

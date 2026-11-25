@@ -32,7 +32,7 @@ import { SUPERMARKETS, SUPERMARKET_CATEGORIES, SUPERMARKET_ITEMS } from '../data
 import { ShoppingCheckoutModal, ShoppingCartItem } from './ShoppingCheckoutModal';
 import { CustomSelect } from './common/CustomSelect';
 import { db } from '../firebase/config';
-import { collection, onSnapshot } from 'firebase/firestore';
+import {collection, onSnapshot, query, where, limit} from 'firebase/firestore';
 
 interface SupermarketAppProps {
   isOpen: boolean;
@@ -87,7 +87,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
 
   useEffect(() => {
     const unsubStores = onSnapshot(
-      collection(db, 'supermarkets'),
+      query(collection(db, 'public_catalog', 'supermarkets', 'items'), where('published', '==', true), limit(100)),
       (snap) => {
         if (!snap.empty) {
           const fetched: SupermarketStore[] = [];
@@ -99,7 +99,7 @@ export const SupermarketApp: React.FC<SupermarketAppProps> = ({
     );
 
     const unsubItems = onSnapshot(
-      collection(db, 'supermarket_items'),
+      query(collection(db, 'public_catalog', 'supermarket_items', 'items'), where('published', '==', true), limit(100)),
       (snap) => {
         if (!snap.empty) {
           const fetched: SupermarketItem[] = [];
