@@ -773,6 +773,9 @@ button.a-card .a-text-link {
   scroll-snap-align: start;
   background: #213d2b;
   color: white;
+  padding: 0;
+  text-align: left;
+  display: block;
 }
 .a-feature > img,
 .a-feature > .a-photo-fallback {
@@ -784,19 +787,21 @@ button.a-card .a-text-link {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent, #0c1a12e8);
+  background: linear-gradient(180deg, transparent 42%, #0c1a12e0 100%);
 }
 .a-feature > div {
   position: absolute;
-  bottom: 22px;
-  left: 22px;
-  right: 22px;
+  bottom: 16px;
+  left: 18px;
+  right: 18px;
   z-index: 1;
+  text-align: left;
 }
 .a-feature h3 {
   color: #fff;
-  font-size: 22px;
-  max-width: 240px;
+  font-size: 20px;
+  margin: 4px 0 2px;
+  max-width: 260px;
 }
 .a-feature small {
   color: #cde2d4;
