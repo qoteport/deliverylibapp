@@ -97,17 +97,29 @@ export function LiveMarket({ id }: { id?: string }) {
       ) : (
         <Empty title="The next live find is coming">
           <p>Live broadcasts and available replays will appear here.</p>
+          <Button
+            secondary
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              if (await requireLogin()) setStudio(true);
+            }}
+          >
+            Open your merchant studio
+          </Button>
         </Empty>
       )}
-      <Button
-        secondary
-        style={{ marginTop: 24 }}
-        onClick={async () => {
-          if (await requireLogin()) setStudio(true);
-        }}
-      >
-        Open your merchant studio
-      </Button>
+      {(feed.data?.sessions || []).length > 0 && (
+        <div className="a-section">
+          <Button
+            secondary
+            onClick={async () => {
+              if (await requireLogin()) setStudio(true);
+            }}
+          >
+            Open your merchant studio
+          </Button>
+        </div>
+      )}
       {studio && <Studio onClose={() => setStudio(false)} />}
     </section>
   );
