@@ -328,7 +328,7 @@ export function Catalog({ kind }: { kind: Kind }) {
             : kind === "grocery"
               ? "Good things, delivered."
               : kind === "property"
-                ? "A place to call yours."
+                ? "A place to call Home."
                 : kind === "motor"
                   ? "Your next move starts here."
                   : "Good finds. Your way."}
@@ -338,7 +338,11 @@ export function Catalog({ kind }: { kind: Kind }) {
             ? "Your city. Your kitchens. Your favourites."
             : kind === "grocery"
               ? "Your neighbourhood stores. Fresh finds for every day."
-              : "Local people. Thoughtful finds. Explore what’s around you."}
+              : kind === "property"
+                ? "Verified homes, apartments, and spaces across Liberia."
+                : kind === "motor"
+                  ? "Quality cars, bikes, and parts from trusted sellers."
+                  : "Curated electronics, fashion, and footwear near you."}
         </p>
         {nearby && (
           <div className="a-card a-row between">
